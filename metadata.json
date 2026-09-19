@@ -1,0 +1,6 @@
+{
+  "name": "NutriTrack Clinic & Client App",
+  "description": "Diet clinic platform connecting dietitians and clients with mobile meal & measurement tracking, diet plans, centre device readings, and adherence reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
