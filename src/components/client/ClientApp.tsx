@@ -1,9 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ClientAuth } from './ClientAuth';
 import { MealLogModal } from './MealLogModal';
 import { MeasurementModal } from './MeasurementModal';
+import { CalorieWeightTrajectoryCard } from './CalorieWeightTrajectoryCard';
 import { MealType } from '../../types';
+import { 
+  getTodayString, 
+  getYesterdayString, 
+  getDaysAgoString, 
+  formatDateDisplay, 
+  formatToLocalIsoDate 
+} from '../../utils/dateUtils';
 import { 
   Utensils, 
   LineChart as ChartIcon, 
@@ -23,14 +30,19 @@ import {
   Droplets,
   Award,
   Phone,
-  LogOut,
   Building2,
   Calendar,
   HeartPulse,
   Clock,
   ShieldCheck,
   Check,
-  X
+  X,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal,
+  Layers
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -84,8 +96,82 @@ export const ClientApp: React.FC = () => {
   const [isMeasurementModalOpen, setIsMeasurementModalOpen] = useState(false);
   const [planLoggedNotice, setPlanLoggedNotice] = useState<string | null>(null);
 
+  // Front page sections visibility for customized, non-boring layout with sleek "Show" lines
+  interface FrontSections {
+    trajectory: boolean;      // 8,000 kcal Weight & Calorie Trajectory
+    nutritionTarget: boolean; // Daily Target & Macro Breakdown
+    suggestions: boolean;     // AI Meal Suggestions
+    mealsTimeline: boolean;   // Today's Meals Timeline
+    sideWidgets: boolean;     // Assigned Coach & Habits Reminders
+  }
+
+  const [visibleSections, setVisibleSections] = useState<FrontSections>(() => {
+    try {
+      const saved = localStorage.getItem('nutritrack_front_sections');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      trajectory: true,
+      nutritionTarget: true,
+      suggestions: true,
+      mealsTimeline: true,
+      sideWidgets: true,
+    };
+  });
+
+  const toggleSection = (key: keyof FrontSections) => {
+    setVisibleSections(prev => {
+      const updated = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem('nutritrack_front_sections', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const showAllSections = () => {
+    const all: FrontSections = {
+      trajectory: true,
+      nutritionTarget: true,
+      suggestions: true,
+      mealsTimeline: true,
+      sideWidgets: true,
+    };
+    setVisibleSections(all);
+    try {
+      localStorage.setItem('nutritrack_front_sections', JSON.stringify(all));
+    } catch (e) {}
+  };
+
+  const collapseAllSections = () => {
+    const none: FrontSections = {
+      trajectory: false,
+      nutritionTarget: false,
+      suggestions: false,
+      mealsTimeline: false,
+      sideWidgets: false,
+    };
+    setVisibleSections(none);
+    try {
+      localStorage.setItem('nutritrack_front_sections', JSON.stringify(none));
+    } catch (e) {}
+  };
+
+  // State to toggle individual meal slots in the timeline
+  const [openMealSlots, setOpenMealSlots] = useState<Record<string, boolean>>({
+    'Breakfast': true,
+    'Morning Snack': true,
+    'Lunch': true,
+    'Evening Snack': true,
+    'Dinner': true
+  });
+
+  const toggleMealSlot = (slot: string) => {
+    setOpenMealSlots(prev => ({ ...prev, [slot]: !prev[slot] }));
+  };
+
   if (!activeClient) {
-    return <ClientAuth />;
+    return null;
   }
 
   // Assigned dietitian and plan
@@ -190,9 +276,14 @@ export const ClientApp: React.FC = () => {
   };
 
   const changeDateBy = (days: number) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + days);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    dateObj.setDate(dateObj.getDate() + days);
+    const nextDate = formatToLocalIsoDate(dateObj);
+    // Enforce strictly: past dates and today only, never tomorrow
+    if (nextDate <= getTodayString()) {
+      setSelectedDate(nextDate);
+    }
   };
 
   return (
@@ -259,15 +350,6 @@ export const ClientApp: React.FC = () => {
             >
               <Scale className="w-4 h-4" />
               <span>Record Scan</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={clientSignOut}
-              title="Sign Out of Portal"
-              className="p-2.5 text-emerald-200 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/20"
-            >
-              <LogOut className="w-4 h-4" />
             </button>
           </div>
 
@@ -358,13 +440,13 @@ export const ClientApp: React.FC = () => {
         <div className="space-y-6">
           
           {/* Date Selector Toolbar */}
-          <div className="bg-white rounded-2xl p-3 shadow-2xs border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-2">
+          <div className="bg-white rounded-2xl p-3 shadow-2xs border border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => changeDateBy(-1)}
                 className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200"
-                title="Previous Day"
+                title="Previous Day (Past days allowed)"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -372,7 +454,7 @@ export const ClientApp: React.FC = () => {
               <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-xl border border-slate-200">
                 <Calendar className="w-4 h-4 text-emerald-600" />
                 <span className="text-sm font-bold text-slate-900">
-                  {selectedDate === '2026-09-15' ? 'Today, Sep 15, 2026' : selectedDate}
+                  {formatDateDisplay(selectedDate)}
                 </span>
                 <span className="text-xs text-slate-500">
                   ({clientLogsForDay.length} foods logged)
@@ -382,21 +464,66 @@ export const ClientApp: React.FC = () => {
               <button
                 type="button"
                 onClick={() => changeDateBy(1)}
-                className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200"
-                title="Next Day"
+                disabled={selectedDate >= getTodayString()}
+                className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors border border-slate-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                title={selectedDate >= getTodayString() ? "Future dates not allowed (Today is maximum)" : "Next Day"}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
 
-              {selectedDate !== '2026-09-15' && (
+              {/* Quick Jump Date Pill Shortcuts */}
+              <div className="flex items-center gap-1.5 pl-1">
                 <button
                   type="button"
-                  onClick={() => setSelectedDate('2026-09-15')}
-                  className="px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors cursor-pointer"
+                  onClick={() => setSelectedDate(getTodayString())}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                    selectedDate === getTodayString()
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
                 >
-                  Jump to Today
+                  Today
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(getYesterdayString())}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                    selectedDate === getYesterdayString()
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  Yesterday
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(getDaysAgoString(2))}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                    selectedDate === getDaysAgoString(2)
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  2 Days Ago
+                </button>
+              </div>
+
+              {/* Calendar Past Date Picker (Strict max = today) */}
+              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                <span className="text-[11px] font-semibold text-slate-400">Pick:</span>
+                <input
+                  type="date"
+                  max={getTodayString()}
+                  value={selectedDate}
+                  onChange={(e) => {
+                    if (e.target.value && e.target.value <= getTodayString()) {
+                      setSelectedDate(e.target.value);
+                    }
+                  }}
+                  className="text-xs bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg px-2 py-1 font-semibold text-slate-700 cursor-pointer focus:outline-emerald-500"
+                  title="Select any past date (Strictly up to Today, no future dates)"
+                />
+              </div>
             </div>
 
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
@@ -405,6 +532,143 @@ export const ClientApp: React.FC = () => {
             </div>
           </div>
 
+          {/* Front Page Display Lines Customizer Toolbar */}
+          <div className="bg-white/90 backdrop-blur-xs rounded-2xl px-4 py-2.5 border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs font-black uppercase tracking-wider text-slate-700">
+                Front Page Display:
+              </span>
+            </div>
+
+            {/* Quick Pills to toggle individual lines or expand/collapse all */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => toggleSection('trajectory')}
+                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                  visibleSections.trajectory
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                }`}
+                title="Toggle 8,000 kcal Weight & Calorie Trajectory"
+              >
+                {visibleSections.trajectory ? <Check className="w-3 h-3 text-emerald-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
+                <span>8,000 kcal Tracker</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleSection('nutritionTarget')}
+                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                  visibleSections.nutritionTarget
+                    ? 'bg-amber-50 text-amber-900 border-amber-300'
+                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                }`}
+                title="Toggle Daily Calorie & Macro Target Breakdown"
+              >
+                {visibleSections.nutritionTarget ? <Check className="w-3 h-3 text-amber-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
+                <span>Daily Targets</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleSection('mealsTimeline')}
+                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                  visibleSections.mealsTimeline
+                    ? 'bg-teal-50 text-teal-900 border-teal-300'
+                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                }`}
+                title="Toggle Today's Meals Timeline"
+              >
+                {visibleSections.mealsTimeline ? <Check className="w-3 h-3 text-teal-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
+                <span>Meals Timeline</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleSection('sideWidgets')}
+                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                  visibleSections.sideWidgets
+                    ? 'bg-blue-50 text-blue-900 border-blue-300'
+                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                }`}
+                title="Toggle Coach Information & Habits Reminders"
+              >
+                {visibleSections.sideWidgets ? <Check className="w-3 h-3 text-blue-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
+                <span>Coach &amp; Habits</span>
+              </button>
+
+              <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
+
+              <button
+                type="button"
+                onClick={showAllSections}
+                className="text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                title="Show all sections expanded"
+              >
+                Show All
+              </button>
+
+              <button
+                type="button"
+                onClick={collapseAllSections}
+                className="text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                title="Collapse all sections to sleek lines"
+              >
+                Line View (Collapse All)
+              </button>
+            </div>
+          </div>
+
+          {/* Calorie Trajectory & Cumulative 8,000 kcal = 1 kg Weight Projection (Front Page Table) */}
+          {!visibleSections.trajectory ? (
+            <div 
+              onClick={() => toggleSection('trajectory')}
+              className="bg-white hover:bg-slate-50/90 rounded-2xl border border-slate-200 p-3 sm:px-5 sm:py-3.5 flex items-center justify-between transition-all shadow-2xs group cursor-pointer hover:border-emerald-300"
+              title="Click to show 8,000 kcal Calorie & Weight Projection"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                  <Scale className="w-4 h-4" />
+                </div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                    Calorie Trajectory &amp; Weight Projection
+                  </span>
+                  <span className="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                    8,000 kcal = 1 kg
+                  </span>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 hidden sm:inline-flex items-center gap-1">
+                    <Award className="w-3 h-3 text-emerald-600" />
+                    Previous Days Accumulated Balance &amp; Projected Impact
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleSection('trajectory');
+                }}
+                className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 group-hover:bg-emerald-600 group-hover:text-white px-3 py-1.5 rounded-xl transition-all border border-emerald-200 shadow-2xs cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Show</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <CalorieWeightTrajectoryCard
+              client={activeClient}
+              mealLogs={mealLogs}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              onOpenLogModal={openLogForSlot}
+              onToggleHide={() => toggleSection('trajectory')}
+            />
+          )}
+
           {/* 2-Column Responsive Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
@@ -412,32 +676,78 @@ export const ClientApp: React.FC = () => {
             <div className="lg:col-span-8 space-y-6">
               
               {/* Daily Target vs Consumed Summary Card */}
-              <div className="bg-white rounded-3xl p-6 shadow-2xs border border-slate-200 space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Flame className="w-5 h-5 text-amber-500" />
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                        Daily Calorie Target
+              {!visibleSections.nutritionTarget ? (
+                <div 
+                  onClick={() => toggleSection('nutritionTarget')}
+                  className="bg-white hover:bg-slate-50/90 rounded-2xl border border-slate-200 p-3 sm:px-5 sm:py-3.5 flex items-center justify-between transition-all shadow-2xs group cursor-pointer hover:border-amber-300"
+                  title="Click to show Daily Calorie Target & Macronutrients"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                      <Flame className="w-4 h-4" />
+                    </div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                        Daily Calorie Target &amp; Macronutrients
+                      </span>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200">
+                        {consumedTotals.calories} / {targetCalories} kcal ({caloriesPercent}%)
+                      </span>
+                      <span className="text-[11px] font-medium text-slate-500 hidden sm:inline">
+                        P: {consumedTotals.protein}g • C: {consumedTotals.carbs}g • F: {consumedTotals.fat}g
                       </span>
                     </div>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-3xl sm:text-4xl font-black text-slate-900">{consumedTotals.calories}</span>
-                      <span className="text-sm sm:text-base font-semibold text-slate-500">/ {targetCalories} kcal</span>
-                    </div>
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <span className="text-xs font-bold text-slate-500 block">Remaining</span>
-                      <span className="text-lg font-black text-emerald-700">{caloriesRemaining} kcal</span>
-                    </div>
-                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col items-center justify-center font-bold text-emerald-800">
-                      <span className="text-xs font-extrabold">{caloriesPercent}%</span>
-                      <span className="text-[9px] uppercase tracking-tight text-emerald-600">Goal</span>
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSection('nutritionTarget');
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-extrabold text-amber-800 bg-amber-50 hover:bg-amber-100 group-hover:bg-amber-600 group-hover:text-white px-3 py-1.5 rounded-xl transition-all border border-amber-200 shadow-2xs cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Show</span>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
                 </div>
+              ) : (
+                <div className="bg-white rounded-3xl p-6 shadow-2xs border border-slate-200 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Flame className="w-5 h-5 text-amber-500" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Daily Calorie Target
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-3xl sm:text-4xl font-black text-slate-900">{consumedTotals.calories}</span>
+                        <span className="text-sm sm:text-base font-semibold text-slate-500">/ {targetCalories} kcal</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-slate-500 block">Remaining</span>
+                        <span className="text-lg font-black text-emerald-700">{caloriesRemaining} kcal</span>
+                      </div>
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col items-center justify-center font-bold text-emerald-800">
+                        <span className="text-xs font-extrabold">{caloriesPercent}%</span>
+                        <span className="text-[9px] uppercase tracking-tight text-emerald-600">Goal</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleSection('nutritionTarget')}
+                        className="ml-2 flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                        title="Collapse to single line"
+                      >
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Hide Line</span>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
 
                 {/* Calorie Progress Bar */}
                 <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden p-0.5">
@@ -518,26 +828,74 @@ export const ClientApp: React.FC = () => {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Suggested Meals from AI Chatbot */}
               {pendingSuggestions.length > 0 && (
-                <div className="bg-linear-to-br from-emerald-50 via-teal-50/70 to-amber-50/50 rounded-3xl p-5 sm:p-6 shadow-sm border-2 border-emerald-300/90 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-200">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-emerald-600 animate-pulse" />
-                        <h3 className="text-base font-black text-slate-900">
+                !visibleSections.suggestions ? (
+                  <div 
+                    onClick={() => toggleSection('suggestions')}
+                    className="bg-white hover:bg-emerald-50/50 rounded-2xl border border-emerald-200 p-3 sm:px-5 sm:py-3.5 flex items-center justify-between transition-all shadow-2xs group cursor-pointer hover:border-emerald-400"
+                    title="Click to show NutriBot AI Suggested Meals"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                        <Sparkles className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className="font-bold text-slate-900 text-xs sm:text-sm">
                           Suggested Meals from NutriBot AI
-                        </h3>
+                        </span>
                         <span className="bg-emerald-600 text-white text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
                           {pendingSuggestions.length} Pending
                         </span>
+                        <span className="text-xs text-slate-500 hidden sm:inline">
+                          Food items reported in chat with time
+                        </span>
                       </div>
-                      <p className="text-xs text-slate-600 mt-1">
-                        Food items reported in chat with time are suggested below. Each food's calories are listed first for clinical accuracy.
-                      </p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSection('suggestions');
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 group-hover:bg-emerald-600 group-hover:text-white px-3 py-1.5 rounded-xl transition-all border border-emerald-200 shadow-2xs cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Show</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
                   </div>
+                ) : (
+                  <div className="bg-linear-to-br from-emerald-50 via-teal-50/70 to-amber-50/50 rounded-3xl p-5 sm:p-6 shadow-sm border-2 border-emerald-300/90 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-200">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-emerald-600 animate-pulse" />
+                          <h3 className="text-base font-black text-slate-900">
+                            Suggested Meals from NutriBot AI
+                          </h3>
+                          <span className="bg-emerald-600 text-white text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
+                            {pendingSuggestions.length} Pending
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1">
+                          Food items reported in chat with time are suggested below. Each food's calories are listed first for clinical accuracy.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleSection('suggestions')}
+                        className="self-start sm:self-auto flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 bg-white/80 hover:bg-white px-2.5 py-1.5 rounded-xl transition-colors cursor-pointer border border-emerald-200"
+                        title="Collapse suggestions to line"
+                      >
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Hide Line</span>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
 
                   <div className="space-y-3">
                     {pendingSuggestions.map((sugg) => (
@@ -624,246 +982,360 @@ export const ClientApp: React.FC = () => {
                     ))}
                   </div>
                 </div>
+                )
               )}
 
-              {/* Today's Meals Timeline Cards */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <Utensils className="w-4 h-4 text-emerald-600" />
-                    Today's Meals Timeline
-                  </h2>
-                  <span className="text-xs text-slate-400">Add or edit foods in each slot</span>
-                </div>
-
-                {(['Breakfast', 'Morning Snack', 'Lunch', 'Evening Snack', 'Dinner'] as MealType[]).map((slot) => {
-                  const itemsInSlot = clientLogsForDay.filter(m => m.mealType === slot);
-                  const slotCalories = itemsInSlot.reduce((sum, item) => sum + item.calories, 0);
-                  const slotSuggestions = pendingSuggestions.filter(s => s.mealType === slot);
-
-                  return (
-                    <div key={slot} className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 hover:border-slate-300 transition-all">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-slate-900 text-sm">{slot}</span>
-                          {slotCalories > 0 ? (
-                            <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
-                              {slotCalories} kcal
-                            </span>
-                          ) : (
-                            <span className="text-xs text-slate-400">0 kcal</span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openLogForSlot(slot)}
-                            className="text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Log Food</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Slot-specific pending suggestions */}
-                      {slotSuggestions.length > 0 && (
-                        <div className="my-2.5 space-y-2">
-                          {slotSuggestions.map((sugg) => (
-                            <div
-                              key={sugg.id}
-                              className="p-3 bg-emerald-50/90 border border-emerald-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs"
-                            >
-                              <div className="flex items-start gap-2">
-                                <Sparkles className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                                <div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-xs font-black text-emerald-950">
-                                      AI Suggestion (Eaten at {sugg.timeGiven})
-                                    </span>
-                                    <span className="text-[10px] font-extrabold text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-200">
-                                      🔥 {sugg.totalCalories} kcal Total
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-slate-700 mt-1 flex flex-wrap items-center gap-1.5">
-                                    {sugg.foods.map((f, i) => (
-                                      <span key={i} className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-slate-900 font-medium text-[11px]">
-                                        <strong className="font-bold">{f.name}</strong>: <strong className="text-amber-700">{f.calories} kcal</strong>
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    acceptSuggestedMeal(sugg.id);
-                                    setPlanLoggedNotice(`Added ${slot} items to your daily diary!`);
-                                    setTimeout(() => setPlanLoggedNotice(null), 3500);
-                                  }}
-                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span>Add to {slot}</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => dismissSuggestedMeal(sugg.id)}
-                                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-lg cursor-pointer"
-                                  title="Dismiss"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Logged food items list */}
-                      {itemsInSlot.length > 0 ? (
-                        <div className="divide-y divide-slate-100 pt-1">
-                          {itemsInSlot.map((item) => (
-                            <div key={item.id} className="py-2.5 flex items-center justify-between text-xs sm:text-sm">
-                              <div>
-                                <span className="font-bold text-slate-800">{item.foodName}</span>
-                                <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-2">
-                                  <span>{item.quantity}x ({item.servingUnit})</span>
-                                  <span>•</span>
-                                  <span className="text-emerald-700 font-medium">P: {item.protein}g</span>
-                                  <span>•</span>
-                                  <span className="text-blue-700 font-medium">C: {item.carbs}g</span>
-                                  <span>•</span>
-                                  <span className="text-amber-700 font-medium">F: {item.fat}g</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="font-bold text-slate-800 text-sm">{item.calories} kcal</span>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteMealLog(item.id)}
-                                  title="Remove food"
-                                  className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="py-4 text-center">
-                          <p className="text-xs text-slate-400 italic mb-2">
-                            No foods logged yet for {slot.toLowerCase()}.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => openLogForSlot(slot)}
-                            className="text-xs font-semibold text-slate-500 hover:text-emerald-700 transition-colors cursor-pointer"
-                          >
-                            + Click here to add what you ate
-                          </button>
-                        </div>
-                      )}
+              {/* Today's Meals Timeline Cards with Show/Hide Line & Accordion */}
+              {!visibleSections.mealsTimeline ? (
+                <div 
+                  onClick={() => toggleSection('mealsTimeline')}
+                  className="bg-white hover:bg-slate-50/90 rounded-2xl border border-slate-200 p-3 sm:px-5 sm:py-3.5 flex items-center justify-between transition-all shadow-2xs group cursor-pointer hover:border-teal-300"
+                  title="Click to show Today's Meals Timeline"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
+                      <Utensils className="w-4 h-4" />
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                        Today's Meals Timeline
+                      </span>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-900 border border-teal-200">
+                        {clientLogsForDay.length} foods logged
+                      </span>
+                      <span className="text-[11px] font-medium text-slate-500 hidden sm:inline">
+                        Breakfast • Morning Snack • Lunch • Evening Snack • Dinner
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSection('mealsTimeline');
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-extrabold text-teal-800 bg-teal-50 hover:bg-teal-100 group-hover:bg-teal-600 group-hover:text-white px-3 py-1.5 rounded-xl transition-all border border-teal-200 shadow-2xs cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Show</span>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <Utensils className="w-4 h-4 text-emerald-600" />
+                      <span>Today's Meals Timeline</span>
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 hidden sm:inline">Click slot to collapse</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleSection('mealsTimeline')}
+                        className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                        title="Collapse meals timeline to line"
+                      >
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Hide Line</span>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {(['Breakfast', 'Morning Snack', 'Lunch', 'Evening Snack', 'Dinner'] as MealType[]).map((slot) => {
+                    const itemsInSlot = clientLogsForDay.filter(m => m.mealType === slot);
+                    const slotCalories = itemsInSlot.reduce((sum, item) => sum + item.calories, 0);
+                    const slotSuggestions = pendingSuggestions.filter(s => s.mealType === slot);
+                    const isSlotOpen = openMealSlots[slot] ?? true;
+
+                    return (
+                      <div key={slot} className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 hover:border-slate-300 transition-all">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                          <div 
+                            onClick={() => toggleMealSlot(slot)}
+                            className="flex items-center gap-2.5 cursor-pointer group select-none"
+                            title={`Click to ${isSlotOpen ? 'collapse' : 'expand'} ${slot}`}
+                          >
+                            <span className="p-1 rounded-md text-slate-400 group-hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                              {isSlotOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </span>
+                            <span className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors">{slot}</span>
+                            {slotCalories > 0 ? (
+                              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
+                                {slotCalories} kcal
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">0 kcal</span>
+                            )}
+                            <span className="text-[11px] text-slate-400 hidden sm:inline">
+                              ({itemsInSlot.length} items)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openLogForSlot(slot)}
+                              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Log Food</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Collapsible content */}
+                        {isSlotOpen && (
+                          <div className="pt-2 space-y-2">
+                            {/* Slot-specific pending suggestions */}
+                            {slotSuggestions.length > 0 && (
+                              <div className="my-2.5 space-y-2">
+                                {slotSuggestions.map((sugg) => (
+                                  <div
+                                    key={sugg.id}
+                                    className="p-3 bg-emerald-50/90 border border-emerald-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs"
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <Sparkles className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                                      <div>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="text-xs font-black text-emerald-950">
+                                            AI Suggestion (Eaten at {sugg.timeGiven})
+                                          </span>
+                                          <span className="text-[10px] font-extrabold text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-200">
+                                            🔥 {sugg.totalCalories} kcal Total
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-slate-700 mt-1 flex flex-wrap items-center gap-1.5">
+                                          {sugg.foods.map((f, i) => (
+                                            <span key={i} className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-slate-900 font-medium text-[11px]">
+                                              <strong className="font-bold">{f.name}</strong>: <strong className="text-amber-700">{f.calories} kcal</strong>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          acceptSuggestedMeal(sugg.id);
+                                          setPlanLoggedNotice(`Added ${slot} items to your daily diary!`);
+                                          setTimeout(() => setPlanLoggedNotice(null), 3500);
+                                        }}
+                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                        <span>Add to {slot}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => dismissSuggestedMeal(sugg.id)}
+                                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-lg cursor-pointer"
+                                        title="Dismiss"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Logged food items list */}
+                            {itemsInSlot.length > 0 ? (
+                              <div className="divide-y divide-slate-100 pt-1">
+                                {itemsInSlot.map((item) => (
+                                  <div key={item.id} className="py-2.5 flex items-center justify-between text-xs sm:text-sm">
+                                    <div>
+                                      <span className="font-bold text-slate-800">{item.foodName}</span>
+                                      <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-2">
+                                        <span>{item.quantity}x ({item.servingUnit})</span>
+                                        <span>•</span>
+                                        <span className="text-emerald-700 font-medium">P: {item.protein}g</span>
+                                        <span>•</span>
+                                        <span className="text-blue-700 font-medium">C: {item.carbs}g</span>
+                                        <span>•</span>
+                                        <span className="text-amber-700 font-medium">F: {item.fat}g</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span className="font-bold text-slate-800 text-sm">{item.calories} kcal</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => deleteMealLog(item.id)}
+                                        title="Remove food"
+                                        className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="py-4 text-center">
+                                <p className="text-xs text-slate-400 italic mb-2">
+                                  No foods logged yet for {slot.toLowerCase()}.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => openLogForSlot(slot)}
+                                  className="text-xs font-semibold text-slate-500 hover:text-emerald-700 transition-colors cursor-pointer"
+                                >
+                                  + Click here to add what you ate
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
             </div>
 
-            {/* Right 4 Columns: Assigned Coach, Reminders & Fast Actions */}
+            {/* Right 4 Columns: Assigned Coach, Reminders & Fast Actions with Show/Hide Line */}
             <div className="lg:col-span-4 space-y-6">
-              
-              {/* Assigned Wellness Coach Card */}
-              <div className="bg-white rounded-3xl p-5 shadow-2xs border border-slate-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Award className="w-4 h-4 text-emerald-600" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                    Your Assigned Wellness Coach
-                  </h3>
-                </div>
-
-                <div className="flex items-start gap-3.5">
-                  <img
-                    src={assignedDietitian.avatarUrl || 'https://images.unsplash.com/photo-1594824813637-27a3a93d4895?auto=format&fit=crop&q=80&w=250'}
-                    alt={assignedDietitian.name}
-                    className="w-14 h-14 rounded-2xl object-cover border border-slate-200 shrink-0"
-                  />
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">{assignedDietitian.name}</h4>
-                    <p className="text-xs text-emerald-700 font-semibold">{assignedDietitian.title}</p>
-                    <p className="text-xs text-slate-500 mt-1 leading-snug">{assignedDietitian.bio}</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    {assignedDietitian.phone}
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Clinic Verified
-                  </span>
-                </div>
-              </div>
-
-              {/* Water & Habits Reminders */}
-              <div className="bg-white rounded-3xl p-5 shadow-2xs border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-emerald-600" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                      Today's Reminders
-                    </h3>
-                  </div>
-                  <span className="text-[10px] text-slate-400">Toggle active</span>
-                </div>
-
-                <div className="space-y-2">
-                  {clientReminders.map((r) => (
-                    <div key={r.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs text-slate-900">{r.title}</span>
-                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                            {r.time}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">{r.message}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleReminder(r.id)}
-                        className={`w-10 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center shrink-0 ${
-                          r.enabled ? 'bg-emerald-600 justify-end' : 'bg-slate-200 justify-start'
-                        }`}
-                      >
-                        <div className="w-5 h-5 rounded-full bg-white shadow-xs" />
-                      </button>
+              {!visibleSections.sideWidgets ? (
+                <div 
+                  onClick={() => toggleSection('sideWidgets')}
+                  className="bg-white hover:bg-slate-50/90 rounded-2xl border border-slate-200 p-3 sm:px-5 sm:py-3.5 flex items-center justify-between transition-all shadow-2xs group cursor-pointer hover:border-blue-300"
+                  title="Click to show Assigned Coach & Habits Reminders"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                      <Award className="w-4 h-4" />
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Latest Coach Advice Card */}
-              {clientTips.length > 0 && (
-                <div className="bg-emerald-50/70 rounded-3xl p-5 border border-emerald-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      Latest Coach Guidance
-                    </span>
-                    <span className="text-[10px] text-emerald-600">{clientTips[0].createdAt}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                        Coach &amp; Habits Reminders
+                      </span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200">
+                        {assignedDietitian.name}
+                      </span>
+                    </div>
                   </div>
-                  <h4 className="text-xs font-bold text-slate-900">{clientTips[0].title}</h4>
-                  <p className="text-xs text-slate-700 leading-relaxed">{clientTips[0].message}</p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSection('sideWidgets');
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-extrabold text-blue-800 bg-blue-50 hover:bg-blue-100 group-hover:bg-blue-600 group-hover:text-white px-3 py-1.5 rounded-xl transition-all border border-blue-200 shadow-2xs cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Show</span>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              )}
+              ) : (
+                <>
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Coach &amp; Reminders</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection('sideWidgets')}
+                      className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer border border-slate-200"
+                      title="Collapse to single line"
+                    >
+                      <EyeOff className="w-3 h-3" />
+                      <span>Hide Line</span>
+                      <ChevronUp className="w-3 h-3" />
+                    </button>
+                  </div>
 
+                  {/* Assigned Wellness Coach Card */}
+                  <div className="bg-white rounded-3xl p-5 shadow-2xs border border-slate-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Award className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                        Your Assigned Wellness Coach
+                      </h3>
+                    </div>
+
+                    <div className="flex items-start gap-3.5">
+                      <img
+                        src={assignedDietitian.avatarUrl || 'https://images.unsplash.com/photo-1594824813637-27a3a93d4895?auto=format&fit=crop&q=80&w=250'}
+                        alt={assignedDietitian.name}
+                        className="w-14 h-14 rounded-2xl object-cover border border-slate-200 shrink-0"
+                      />
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">{assignedDietitian.name}</h4>
+                        <p className="text-xs text-emerald-700 font-semibold">{assignedDietitian.title}</p>
+                        <p className="text-xs text-slate-500 mt-1 leading-snug">{assignedDietitian.bio}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        {assignedDietitian.phone}
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        Clinic Verified
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Water & Habits Reminders */}
+                  <div className="bg-white rounded-3xl p-5 shadow-2xs border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-emerald-600" />
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                          Today's Reminders
+                        </h3>
+                      </div>
+                      <span className="text-[10px] text-slate-400">Toggle active</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {clientReminders.map((r) => (
+                        <div key={r.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-xs text-slate-900">{r.title}</span>
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                {r.time}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">{r.message}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleReminder(r.id)}
+                            className={`w-10 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center shrink-0 ${
+                              r.enabled ? 'bg-emerald-600 justify-end' : 'bg-slate-200 justify-start'
+                            }`}
+                          >
+                            <div className="w-5 h-5 rounded-full bg-white shadow-xs" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Latest Coach Advice Card */}
+                  {clientTips.length > 0 && (
+                    <div className="bg-emerald-50/70 rounded-3xl p-5 border border-emerald-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          Latest Coach Guidance
+                        </span>
+                        <span className="text-[10px] text-emerald-600">{clientTips[0].createdAt}</span>
+                      </div>
+                      <h4 className="text-xs font-bold text-slate-900">{clientTips[0].title}</h4>
+                      <p className="text-xs text-slate-700 leading-relaxed">{clientTips[0].message}</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
           </div>
@@ -1309,15 +1781,21 @@ export const ClientApp: React.FC = () => {
               </div>
             </div>
 
-            {/* Sign Out Action Button */}
-            <button
-              type="button"
-              onClick={clientSignOut}
-              className="w-full bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 font-bold text-xs sm:text-sm py-3 px-4 rounded-2xl transition-colors flex items-center justify-center gap-2 cursor-pointer border border-slate-200 hover:border-rose-200"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sign Out of Client Portal</span>
-            </button>
+            {/* Client Status Badge */}
+            <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">Active Client Profile</span>
+                  <span className="text-[11px] text-slate-500">Connected to NutriTrack Wellness Clinic</span>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">
+                Active
+              </span>
+            </div>
           </div>
 
         </div>

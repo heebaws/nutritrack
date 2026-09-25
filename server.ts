@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
@@ -1220,11 +1221,73 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  // Multi-device central storage setup
+  const DB_FILE = path.join(process.cwd(), "clinic_database.json");
+  let clinicData: any = null;
+  let dbUpdatedAt = Date.now();
+
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, "utf-8");
+      clinicData = JSON.parse(raw);
+    }
+  } catch (err) {
+    console.warn("Could not load clinic_database.json, starting fresh", err);
+  }
+
+  const saveDbToDisk = () => {
+    try {
+      if (clinicData) {
+        fs.writeFileSync(DB_FILE, JSON.stringify(clinicData, null, 2), "utf-8");
+      }
+    } catch (err) {
+      console.error("Failed to write to clinic_database.json", err);
+    }
+  };
+
+  app.use(express.json({ limit: "15mb" }));
 
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", service: "NutriTrack AI Clinic Assistant" });
+  });
+
+  // Global Clinic Sync Endpoints for Multi-Device Access (Clients & Dietitians across any mobile or desktop)
+  app.get("/api/sync", (req, res) => {
+    res.json({
+      data: clinicData,
+      updatedAt: dbUpdatedAt
+    });
+  });
+
+  app.post("/api/sync", (req, res) => {
+    try {
+      const { data, timestamp } = req.body;
+      if (data) {
+        clinicData = {
+          ...(clinicData || {}),
+          ...data
+        };
+        dbUpdatedAt = timestamp || Date.now();
+        saveDbToDisk();
+      }
+      res.json({ success: true, updatedAt: dbUpdatedAt });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to update database" });
+    }
+  });
+
+  app.post("/api/sync/reset", (req, res) => {
+    try {
+      clinicData = null;
+      dbUpdatedAt = Date.now();
+      if (fs.existsSync(DB_FILE)) {
+        fs.unlinkSync(DB_FILE);
+      }
+      res.json({ success: true, message: "Database reset to clinic default" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // AI Chat & Food Inquiry Endpoint

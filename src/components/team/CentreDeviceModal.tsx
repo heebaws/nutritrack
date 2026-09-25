@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { X, Building2, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { getTodayString } from '../../utils/dateUtils';
 
 interface CentreDeviceModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
   const { clients, activeTeamUser, addCentreDeviceReading } = useApp();
 
   const [clientId, setClientId] = useState<string>(preselectedClientId || (clients[0]?.id ?? ''));
-  const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(() => getTodayString());
   const [deviceModel, setDeviceModel] = useState<string>('InBody 270 Body Composition Analyzer');
   const [weightKg, setWeightKg] = useState<string>('');
   const [heightCm, setHeightCm] = useState<string>('165');
@@ -139,6 +140,7 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
               <input
                 id="centre-date-input"
                 type="date"
+                max={getTodayString()}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"

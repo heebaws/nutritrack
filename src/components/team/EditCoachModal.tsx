@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { DietitianProfile } from '../../types';
-import { X, ShieldCheck, Check, KeyRound } from 'lucide-react';
+import { X, ShieldCheck, Check, KeyRound, Upload, Camera } from 'lucide-react';
 
 interface EditCoachModalProps {
   isOpen: boolean;
@@ -22,6 +22,7 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
   const [username, setUsername] = useState(coach.username || coach.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
   const [password, setPassword] = useState(coach.password || 'password123');
   const [avatarUrl, setAvatarUrl] = useState(coach.avatarUrl || '');
+  const [fileName, setFileName] = useState('');
 
   useEffect(() => {
     setName(coach.name);
@@ -218,17 +219,71 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
             />
           </div>
 
-          <div>
-            <label className="block font-semibold uppercase text-slate-600 mb-1">
-              Profile Avatar Image URL
+          {/* Profile Picture File Upload */}
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+            <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">
+              Coach Profile Picture (Upload as File)
             </label>
-            <input
-              type="url"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-700 text-[11px]"
-            />
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative shrink-0">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={name}
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-purple-500 shadow-sm"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-purple-100 text-purple-700 flex flex-col items-center justify-center border-2 border-dashed border-purple-300">
+                    <Camera className="w-5 h-5" />
+                    <span className="text-[9px] font-bold mt-0.5">No Pic</span>
+                  </div>
+                )}
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAvatarUrl('');
+                      setFileName('');
+                    }}
+                    className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-1 shadow-sm hover:bg-rose-700 cursor-pointer"
+                    title="Remove picture"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 w-full border-2 border-dashed border-slate-300 hover:border-purple-500 rounded-xl p-3 text-center bg-white transition-colors cursor-pointer relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setFileName(file.name);
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        if (event.target?.result) {
+                          setAvatarUrl(event.target.result as string);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  id="edit-coach-pic-file"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div className="flex flex-col items-center justify-center gap-1">
+                  <Upload className="w-4 h-4 text-purple-600" />
+                  <span className="font-bold text-slate-800">
+                    {fileName ? fileName : 'Upload photo file or drag & drop'}
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Supports JPG, PNG, WEBP files
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons */}

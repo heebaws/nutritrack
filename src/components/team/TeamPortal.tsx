@@ -5,6 +5,7 @@ import { CentreDeviceModal } from './CentreDeviceModal';
 import { DietPlanBuilderModal } from './DietPlanBuilderModal';
 import { SendTipModal } from './SendTipModal';
 import { AddClientModal } from './AddClientModal';
+import { AddDietitianModal } from './AddDietitianModal';
 import { ClientDossierModal } from './ClientDossierModal';
 import { EditCoachModal } from './EditCoachModal';
 import { ClientProfile, DietPlan, DietitianProfile } from '../../types';
@@ -32,7 +33,8 @@ import {
   Edit3,
   KeyRound,
   Trash2,
-  Lock
+  Lock,
+  UserPlus
 } from 'lucide-react';
 
 export const TeamPortal: React.FC = () => {
@@ -72,6 +74,7 @@ export const TeamPortal: React.FC = () => {
   const [selectedClientIdForTip, setSelectedClientIdForTip] = useState<string | null>(null);
 
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
+  const [isAddDietitianOpen, setIsAddDietitianOpen] = useState(false);
   const [editingCoach, setEditingCoach] = useState<DietitianProfile | null>(null);
 
   const [viewingClientDossier, setViewingClientDossier] = useState<ClientProfile | null>(null);
@@ -608,8 +611,8 @@ export const TeamPortal: React.FC = () => {
                       const isInactive = client.status === 'inactive';
                       
                       // Fat norm calculation
-                      const fatNormLabel = client.gender === 'Male' ? '10–30%' : '20–30%';
-                      const isFatHigh = client.bodyFatPercentage ? client.bodyFatPercentage > 30 : false;
+                      const fatNormLabel = client.gender === 'Male' ? '10–20%' : '20–30%';
+                      const isFatHigh = client.bodyFatPercentage ? (client.gender === 'Male' ? client.bodyFatPercentage > 20 : client.bodyFatPercentage > 30) : false;
 
                       return (
                         <tr 
@@ -658,7 +661,7 @@ export const TeamPortal: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* 3. Fat % (Men 10-30, Women 20-30) */}
+                          {/* 3. Fat % (Men 10-20, Women 20-30) */}
                           <td className="py-3 px-3">
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1.5">
@@ -677,7 +680,7 @@ export const TeamPortal: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* 4. Visceral Fat (V-Fat: 5-9) */}
+                          {/* 4. Visceral Fat (V-Fat: 0.5-9) */}
                           <td className="py-3 px-3">
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1.5">
@@ -689,18 +692,20 @@ export const TeamPortal: React.FC = () => {
                                     ? 'bg-rose-100 text-rose-800' 
                                     : (client.visceralFat ?? 0) >= 10 
                                     ? 'bg-amber-100 text-amber-800' 
+                                    : (client.visceralFat ?? 0) < 0.5
+                                    ? 'bg-amber-100 text-amber-800'
                                     : 'bg-emerald-100 text-emerald-800'
                                 }`}>
-                                  {(client.visceralFat ?? 0) > 14 ? 'High' : (client.visceralFat ?? 0) >= 10 ? 'Elevated' : 'Optimal'}
+                                  {(client.visceralFat ?? 0) > 14 ? 'High' : (client.visceralFat ?? 0) >= 10 ? 'Elevated' : (client.visceralFat ?? 0) < 0.5 ? 'Low' : 'Optimal'}
                                 </span>
                               </div>
                               <div className="text-[10px] text-slate-500">
-                                Needed: <strong className="text-emerald-700">5 – 9</strong>
+                                Needed: <strong className="text-emerald-700">0.5 – 9</strong>
                               </div>
                             </div>
                           </td>
 
-                          {/* 5. BMI (15-23) */}
+                          {/* 5. BMI (18-23) */}
                           <td className="py-3 px-3">
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1.5">
@@ -708,13 +713,13 @@ export const TeamPortal: React.FC = () => {
                                   {client.bmi ?? '--'}
                                 </span>
                                 <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
-                                  (client.bmi ?? 0) > 23 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                                  (client.bmi ?? 0) > 23 ? 'bg-amber-100 text-amber-800' : (client.bmi ?? 0) < 18 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
                                 }`}>
-                                  {(client.bmi ?? 0) > 23 ? 'Higher' : 'Optimal'}
+                                  {(client.bmi ?? 0) > 23 ? 'Higher' : (client.bmi ?? 0) < 18 ? 'Underweight' : 'Optimal'}
                                 </span>
                               </div>
                               <div className="text-[10px] text-slate-500">
-                                Needed: <strong className="text-emerald-700">{client.targetBmi ?? '15–23'}</strong>
+                                Needed: <strong className="text-emerald-700">{client.targetBmi ?? '18–23'}</strong>
                               </div>
                             </div>
                           </td>
@@ -865,12 +870,12 @@ export const TeamPortal: React.FC = () => {
                           <div className="bg-white p-1 rounded-md border border-slate-100">
                             <span className="text-[9px] text-rose-700 block font-semibold">V-Fat</span>
                             <span className="font-bold text-slate-800">{client.visceralFat ?? '--'}</span>
-                            <span className="text-[8px] text-emerald-600 block">Ned: 5-9</span>
+                            <span className="text-[8px] text-emerald-600 block">Ned: 0.5-9</span>
                           </div>
                           <div className="bg-white p-1 rounded-md border border-slate-100">
                             <span className="text-[9px] text-blue-700 block font-semibold">BMI</span>
                             <span className="font-bold text-slate-800">{client.bmi ?? '--'}</span>
-                            <span className="text-[8px] text-emerald-600 block">Ned: 15-23</span>
+                            <span className="text-[8px] text-emerald-600 block">Ned: 18-23</span>
                           </div>
                         </div>
 
@@ -1197,14 +1202,25 @@ export const TeamPortal: React.FC = () => {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setEditingCoach(activeTeamUser)}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
-            >
-              <Edit3 className="w-4 h-4" />
-              <span>Edit My Admin Profile</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsAddDietitianOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Add New Dietitian</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEditingCoach(activeTeamUser)}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>Edit My Admin Profile</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1323,6 +1339,25 @@ export const TeamPortal: React.FC = () => {
                 </div>
               );
             })}
+
+            {/* Add Dietitian Card in Grid */}
+            <div
+              onClick={() => setIsAddDietitianOpen(true)}
+              className="bg-slate-50/70 hover:bg-emerald-50/50 rounded-2xl p-5 border-2 border-dashed border-slate-300 hover:border-emerald-400 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[260px] group"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 group-hover:bg-emerald-200 text-emerald-700 flex items-center justify-center mb-3 transition-colors">
+                <UserPlus className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-slate-800 group-hover:text-emerald-900 text-sm">
+                Add New Dietitian
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-[200px]">
+                Register a new wellness coach or admin with profile photo file
+              </p>
+              <span className="mt-3 text-xs font-bold text-emerald-700 bg-emerald-100/70 px-3 py-1 rounded-lg">
+                + Register Coach
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -1340,6 +1375,11 @@ export const TeamPortal: React.FC = () => {
       <AddClientModal
         isOpen={isAddClientOpen}
         onClose={() => setIsAddClientOpen(false)}
+      />
+
+      <AddDietitianModal
+        isOpen={isAddDietitianOpen}
+        onClose={() => setIsAddDietitianOpen(false)}
       />
 
       {editingCoach && (

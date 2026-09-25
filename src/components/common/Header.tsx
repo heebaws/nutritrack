@@ -133,17 +133,6 @@ export const Header: React.FC = () => {
                     ))}
                   </select>
                 </div>
-
-                {activeClient && (
-                  <button
-                    type="button"
-                    onClick={clientSignOut}
-                    title="Sign Out of Client Portal"
-                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
             ) : (
               <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">

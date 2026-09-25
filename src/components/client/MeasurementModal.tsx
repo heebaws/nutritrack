@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { X, Scale, CheckCircle2 } from 'lucide-react';
+import { getTodayString } from '../../utils/dateUtils';
 
 interface MeasurementModalProps {
   isOpen: boolean;
@@ -10,7 +11,7 @@ interface MeasurementModalProps {
 export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onClose }) => {
   const { activeClient, addMeasurement } = useApp();
 
-  const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(() => getTodayString());
   const [weightKg, setWeightKg] = useState<string>(activeClient ? String(activeClient.currentWeightKg) : '');
   const [waistCm, setWaistCm] = useState<string>('');
   const [hipCm, setHipCm] = useState<string>('');
@@ -23,7 +24,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
   useEffect(() => {
     if (isOpen && activeClient) {
       setWeightKg(String(activeClient.currentWeightKg));
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(getTodayString());
       setWaistCm('');
       setHipCm('');
       setBodyFatPercentage('');
@@ -96,6 +97,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
             </label>
             <input
               type="date"
+              max={getTodayString()}
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"

@@ -16,16 +16,16 @@ export interface ClientProfile {
   
   // Body Composition & Health Metrics
   bodyFatPercentage?: number; // Current fat %
-  targetBodyFatPercentage?: number; // Needed fat % (Men: 10-30%, Women: 20-30%)
-  bodyFatStatus?: string; // e.g. "Normal (10-30%)", "Elevated", "High"
+  targetBodyFatPercentage?: number; // Needed fat % (Men: 10-20%, Women: 20-30%)
+  bodyFatStatus?: string; // e.g. "Normal (Men: 10-20%, Women: 20-30%)", "Elevated", "High"
 
   visceralFat?: number; // Current V-Fat rating
-  targetVisceralFat?: number; // Needed V-Fat (5-9)
-  visceralFatStatus?: string; // e.g. "Normal (5-9)", "Elevated (10-14)", "High (15+)"
+  targetVisceralFat?: number; // Needed V-Fat (0.5-9)
+  visceralFatStatus?: string; // e.g. "Normal (0.5-9)", "Elevated (10-14)", "High (15+)"
 
   bmi?: number; // Current BMI (kg/m^2)
-  targetBmi?: number; // Needed BMI (15-23)
-  bmiStatus?: string; // e.g. "Normal (15-23)", "Higher (>23)"
+  targetBmi?: number; // Needed BMI (18-23)
+  bmiStatus?: string; // e.g. "Normal (18-23)", "Higher (>23)", "Underweight (<18)"
 
   bmr?: number; // Basal Metabolic Rate (baseline kcal/day)
   targetBmr?: number; // Required daily calories based on activity/work

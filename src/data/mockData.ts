@@ -8,6 +8,7 @@ import {
   DietitianTip, 
   ClientReminder 
 } from '../types';
+import { getTodayString, getYesterdayString, getDaysAgoString } from '../utils/dateUtils';
 
 export const INITIAL_DIETITIANS: DietitianProfile[] = [
   {
@@ -295,10 +296,10 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
     bodyFatStatus: 'Above Normal (Target 20-30%)',
     visceralFat: 11,
     targetVisceralFat: 7,
-    visceralFatStatus: 'Elevated (Target 5-9)',
+    visceralFatStatus: 'Elevated (Target 0.5-9)',
     bmi: 25.6,
     targetBmi: 21.5,
-    bmiStatus: 'Overweight >23 (Target 15-23)',
+    bmiStatus: 'Overweight >23 (Target 18-23)',
     bmr: 1460,
     targetBmr: 1850,
     bmrStatus: 'Sedentary Desk Job (Req: 1,750-1,850 kcal)',
@@ -334,13 +335,13 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
     targetWeightKg: 78.0,
     bodyFatPercentage: 22.4,
     targetBodyFatPercentage: 16.0,
-    bodyFatStatus: 'Normal (10-30% range)',
+    bodyFatStatus: 'Elevated >20% (Target 10-20%)',
     visceralFat: 8,
     targetVisceralFat: 6,
-    visceralFatStatus: 'Optimal (Target 5-9)',
+    visceralFatStatus: 'Optimal (Target 0.5-9)',
     bmi: 25.1,
     targetBmi: 22.8,
-    bmiStatus: 'Higher than 23 (Target 15-23)',
+    bmiStatus: 'Higher than 23 (Target 18-23)',
     bmr: 1820,
     targetBmr: 2450,
     bmrStatus: 'Active Gym Training (Req: 2,400-2,500 kcal)',
@@ -379,10 +380,10 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
     bodyFatStatus: 'Above Normal (Target 20-30%)',
     visceralFat: 10,
     targetVisceralFat: 6,
-    visceralFatStatus: 'Mild Elevated (Target 5-9)',
+    visceralFatStatus: 'Mild Elevated (Target 0.5-9)',
     bmi: 26.6,
     targetBmi: 22.0,
-    bmiStatus: 'Higher than 23 (Target 15-23)',
+    bmiStatus: 'Higher than 23 (Target 18-23)',
     bmr: 1380,
     targetBmr: 1720,
     bmrStatus: 'Moderate Standing Work (Req: 1,650-1,750 kcal)',
@@ -410,13 +411,13 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
     targetWeightKg: 82.0,
     bodyFatPercentage: 36.5,
     targetBodyFatPercentage: 22.0,
-    bodyFatStatus: 'High Fat >30% (Target 10-30%)',
+    bodyFatStatus: 'High Fat >20% (Target 10-20%)',
     visceralFat: 16,
     targetVisceralFat: 8,
-    visceralFatStatus: 'High V-Fat 16 (Target 5-9)',
+    visceralFatStatus: 'High V-Fat 16 (Target 0.5-9)',
     bmi: 31.0,
     targetBmi: 23.0,
-    bmiStatus: 'High BMI 31 (Target 15-23)',
+    bmiStatus: 'High BMI 31 (Target 18-23)',
     bmr: 1890,
     targetBmr: 2260,
     bmrStatus: 'Sedentary Desk Job (Req: 2,100-2,300 kcal)',
@@ -469,13 +470,13 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
   }
 ];
 
-// Initial meal logs for Sarah Jenkins (cl-1) for today and recent days
+// Initial meal logs for Sarah Jenkins (cl-1) for today and recent past days
 export const INITIAL_MEAL_LOGS: MealLogItem[] = [
   // Today's Breakfast
   {
     id: 'ml-1',
     clientId: 'cl-1',
-    date: '2026-09-15',
+    date: getTodayString(),
     mealType: 'Breakfast',
     foodId: 'f-11',
     foodName: 'Rolled Oats (Dry)',
@@ -490,7 +491,7 @@ export const INITIAL_MEAL_LOGS: MealLogItem[] = [
   {
     id: 'ml-2',
     clientId: 'cl-1',
-    date: '2026-09-15',
+    date: getTodayString(),
     mealType: 'Breakfast',
     foodId: 'f-21',
     foodName: 'Greek Yogurt (Plain / Low Fat)',
@@ -505,7 +506,7 @@ export const INITIAL_MEAL_LOGS: MealLogItem[] = [
   {
     id: 'ml-3',
     clientId: 'cl-1',
-    date: '2026-09-15',
+    date: getTodayString(),
     mealType: 'Breakfast',
     foodId: 'f-20',
     foodName: 'Fresh Blueberries',
@@ -521,7 +522,7 @@ export const INITIAL_MEAL_LOGS: MealLogItem[] = [
   {
     id: 'ml-4',
     clientId: 'cl-1',
-    date: '2026-09-15',
+    date: getTodayString(),
     mealType: 'Morning Snack',
     foodId: 'f-17',
     foodName: 'Crisp Apple',
@@ -536,7 +537,7 @@ export const INITIAL_MEAL_LOGS: MealLogItem[] = [
   {
     id: 'ml-5',
     clientId: 'cl-1',
-    date: '2026-09-15',
+    date: getTodayString(),
     mealType: 'Morning Snack',
     foodId: 'f-24',
     foodName: 'Raw Almonds & Walnuts',
@@ -552,7 +553,7 @@ export const INITIAL_MEAL_LOGS: MealLogItem[] = [
   {
     id: 'ml-6',
     clientId: 'cl-1',
-    date: '2026-09-15',
+    date: getTodayString(),
     mealType: 'Lunch',
     foodId: 'f-1',
     foodName: 'Grilled Chicken Breast',
@@ -567,7 +568,7 @@ export const INITIAL_MEAL_LOGS: MealLogItem[] = [
   {
     id: 'ml-7',
     clientId: 'cl-1',
-    date: '2026-09-15',
+    date: getTodayString(),
     mealType: 'Lunch',
     foodId: 'f-9',
     foodName: 'Whole Wheat Roti / Chapati',
@@ -582,7 +583,7 @@ export const INITIAL_MEAL_LOGS: MealLogItem[] = [
   {
     id: 'ml-8',
     clientId: 'cl-1',
-    date: '2026-09-15',
+    date: getTodayString(),
     mealType: 'Lunch',
     foodId: 'f-14',
     foodName: 'Mixed Green Salad (Cucumber, Tomato, Greens)',
@@ -595,15 +596,26 @@ export const INITIAL_MEAL_LOGS: MealLogItem[] = [
     timeLogged: '01:35 PM'
   },
 
-  // Yesterday's full day (2026-09-14)
-  { id: 'ml-y1', clientId: 'cl-1', date: '2026-09-14', mealType: 'Breakfast', foodId: 'f-2', foodName: 'Boiled Eggs (2 whole)', quantity: 1, servingUnit: '2 large eggs', calories: 144, protein: 12.6, carbs: 0.8, fat: 9.8, timeLogged: '08:30 AM' },
-  { id: 'ml-y2', clientId: 'cl-1', date: '2026-09-14', mealType: 'Breakfast', foodId: 'f-13', foodName: 'Whole Grain Bread', quantity: 2, servingUnit: '1 slice (32g)', calories: 164, protein: 8, carbs: 28, fat: 2.2, timeLogged: '08:32 AM' },
-  { id: 'ml-y3', clientId: 'cl-1', date: '2026-09-14', mealType: 'Morning Snack', foodId: 'f-19', foodName: 'Papaya Cubes', quantity: 1, servingUnit: '1 cup (145g)', calories: 62, protein: 0.7, carbs: 16, fat: 0.4, timeLogged: '11:15 AM' },
-  { id: 'ml-y4', clientId: 'cl-1', date: '2026-09-14', mealType: 'Lunch', foodId: 'f-7', foodName: 'Yellow Moong Dal (Cooked)', quantity: 1, servingUnit: '1 medium bowl (150g)', calories: 145, protein: 9, carbs: 24, fat: 1.5, timeLogged: '01:45 PM' },
-  { id: 'ml-y5', clientId: 'cl-1', date: '2026-09-14', mealType: 'Lunch', foodId: 'f-10', foodName: 'Brown Rice (Cooked)', quantity: 1, servingUnit: '1 cup (150g)', calories: 168, protein: 3.5, carbs: 36, fat: 1.3, timeLogged: '01:45 PM' },
-  { id: 'ml-y6', clientId: 'cl-1', date: '2026-09-14', mealType: 'Evening Snack', foodId: 'f-27', foodName: 'Roasted Makhana (Fox Nuts)', quantity: 1, servingUnit: '1 bowl (30g)', calories: 106, protein: 3, carbs: 20, fat: 1.2, timeLogged: '05:20 PM' },
-  { id: 'ml-y7', clientId: 'cl-1', date: '2026-09-14', mealType: 'Dinner', foodId: 'f-6', foodName: 'Salmon Fillet (Baked)', quantity: 1, servingUnit: '100g', calories: 206, protein: 22, carbs: 0, fat: 12, timeLogged: '08:15 PM' },
-  { id: 'ml-y8', clientId: 'cl-1', date: '2026-09-14', mealType: 'Dinner', foodId: 'f-15', foodName: 'Steamed Broccoli & Cauliflower', quantity: 1, servingUnit: '1 cup (150g)', calories: 48, protein: 3.8, carbs: 8.4, fat: 0.6, timeLogged: '08:15 PM' },
+  // Yesterday's full day (getYesterdayString()) - Consumed ~1,035 kcal (Deficit of -465 kcal against 1500 needed)
+  { id: 'ml-y1', clientId: 'cl-1', date: getYesterdayString(), mealType: 'Breakfast', foodId: 'f-2', foodName: 'Boiled Eggs (2 whole)', quantity: 1, servingUnit: '2 large eggs', calories: 144, protein: 12.6, carbs: 0.8, fat: 9.8, timeLogged: '08:30 AM' },
+  { id: 'ml-y2', clientId: 'cl-1', date: getYesterdayString(), mealType: 'Breakfast', foodId: 'f-13', foodName: 'Whole Grain Bread', quantity: 2, servingUnit: '1 slice (32g)', calories: 164, protein: 8, carbs: 28, fat: 2.2, timeLogged: '08:32 AM' },
+  { id: 'ml-y3', clientId: 'cl-1', date: getYesterdayString(), mealType: 'Morning Snack', foodId: 'f-19', foodName: 'Papaya Cubes', quantity: 1, servingUnit: '1 cup (145g)', calories: 62, protein: 0.7, carbs: 16, fat: 0.4, timeLogged: '11:15 AM' },
+  { id: 'ml-y4', clientId: 'cl-1', date: getYesterdayString(), mealType: 'Lunch', foodId: 'f-7', foodName: 'Yellow Moong Dal (Cooked)', quantity: 1, servingUnit: '1 medium bowl (150g)', calories: 145, protein: 9, carbs: 24, fat: 1.5, timeLogged: '01:45 PM' },
+  { id: 'ml-y5', clientId: 'cl-1', date: getYesterdayString(), mealType: 'Lunch', foodId: 'f-10', foodName: 'Brown Rice (Cooked)', quantity: 1, servingUnit: '1 cup (150g)', calories: 168, protein: 3.5, carbs: 36, fat: 1.3, timeLogged: '01:45 PM' },
+  { id: 'ml-y6', clientId: 'cl-1', date: getYesterdayString(), mealType: 'Evening Snack', foodId: 'f-27', foodName: 'Roasted Makhana (Fox Nuts)', quantity: 1, servingUnit: '1 bowl (30g)', calories: 106, protein: 3, carbs: 20, fat: 1.2, timeLogged: '05:20 PM' },
+  { id: 'ml-y7', clientId: 'cl-1', date: getYesterdayString(), mealType: 'Dinner', foodId: 'f-6', foodName: 'Salmon Fillet (Baked)', quantity: 1, servingUnit: '100g', calories: 206, protein: 22, carbs: 0, fat: 12, timeLogged: '08:15 PM' },
+  { id: 'ml-y8', clientId: 'cl-1', date: getYesterdayString(), mealType: 'Dinner', foodId: 'f-15', foodName: 'Steamed Broccoli & Cauliflower', quantity: 1, servingUnit: '1 cup (150g)', calories: 48, protein: 3.8, carbs: 8.4, fat: 0.6, timeLogged: '08:15 PM' },
+
+  // 2 Days Ago (getDaysAgoString(2)) - Consumed ~1,120 kcal (Deficit of -380 kcal)
+  { id: 'ml-2d1', clientId: 'cl-1', date: getDaysAgoString(2), mealType: 'Breakfast', foodId: 'f-11', foodName: 'Rolled Oats with Milk', quantity: 1, servingUnit: '1 bowl', calories: 220, protein: 8, carbs: 34, fat: 4, timeLogged: '08:20 AM' },
+  { id: 'ml-2d2', clientId: 'cl-1', date: getDaysAgoString(2), mealType: 'Lunch', foodId: 'f-1', foodName: 'Grilled Chicken & Quinoa', quantity: 1, servingUnit: '1 plate', calories: 380, protein: 35, carbs: 28, fat: 6, timeLogged: '01:30 PM' },
+  { id: 'ml-2d3', clientId: 'cl-1', date: getDaysAgoString(2), mealType: 'Evening Snack', foodId: 'f-24', foodName: 'Handful Almonds', quantity: 1, servingUnit: '25g', calories: 160, protein: 6, carbs: 5, fat: 14, timeLogged: '05:00 PM' },
+  { id: 'ml-2d4', clientId: 'cl-1', date: getDaysAgoString(2), mealType: 'Dinner', foodId: 'f-3', foodName: 'Tofu Stir Fry with Greens', quantity: 1, servingUnit: '1 bowl', calories: 360, protein: 22, carbs: 18, fat: 10, timeLogged: '08:00 PM' },
+
+  // 3 Days Ago (getDaysAgoString(3)) - Consumed ~1,080 kcal (Deficit of -420 kcal)
+  { id: 'ml-3d1', clientId: 'cl-1', date: getDaysAgoString(3), mealType: 'Breakfast', foodId: 'f-2', foodName: 'Boiled Eggs & Toast', quantity: 1, servingUnit: '1 serving', calories: 260, protein: 14, carbs: 24, fat: 8, timeLogged: '08:15 AM' },
+  { id: 'ml-3d2', clientId: 'cl-1', date: getDaysAgoString(3), mealType: 'Lunch', foodId: 'f-7', foodName: 'Dal Tadka with Brown Rice', quantity: 1, servingUnit: '1 plate', calories: 420, protein: 15, carbs: 62, fat: 6, timeLogged: '01:15 PM' },
+  { id: 'ml-3d3', clientId: 'cl-1', date: getDaysAgoString(3), mealType: 'Dinner', foodId: 'f-14', foodName: 'Grilled Fish & Garden Salad', quantity: 1, servingUnit: '1 bowl', calories: 400, protein: 32, carbs: 12, fat: 10, timeLogged: '07:45 PM' }
 ];
 
 // Initial measurements for Sarah Jenkins (cl-1) showing progress over time & centre device readings

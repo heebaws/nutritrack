@@ -211,7 +211,7 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
                     <div className="flex items-center justify-between text-[10px]">
                       <span className="font-bold text-amber-900 uppercase">💧 Body Fat %</span>
                       <span className="font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-sm">
-                        {client.gender === 'Male' ? 'Norm: 10–30%' : 'Norm: 20–30%'}
+                        {client.gender === 'Male' ? 'Norm: 10–20%' : 'Norm: 20–30%'}
                       </span>
                     </div>
                     <div className="flex items-baseline justify-between pt-1">
@@ -229,7 +229,7 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
                     <div className="flex items-center justify-between text-[10px]">
                       <span className="font-bold text-rose-900 uppercase">🫀 Visceral Fat (V-Fat)</span>
                       <span className="font-bold text-rose-800 bg-rose-100 px-1.5 py-0.5 rounded-sm">
-                        Needed: 5 – 9
+                        Needed: 0.5 – 9
                       </span>
                     </div>
                     <div className="flex items-baseline justify-between pt-1">
@@ -239,9 +239,9 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
                     <div className="text-[10px] text-slate-500 pt-1 border-t border-rose-200/50 flex items-center justify-between">
                       <span>Status:</span>
                       <span className={`font-bold px-1.5 py-0.2 rounded-full text-[9px] ${
-                        (client.visceralFat ?? 0) > 14 ? 'bg-rose-100 text-rose-800' : (client.visceralFat ?? 0) >= 10 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                        (client.visceralFat ?? 0) > 14 ? 'bg-rose-100 text-rose-800' : (client.visceralFat ?? 0) >= 10 ? 'bg-amber-100 text-amber-800' : (client.visceralFat ?? 0) < 0.5 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
                       }`}>
-                        {client.visceralFatStatus || ((client.visceralFat ?? 0) > 9 ? 'Elevated' : 'Optimal')}
+                        {client.visceralFatStatus || ((client.visceralFat ?? 0) > 9 ? 'Elevated' : (client.visceralFat ?? 0) < 0.5 ? 'Low' : 'Optimal')}
                       </span>
                     </div>
                   </div>
@@ -251,7 +251,7 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
                     <div className="flex items-center justify-between text-[10px]">
                       <span className="font-bold text-blue-900 uppercase">📐 Body Mass Index (BMI)</span>
                       <span className="font-bold text-blue-800 bg-blue-100 px-1.5 py-0.5 rounded-sm">
-                        Needed: 15 – 23
+                        Needed: 18 – 23
                       </span>
                     </div>
                     <div className="flex items-baseline justify-between pt-1">
@@ -286,7 +286,7 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
                 </div>
 
                 <p className="text-[10px] text-slate-500 bg-slate-50 p-2 rounded-lg leading-relaxed">
-                  ℹ️ <strong>Clinical Target Note:</strong> In modern populations, typical fat percentage and BMI tend to exceed baseline targets. The clinical goal is calibrated against the healthy norms (Men Fat: 10–30%, Women Fat: 20–30%, Visceral Fat: 5–9, BMI: 15–23, BMR adjusted according to physical work/activity).
+                  ℹ️ <strong>Clinical Target Note:</strong> In modern populations, typical fat percentage and BMI tend to exceed baseline targets. The clinical goal is calibrated against the healthy norms (Men Fat: 10–20%, Women Fat: 20–30%, Visceral Fat: 0.5–9, BMI: 18–23, BMR adjusted according to physical work/activity).
                 </p>
 
                 {/* Calorie Denominator & Goal Requirement Rule */}

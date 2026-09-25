@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   ClientProfile,
   DietitianProfile,
@@ -21,6 +21,7 @@ import {
   INITIAL_TIPS,
   INITIAL_REMINDERS
 } from '../data/mockData';
+import { getTodayString, clampToToday } from '../utils/dateUtils';
 
 interface AppContextType {
   // Navigation & View Mode
@@ -95,8 +96,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [viewMode, setViewMode] = useState<'client' | 'team'>('client');
   const [phoneFrameEnabled, setPhoneFrameEnabled] = useState<boolean>(false);
 
-  // Selected date (defaults to current demo day 2026-09-15)
-  const [selectedDate, setSelectedDate] = useState<string>('2026-09-15');
+  // Selected date (defaults to genuine today)
+  const [selectedDate, setSelectedDateState] = useState<string>(() => getTodayString());
+
+  // Enforce no future dates
+  const setSelectedDate = (date: string) => {
+    setSelectedDateState(clampToToday(date));
+  };
 
   // Persistence helpers
   const loadStored = <T,>(key: string, fallback: T): T => {
@@ -133,9 +139,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [tips, setTips] = useState<DietitianTip[]>(() => loadStored('tips', INITIAL_TIPS));
   const [reminders, setReminders] = useState<ClientReminder[]>(() => loadStored('reminders', INITIAL_REMINDERS));
 
-  // Current client ID (defaults to null so login columns appear first as requested)
-  const [activeClientId, setActiveClientId] = useState<string | null>(() => {
-    return loadStored('activeClientId', null);
+  // Current client ID (defaults to active client so no login portal screen blocks usage)
+  const [activeClientId, setActiveClientId] = useState<string>(() => {
+    const stored = loadStored<string | null>('activeClientId', null);
+    if (stored && INITIAL_CLIENTS.some(c => c.id === stored)) {
+      return stored;
+    }
+    return INITIAL_CLIENTS[0]?.id || 'client-1';
   });
 
   // Current team member (defaults to Saleem Valanchery 'admin-1')
@@ -143,7 +153,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return loadStored('activeTeamUserId', 'admin-1');
   });
 
-  // Save changes to localStorage
+  // 1. Initial Centralized Server Sync (Fetch database from server for cross-device shared state)
+  const isInitialSyncDone = useRef(false);
+  useEffect(() => {
+    const fetchCentralDatabase = async () => {
+      try {
+        const res = await fetch('/api/sync');
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.data) {
+            const d = json.data;
+            if (Array.isArray(d.clients) && d.clients.length > 0) setClients(d.clients);
+            if (Array.isArray(d.dietitians) && d.dietitians.length > 0) setDietitians(d.dietitians);
+            if (Array.isArray(d.foods)) setFoods(d.foods);
+            if (Array.isArray(d.dietPlans)) setDietPlans(d.dietPlans);
+            if (Array.isArray(d.mealLogs)) setMealLogs(d.mealLogs);
+            if (Array.isArray(d.measurements)) setMeasurements(d.measurements);
+            if (Array.isArray(d.tips)) setTips(d.tips);
+            if (Array.isArray(d.reminders)) setReminders(d.reminders);
+          }
+        }
+      } catch {
+        // Fallback to local storage gracefully
+      } finally {
+        isInitialSyncDone.current = true;
+      }
+    };
+    fetchCentralDatabase();
+  }, []);
+
+  // 2. Save changes to localStorage AND centralized server sync
+  const syncTimeoutRef = useRef<any>(null);
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_PREFIX + 'clients', JSON.stringify(clients));
@@ -160,10 +200,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore storage errors
     }
+
+    // Debounced centralized sync to /api/sync so changes persist server-side
+    if (isInitialSyncDone.current) {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = setTimeout(() => {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: {
+              clients,
+              dietitians,
+              foods,
+              dietPlans,
+              mealLogs,
+              suggestedMeals,
+              measurements,
+              tips,
+              reminders
+            },
+            timestamp: Date.now()
+          })
+        }).catch(() => {
+          // network sync silently retries on next edit
+        });
+      }, 600);
+    }
   }, [clients, dietitians, foods, dietPlans, mealLogs, suggestedMeals, measurements, tips, reminders, activeClientId, activeTeamUserId]);
 
-  // Derived current client
-  const activeClient = clients.find(c => c.id === activeClientId) || null;
+  // Derived current client (always valid client)
+  const activeClient = clients.find(c => c.id === activeClientId) || clients[0];
 
   // Derived current team member
   const activeTeamUser = dietitians.find(d => d.id === activeTeamUserId) || dietitians[0];
@@ -337,11 +404,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Team: Add Client
   const addClient = (clientData: Omit<ClientProfile, 'id' | 'joinedDate' | 'lastActiveDate' | 'status'>) => {
+    const today = getTodayString();
     const newClient: ClientProfile = {
       ...clientData,
       id: `cl-${Date.now()}`,
-      joinedDate: '2026-09-15',
-      lastActiveDate: '2026-09-15',
+      joinedDate: today,
+      lastActiveDate: today,
       status: 'active'
     };
     setClients(prev => [newClient, ...prev]);
@@ -380,17 +448,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Team: Diet plans
   const createDietPlan = (planData: Omit<DietPlan, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const today = getTodayString();
     const newPlan: DietPlan = {
       ...planData,
       id: `dp-${Date.now()}`,
-      createdAt: '2026-09-15',
-      updatedAt: '2026-09-15'
+      createdAt: today,
+      updatedAt: today
     };
     setDietPlans(prev => [newPlan, ...prev]);
   };
 
   const updateDietPlan = (plan: DietPlan) => {
-    setDietPlans(prev => prev.map(p => p.id === plan.id ? { ...plan, updatedAt: '2026-09-15' } : p));
+    const today = getTodayString();
+    setDietPlans(prev => prev.map(p => p.id === plan.id ? { ...plan, updatedAt: today } : p));
   };
 
   // Team: Centre device reading entry
@@ -415,7 +485,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Team: Send tips & reminders
   const sendTipOrReminder = (tipData: Omit<DietitianTip, 'id' | 'createdAt'>) => {
     const now = new Date();
-    const timeStr = `${now.getFullYear()}-09-15 ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const timeStr = `${getTodayString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const newTip: DietitianTip = {
       ...tipData,
       id: `tip-${Date.now()}`,
@@ -440,6 +510,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetAllData = () => {
     localStorage.clear();
+    fetch('/api/sync/reset', { method: 'POST' }).catch(() => {});
     setClients(INITIAL_CLIENTS);
     setDietitians(INITIAL_DIETITIANS);
     setFoods(INITIAL_FOODS);

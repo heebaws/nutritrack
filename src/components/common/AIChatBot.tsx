@@ -26,7 +26,9 @@ import {
   BookOpen,
   Info,
   Layers,
-  Search
+  Search,
+  GripHorizontal,
+  Move
 } from 'lucide-react';
 
 interface FoodData {
@@ -291,6 +293,99 @@ export const AIChatBot: React.FC = () => {
   const [showFoodSearchBar, setShowFoodSearchBar] = useState<boolean>(true);
 
   const [savedFoodNotice, setSavedFoodNotice] = useState<string | null>(null);
+
+  // User mandate: "and the right under chatbot which canbe changed position by moving it"
+  const [btnPos, setBtnPos] = useState<{ x: number; y: number } | null>(null);
+  const [modalPos, setModalPos] = useState<{ x: number; y: number } | null>(null);
+  const isDraggingBtnRef = useRef(false);
+
+  // Dragging handler for the floating trigger button
+  const handleBtnDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const startX = clientX;
+    const startY = clientY;
+
+    const btnElem = (e.currentTarget as HTMLElement).closest('#nutribot-trigger-btn') as HTMLElement;
+    const rect = btnElem ? btnElem.getBoundingClientRect() : { left: window.innerWidth - 260, top: window.innerHeight - 70 };
+    const offsetX = clientX - rect.left;
+    const offsetY = clientY - rect.top;
+
+    let moved = false;
+
+    const onMove = (mEvt: MouseEvent | TouchEvent) => {
+      const curX = 'touches' in mEvt ? mEvt.touches[0].clientX : mEvt.clientX;
+      const curY = 'touches' in mEvt ? mEvt.touches[0].clientY : mEvt.clientY;
+
+      if (Math.hypot(curX - startX, curY - startY) > 5) {
+        moved = true;
+        isDraggingBtnRef.current = true;
+      }
+
+      const maxX = Math.max(10, window.innerWidth - 240);
+      const maxY = Math.max(10, window.innerHeight - 65);
+      const newX = Math.min(Math.max(10, curX - offsetX), maxX);
+      const newY = Math.min(Math.max(10, curY - offsetY), maxY);
+
+      setBtnPos({ x: newX, y: newY });
+    };
+
+    const onEnd = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+
+      setTimeout(() => {
+        isDraggingBtnRef.current = false;
+      }, 60);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('touchend', onEnd);
+  };
+
+  // Dragging handler for the open chatbot window
+  const handleModalDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (isExpanded) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const modalElem = document.getElementById('nutribot-window-container');
+    const rect = modalElem ? modalElem.getBoundingClientRect() : { left: window.innerWidth - 500, top: window.innerHeight - 680 };
+    const offsetX = clientX - rect.left;
+    const offsetY = clientY - rect.top;
+
+    const onMove = (mEvt: MouseEvent | TouchEvent) => {
+      const curX = 'touches' in mEvt ? mEvt.touches[0].clientX : mEvt.clientX;
+      const curY = 'touches' in mEvt ? mEvt.touches[0].clientY : mEvt.clientY;
+
+      const modalWidth = modalElem?.offsetWidth || 480;
+      const modalHeight = modalElem?.offsetHeight || 660;
+
+      const maxX = Math.max(10, window.innerWidth - modalWidth - 10);
+      const maxY = Math.max(10, window.innerHeight - modalHeight - 10);
+      const newX = Math.min(Math.max(10, curX - offsetX), maxX);
+      const newY = Math.min(Math.max(10, curY - offsetY), maxY);
+
+      setModalPos({ x: newX, y: newY });
+    };
+
+    const onEnd = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('touchend', onEnd);
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -995,14 +1090,18 @@ Detected Meal Slot: **${detectedSlot}**
 
   return (
     <>
-      {/* Floating Chat Trigger Button */}
+      {/* Floating Chat Trigger Button - Moveable anywhere by dragging */}
       {!isOpen && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 group">
-          <button
-            type="button"
-            onClick={() => setIsOpen(true)}
-            title="Ask NutriBot AI Assistant (Kerala Snacks & Calories)"
-            className="flex items-center gap-2.5 bg-linear-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold px-4 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all cursor-pointer border border-emerald-400/40"
+        <div
+          id="nutribot-trigger-btn"
+          style={btnPos ? { position: 'fixed', left: `${btnPos.x}px`, top: `${btnPos.y}px`, bottom: 'auto', right: 'auto' } : undefined}
+          className={btnPos ? "fixed z-50 flex items-center gap-2 group cursor-grab active:cursor-grabbing select-none" : "fixed bottom-5 right-5 z-50 flex items-center gap-2 group cursor-grab active:cursor-grabbing select-none"}
+        >
+          <div
+            onMouseDown={handleBtnDragStart}
+            onTouchStart={handleBtnDragStart}
+            className="flex items-center gap-2.5 bg-linear-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold px-4 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all cursor-grab active:cursor-grabbing border border-emerald-400/40"
+            title="Click to open NutriBot AI, or click and drag to move anywhere on screen"
           >
             <div className="relative">
               <Bot className="w-5 h-5 text-white" />
@@ -1012,23 +1111,61 @@ Detected Meal Slot: **${detectedSlot}**
             <span className="text-xs sm:text-sm font-bold tracking-tight">
               Ask NutriBot (Kerala Food AI)
             </span>
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 hidden sm:inline" />
-          </button>
+            <div className="flex items-center gap-1 pl-1 border-l border-white/20 text-white/70" title="Drag to move">
+              <Move className="w-3.5 h-3.5 text-amber-300" />
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Floating Chatbot Modal / Drawer */}
+      {/* Floating Chatbot Modal / Drawer - Moveable position */}
       {isOpen && (
         <div
-          className={`fixed z-50 transition-all duration-200 flex flex-col bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden ${
+          id="nutribot-window-container"
+          style={!isExpanded && modalPos ? { position: 'fixed', left: `${modalPos.x}px`, top: `${modalPos.y}px`, bottom: 'auto', right: 'auto' } : undefined}
+          className={`fixed z-50 transition-all duration-150 flex flex-col bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden ${
             isExpanded
               ? 'inset-4 sm:inset-8'
-              : 'bottom-4 right-4 w-[calc(100vw-32px)] sm:w-[480px] h-[660px] max-h-[88vh]'
+              : modalPos
+                ? 'w-[calc(100vw-32px)] sm:w-[480px] h-[660px] max-h-[88vh]'
+                : 'bottom-4 right-4 w-[calc(100vw-32px)] sm:w-[480px] h-[660px] max-h-[88vh]'
           }`}
         >
+          {/* Draggable repositioning bar */}
+          <div
+            onMouseDown={handleModalDragStart}
+            onTouchStart={handleModalDragStart}
+            className="bg-emerald-950/95 text-emerald-200/90 px-3 py-1.5 flex items-center justify-between text-[11px] font-semibold cursor-grab active:cursor-grabbing select-none border-b border-white/10"
+            title="Click and drag to move the chatbot anywhere on your screen"
+          >
+            <div className="flex items-center gap-1.5">
+              <GripHorizontal className="w-4 h-4 text-amber-300" />
+              <span>Click &amp; Drag to Move Chatbot</span>
+            </div>
+            {(modalPos || btnPos) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setModalPos(null);
+                  setBtnPos(null);
+                }}
+                className="text-[10px] text-emerald-200 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                title="Reset position back to default bottom-right"
+              >
+                Reset Position
+              </button>
+            )}
+          </div>
+
           {/* Top Header */}
           <div className="bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white p-3.5 sm:p-4 flex items-center justify-between shrink-0 shadow-xs">
-            <div className="flex items-center gap-3">
+            <div 
+              onMouseDown={handleModalDragStart}
+              onTouchStart={handleModalDragStart}
+              className="flex items-center gap-3 cursor-grab active:cursor-grabbing"
+              title="Drag header to move"
+            >
               <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20 shadow-inner">
                 <Bot className="w-5 h-5 text-white" />
               </div>

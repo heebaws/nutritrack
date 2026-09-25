@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, UserPlus, Check } from 'lucide-react';
+import { X, UserPlus, Check, Upload, Camera } from 'lucide-react';
 
 interface AddClientModalProps {
   isOpen: boolean;
@@ -15,6 +15,8 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
   const [password, setPassword] = useState('password123');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string>('');
+  const [avatarFileName, setAvatarFileName] = useState<string>('');
   const [gender, setGender] = useState<'Female' | 'Male' | 'Other'>('Female');
   const [age, setAge] = useState<number>(30);
   const [heightCm, setHeightCm] = useState<number>(165);
@@ -104,22 +106,24 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
 
     // Status helpers
     const fatStatus = gender === 'Male'
-      ? (bodyFatPercentage > 30 ? 'High (>30%)' : bodyFatPercentage < 10 ? 'Low (<10%)' : 'Normal (10-30%)')
+      ? (bodyFatPercentage > 20 ? 'High (>20%)' : bodyFatPercentage < 10 ? 'Low (<10%)' : 'Normal (10-20%)')
       : (bodyFatPercentage > 30 ? 'High (>30%)' : bodyFatPercentage < 20 ? 'Low (<20%)' : 'Normal (20-30%)');
 
     const vFatStatus = visceralFat > 14 
       ? 'High Risk (15+)' 
       : visceralFat >= 10 
       ? 'Elevated (10-14)' 
-      : 'Optimal (5-9)';
+      : visceralFat < 0.5
+      ? 'Low (<0.5)'
+      : 'Optimal (0.5-9)';
 
     const bmiStat = activeBmi > 27 
       ? 'High Risk (>27)' 
       : activeBmi > 23 
       ? 'Overweight (>23)' 
-      : activeBmi < 15 
-      ? 'Underweight (<15)' 
-      : 'Normal (15-23)';
+      : activeBmi < 18 
+      ? 'Underweight (<18)' 
+      : 'Normal (18-23)';
 
     addClient({
       name: name.trim(),
@@ -167,10 +171,39 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
       assignedDietitianId,
       dietPlanId,
       medicalNotes: medicalNotes.trim() || undefined,
-      avatarUrl: `https://images.unsplash.com/photo-${gender === 'Female' ? '1544005313-94ddf0286df2' : '1507003211169-0a1dd7228f2d'}?auto=format&fit=crop&q=80&w=150`,
+      avatarUrl: avatarPreview || `https://images.unsplash.com/photo-${gender === 'Female' ? '1544005313-94ddf0286df2' : '1507003211169-0a1dd7228f2d'}?auto=format&fit=crop&q=80&w=150`,
     });
 
     onClose();
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setAvatarPreview(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePhotoDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setAvatarFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setAvatarPreview(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -199,6 +232,71 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-3.5 text-xs flex-1">
+
+          {/* CLIENT PHOTO FILE UPLOAD COMPONENT */}
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                Client Photo (File Upload)
+              </label>
+              <span className="text-[10px] text-slate-400 font-medium">Optional file</span>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-3.5">
+              {/* Picture Preview */}
+              <div className="relative shrink-0">
+                {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt="Preview"
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-blue-500 shadow-sm"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-blue-100/80 text-blue-700 flex flex-col items-center justify-center border-2 border-dashed border-blue-300">
+                    <Camera className="w-5 h-5" />
+                    <span className="text-[9px] font-bold mt-0.5">No File</span>
+                  </div>
+                )}
+                {avatarPreview && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAvatarPreview('');
+                      setAvatarFileName('');
+                    }}
+                    className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-1 shadow-sm hover:bg-rose-700 cursor-pointer"
+                    title="Remove selected picture"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Upload Drop Zone / Input */}
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handlePhotoDrop}
+                className="flex-1 w-full border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-2.5 text-center bg-white transition-colors cursor-pointer relative"
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  id="client-pic-file-upload"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div className="flex flex-col items-center justify-center gap-0.5">
+                  <Upload className="w-4 h-4 text-blue-600" />
+                  <span className="font-bold text-slate-800 text-[11px]">
+                    {avatarFileName ? avatarFileName : 'Upload client photo file'}
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Click to browse or drop JPG / PNG / WEBP
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
           
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -345,14 +443,14 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
             </div>
           </div>
 
-          {/* 2. BODY FAT % (MEN 10-30%, WOMEN 20-30%) */}
+          {/* 2. BODY FAT % (MEN 10-20%, WOMEN 20-30%) */}
           <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-200/80 space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-bold text-amber-900 text-[11px] uppercase tracking-wider">
                 💧 Body Fat % (Fat Needed Range)
               </span>
               <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
-                {gender === 'Male' ? 'Men: 10 – 30%' : 'Women: 20 – 30%'}
+                {gender === 'Male' ? 'Men: 10 – 20%' : 'Women: 20 – 30%'}
               </span>
             </div>
 
@@ -385,18 +483,18 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
             </div>
 
             <p className="text-[10px] text-amber-800 bg-amber-100/70 p-2 rounded-lg leading-relaxed">
-              💡 <strong>Clinical Norm:</strong> Man is <strong>10–30%</strong>, Woman is <strong>20–30%</strong>. Usually people's fat is higher than this range; target is set to bring them back within healthy bounds.
+              💡 <strong>Clinical Norm:</strong> Man is <strong>10–20%</strong>, Woman is <strong>20–30%</strong>. Usually people's fat is higher than this range; target is set to bring them back within healthy bounds.
             </p>
           </div>
 
-          {/* 3. VISCERAL FAT (V-FAT: NEEDED 5-9) */}
+          {/* 3. VISCERAL FAT (V-FAT: NEEDED 0.5-9) */}
           <div className="bg-rose-50/50 p-3 rounded-xl border border-rose-200/80 space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-bold text-rose-900 text-[11px] uppercase tracking-wider">
-                🫀 Visceral Fat (V-Fat: Needed is 5–9)
+                🫀 Visceral Fat (V-Fat: Needed is 0.5–9)
               </span>
               <span className="text-[10px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md">
-                Healthy Needed: 5 – 9
+                Healthy Needed: 0.5 – 9
               </span>
             </div>
 
@@ -407,22 +505,22 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                 </label>
                 <input
                   type="number"
-                  step="1"
+                  step="0.5"
                   value={visceralFat}
-                  onChange={(e) => setVisceralFat(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setVisceralFat(parseFloat(e.target.value) || 0)}
                   className="w-full bg-white border border-rose-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
                 />
               </div>
 
               <div>
                 <label className="block font-semibold text-emerald-700 mb-1 text-[11px]">
-                  Needed V-Fat (Target: 5-9)
+                  Needed V-Fat (Target: 0.5-9)
                 </label>
                 <input
                   type="number"
-                  step="1"
+                  step="0.5"
                   value={targetVisceralFat}
-                  onChange={(e) => setTargetVisceralFat(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setTargetVisceralFat(parseFloat(e.target.value) || 0)}
                   className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700"
                 />
               </div>
@@ -435,21 +533,23 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   ? 'bg-rose-100 text-rose-800' 
                   : visceralFat >= 10 
                   ? 'bg-amber-100 text-amber-800' 
+                  : visceralFat < 0.5
+                  ? 'bg-amber-100 text-amber-800'
                   : 'bg-emerald-100 text-emerald-800'
               }`}>
-                {visceralFat > 14 ? '🚨 High Risk (15+)' : visceralFat >= 10 ? '⚠️ Elevated (10-14)' : '✓ Optimal (5-9)'}
+                {visceralFat > 14 ? '🚨 High Risk (15+)' : visceralFat >= 10 ? '⚠️ Elevated (10-14)' : visceralFat < 0.5 ? '⚠️ Low (<0.5)' : '✓ Optimal (0.5-9)'}
               </span>
             </div>
           </div>
 
-          {/* 4. BMI (BODY MASS INDEX: NEEDED 15-23) */}
+          {/* 4. BMI (BODY MASS INDEX: NEEDED 18-23) */}
           <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-200/80 space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-bold text-blue-900 text-[11px] uppercase tracking-wider">
-                📐 BMI (Needed Range is 15–23)
+                📐 BMI (Needed Range is 18–23)
               </span>
               <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md">
-                Standard: 15 – 23
+                Standard: 18 – 23
               </span>
             </div>
 
@@ -472,7 +572,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
 
               <div>
                 <label className="block font-semibold text-emerald-700 mb-1 text-[11px]">
-                  Needed BMI (Target: 15-23)
+                  Needed BMI (Target: 18-23)
                 </label>
                 <input
                   type="number"
@@ -486,7 +586,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
 
             <p className="text-[10px] text-blue-800 bg-blue-100/70 p-2 rounded-lg">
               ℹ️ Usually people's BMI will be higher than 23. Current status: <strong className="text-slate-900 font-black">
-                {activeBmi > 27 ? 'High Risk (>27)' : activeBmi > 23 ? 'Overweight (>23)' : activeBmi < 15 ? 'Underweight (<15)' : 'Optimal (15-23)'}
+                {activeBmi > 27 ? 'High Risk (>27)' : activeBmi > 23 ? 'Overweight (>23)' : activeBmi < 18 ? 'Underweight (<18)' : 'Optimal (18-23)'}
               </strong>
             </p>
           </div>
