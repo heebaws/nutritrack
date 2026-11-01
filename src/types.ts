@@ -60,7 +60,8 @@ export interface DietitianProfile {
   name: string;
   username?: string;
   password?: string;
-  role: 'dietitian' | 'admin';
+  role: 'dietitian' | 'admin' | 'super_admin';
+  isSuperAdmin?: boolean;
   email: string;
   phone: string;
   title: string;

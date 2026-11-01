@@ -99,7 +99,7 @@ export const FoodDatabaseManager: React.FC = () => {
   };
 
   const handleDelete = (id: string, foodName: string) => {
-    if (window.confirm(`Are you sure you want to remove "${foodName}" from the clinic food database?`)) {
+    if (window.confirm(`Are you sure you want to remove "${foodName}" from the clinic food database?\n\nNote: Deleting from this library will NOT delete meals already logged by clients. All historical client logs remain preserved and safe.`)) {
       deleteFoodItem(id);
     }
   };
@@ -115,7 +115,7 @@ export const FoodDatabaseManager: React.FC = () => {
             Food List &amp; Nutrition Values
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Maintain accurate calorie and macro values used by clients and diet plans ({foods.length} items)
+            Maintain accurate calorie and macro values ({foods.length} items). <span className="text-emerald-700 font-medium">Safe deletion guaranteed: deleting an item from this library never deletes meals already logged by clients.</span>
           </p>
         </div>
 

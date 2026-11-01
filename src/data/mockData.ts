@@ -12,6 +12,20 @@ import { getTodayString, getYesterdayString, getDaysAgoString } from '../utils/d
 
 export const INITIAL_DIETITIANS: DietitianProfile[] = [
   {
+    id: 'super-admin-swabeeh',
+    name: 'Swabeeh (Super Admin)',
+    username: 'swabeeh',
+    password: '9061253633',
+    role: 'super_admin',
+    isSuperAdmin: true,
+    email: 'vmswabeeh552@gmail.com',
+    phone: '9061253633',
+    title: 'Clinic Director & Super Administrator',
+    specialization: 'Master Clinic Operations & Chief Health Authority',
+    bio: 'Super Administrator with master access to edit clients, photos, coaches, and clinic food databases.',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+  },
+  {
     id: 'admin-1',
     name: 'Saleem Valanchery',
     username: 'saleem',

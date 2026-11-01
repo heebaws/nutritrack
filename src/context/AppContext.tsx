@@ -58,7 +58,8 @@ interface AppContextType {
   clientSignOut: () => void;
   quickSwitchClient: (clientId: string) => void;
 
-  activeTeamUser: DietitianProfile;
+  activeTeamUser: DietitianProfile | null;
+  activeTeamUserId: string | null;
   teamSignIn: (teamMemberId: string) => void;
   staffSignIn: (identifier: string, password?: string) => { success: boolean; message?: string };
   staffSignOut: () => void;
@@ -67,7 +68,7 @@ interface AppContextType {
     password?: string, 
     targetRole?: 'client' | 'coach' | 'auto'
   ) => { success: boolean; role?: 'client' | 'coach'; message?: string };
-  quickSwitchTeamRole: (role: 'dietitian' | 'admin', id?: string) => void;
+  quickSwitchTeamRole: (role: 'dietitian' | 'admin' | 'super_admin', id?: string) => void;
   updateDietitian: (profile: DietitianProfile) => void;
   addDietitian: (profile: Omit<DietitianProfile, 'id'>) => void;
 
@@ -141,8 +142,24 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const STORAGE_KEY_PREFIX = 'nutritrack_clinic_v1_';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // View mode
-  const [viewMode, setViewMode] = useState<ViewMode>('client');
+  // View mode (defaults to login portal unless user is authenticated)
+  const [viewMode, setViewModeState] = useState<ViewMode>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_PREFIX + 'viewMode');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed === 'client' || parsed === 'team' || parsed === 'login') return parsed;
+      }
+    } catch {}
+    return 'login';
+  });
+
+  const setViewMode = (mode: ViewMode) => {
+    setViewModeState(mode);
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'viewMode', JSON.stringify(mode));
+    } catch {}
+  };
   const [phoneFrameEnabled, setPhoneFrameEnabled] = useState<boolean>(false);
 
   // Cloud Sync state
@@ -196,18 +213,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [habits, setHabits] = useState<DailyHabits[]>(() => loadStored('habits', INITIAL_HABITS));
   const [appointments, setAppointments] = useState<ClinicAppointment[]>(() => loadStored('appointments', INITIAL_APPOINTMENTS));
 
-  // Current client ID
-  const [activeClientId, setActiveClientId] = useState<string>(() => {
-    const stored = loadStored<string | null>('activeClientId', null);
-    if (stored && INITIAL_CLIENTS.some(c => c.id === stored)) {
-      return stored;
-    }
-    return INITIAL_CLIENTS[0]?.id || 'client-1';
+  // Current client ID (null if not logged in with username and password)
+  const [activeClientId, setActiveClientId] = useState<string | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_PREFIX + 'activeClientId');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'string' && parsed.trim().length > 0) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return null;
   });
 
-  // Current team member (defaults to Saleem Valanchery 'admin-1')
-  const [activeTeamUserId, setActiveTeamUserId] = useState<string>(() => {
-    return loadStored('activeTeamUserId', 'admin-1');
+  // Current team member ID (null if not logged in with username and password)
+  const [activeTeamUserId, setActiveTeamUserId] = useState<string | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_PREFIX + 'activeTeamUserId');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'string' && parsed.trim().length > 0) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return null;
   });
 
   // 1. Initial Firestore Setup & Real-time Collection Listeners
@@ -508,15 +539,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 1000);
   }, [clients, dietitians, foods, dietPlans, mealLogs, suggestedMeals, measurements, tips, reminders, waterLogs, activities, habits, appointments, activeClientId, activeTeamUserId]);
 
-  // Derived current client (guaranteed fallback to INITIAL_CLIENTS[0])
-  const activeClient = (clients && clients.find(c => c.id === activeClientId)) || (clients && clients[0]) || INITIAL_CLIENTS[0] || null;
+  // Derived current client (ONLY returns client if authenticated with username and password)
+  const activeClient = (clients && activeClientId) 
+    ? (clients.find(c => c.id === activeClientId) || null) 
+    : null;
 
-  // Derived current team member (guaranteed fallback to INITIAL_DIETITIANS[0])
-  const activeTeamUser = (dietitians && dietitians.find(d => d.id === activeTeamUserId)) || (dietitians && dietitians[0]) || INITIAL_DIETITIANS[0];
+  // Derived current team member (ONLY returns coach if authenticated with username and password)
+  const activeTeamUser = (dietitians && activeTeamUserId) 
+    ? (dietitians.find(d => d.id === activeTeamUserId) || null) 
+    : null;
 
-  // Client Sign in
+  // Client Sign in: ONLY allows login with registered username/mobile and password
   const clientSignIn = (identifier: string, password?: string): { success: boolean; message?: string } => {
-    const trimmed = identifier.trim().toLowerCase();
+    const trimmed = (identifier || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+
+    if (!trimmed) {
+      return { success: false, message: 'Please enter your client username.' };
+    }
+    if (!cleanPass) {
+      return { success: false, message: 'Password is required. Please enter your client password.' };
+    }
+
     const cleanedDigits = identifier.replace(/\D/g, '');
 
     const found = clients.find(c => {
@@ -530,38 +574,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!found) {
-      return { success: false, message: 'No client profile found matching this username or phone number.' };
+      return { success: false, message: 'No client profile found matching this username. Please verify the username set during registration.' };
     }
 
-    if (password !== undefined && password !== '') {
-      const expectedPassword = found.password || 'password123';
-      if (password !== expectedPassword) {
-        return { success: false, message: 'Incorrect password. Please verify your credentials.' };
-      }
+    const expectedPassword = found.password || 'password123';
+    if (cleanPass !== expectedPassword) {
+      return { success: false, message: 'Incorrect password. Please enter the exact password registered for this client.' };
     }
 
     setActiveClientId(found.id);
+    setViewMode('client');
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'activeClientId', JSON.stringify(found.id));
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'viewMode', JSON.stringify('client'));
+    } catch {}
+
     return { success: true };
   };
 
   const clientSignOut = () => {
-    setActiveClientId('');
+    setActiveClientId(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY_PREFIX + 'activeClientId');
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'viewMode', JSON.stringify('login'));
+    } catch {}
     setViewMode('login');
   };
 
   const quickSwitchClient = (clientId: string) => {
     setActiveClientId(clientId);
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'activeClientId', JSON.stringify(clientId));
+    } catch {}
   };
 
   const teamSignIn = (teamMemberId: string) => {
     const member = dietitians.find(d => d.id === teamMemberId);
     if (member) {
       setActiveTeamUserId(member.id);
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + 'activeTeamUserId', JSON.stringify(member.id));
+      } catch {}
     }
   };
 
+  // Staff Sign in: ONLY allows login with registered coach/admin username and password
   const staffSignIn = (identifier: string, password?: string): { success: boolean; message?: string } => {
-    const trimmed = identifier.trim().toLowerCase();
+    const trimmed = (identifier || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+
+    if (!trimmed) {
+      return { success: false, message: 'Please enter your coach/admin username.' };
+    }
+    if (!cleanPass) {
+      return { success: false, message: 'Password is required. Please enter your coach password.' };
+    }
+
     const cleanedDigits = identifier.replace(/\D/g, '');
 
     const found = dietitians.find(d => {
@@ -575,21 +643,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!found) {
-      return { success: false, message: 'No coach or clinic staff account found with this username or phone number.' };
+      return { success: false, message: 'No coach or clinic staff account found with this username. Please verify the credentials set during coach registration.' };
     }
 
-    if (password !== undefined && password !== '') {
-      const expectedPassword = found.password || 'password123';
-      if (password !== expectedPassword) {
-        return { success: false, message: 'Incorrect password. Please verify your coach credentials.' };
-      }
+    const expectedPassword = found.password || 'password123';
+    if (cleanPass !== expectedPassword) {
+      return { success: false, message: 'Incorrect password. Please enter the exact password registered for this coach.' };
     }
 
     setActiveTeamUserId(found.id);
+    setViewMode('team');
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'activeTeamUserId', JSON.stringify(found.id));
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'viewMode', JSON.stringify('team'));
+    } catch {}
+
     return { success: true };
   };
 
   const staffSignOut = () => {
+    setActiveTeamUserId(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY_PREFIX + 'activeTeamUserId');
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'viewMode', JSON.stringify('login'));
+    } catch {}
     setViewMode('login');
   };
 
@@ -666,7 +743,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  const quickSwitchTeamRole = (role: 'dietitian' | 'admin', id?: string) => {
+  const quickSwitchTeamRole = (role: 'dietitian' | 'admin' | 'super_admin', id?: string) => {
     if (id) {
       setActiveTeamUserId(id);
       return;
@@ -1144,6 +1221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clientSignOut,
         quickSwitchClient,
         activeTeamUser,
+        activeTeamUserId,
         teamSignIn,
         staffSignIn,
         staffSignOut,

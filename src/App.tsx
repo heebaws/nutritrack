@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/common/Header';
 import { ClientApp } from './components/client/ClientApp';
 import { TeamPortal } from './components/team/TeamPortal';
+import { LoginPortal } from './components/common/LoginPortal';
 import { AIChatBot } from './components/common/AIChatBot';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
@@ -11,8 +12,20 @@ const MainContent: React.FC = () => {
 
   return (
     <main className="min-h-[calc(100vh-65px)] bg-slate-100/70 pb-12">
-      <ErrorBoundary fallbackTitle={viewMode === 'client' ? 'Client Portal Encountered an Issue' : 'Coach & Admin Portal Encountered an Issue'}>
-        {viewMode === 'client' ? <ClientApp /> : <TeamPortal />}
+      <ErrorBoundary fallbackTitle={
+        viewMode === 'login'
+          ? 'Login Portal Encountered an Issue'
+          : viewMode === 'client'
+          ? 'Client Portal Encountered an Issue'
+          : 'Coach & Admin Portal Encountered an Issue'
+      }>
+        {viewMode === 'login' ? (
+          <LoginPortal />
+        ) : viewMode === 'client' ? (
+          <ClientApp />
+        ) : (
+          <TeamPortal />
+        )}
       </ErrorBoundary>
       <AIChatBot />
     </main>

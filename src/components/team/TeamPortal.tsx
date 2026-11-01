@@ -8,8 +8,10 @@ import { AddClientModal } from './AddClientModal';
 import { AddDietitianModal } from './AddDietitianModal';
 import { ClientDossierModal } from './ClientDossierModal';
 import { EditCoachModal } from './EditCoachModal';
+import { EditClientModal } from './EditClientModal';
 import { PrintReportModal } from '../common/PrintReportModal';
 import { AppointmentsModal } from '../common/AppointmentsModal';
+import { LoginPortal } from '../common/LoginPortal';
 import { ClientProfile, DietPlan, DietitianProfile } from '../../types';
 import { 
   Users, 
@@ -66,6 +68,7 @@ export const TeamPortal: React.FC = () => {
     lastSyncedAt,
     sendFollowupReminderToInactive,
     quickSwitchTeamRole,
+    staffSignOut,
     deleteClient,
     addDietitian,
     resetAllData
@@ -81,8 +84,13 @@ export const TeamPortal: React.FC = () => {
     }
   };
 
+  // Enforce authentication: only logged-in coaches and admins can view the team portal
+  if (!activeTeamUser) {
+    return <LoginPortal defaultTab="coach" />;
+  }
+
   // Safe coach reference
-  const currentCoach = activeTeamUser || dietitians[0];
+  const currentCoach = activeTeamUser;
 
   // Navigation tabs in Team Portal (includes Live Client Phone Updates Feed)
   const [currentTab, setCurrentTab] = useState<
@@ -108,6 +116,7 @@ export const TeamPortal: React.FC = () => {
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isAddDietitianOpen, setIsAddDietitianOpen] = useState(false);
   const [editingCoach, setEditingCoach] = useState<DietitianProfile | null>(null);
+  const [editingClient, setEditingClient] = useState<ClientProfile | null>(null);
 
   const [viewingClientDossier, setViewingClientDossier] = useState<ClientProfile | null>(null);
   const [quickFollowupSentId, setQuickFollowupSentId] = useState<string | null>(null);
@@ -1118,6 +1127,16 @@ export const TeamPortal: React.FC = () => {
 
                               <button
                                 type="button"
+                                onClick={() => setEditingClient(client)}
+                                className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-2 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
+                                title="Edit client photo & data"
+                              >
+                                <Edit3 className="w-3 h-3 text-purple-600" />
+                                <span>Edit</span>
+                              </button>
+
+                              <button
+                                type="button"
                                 onClick={() => setViewingClientDossier(client)}
                                 className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
                               >
@@ -1296,6 +1315,16 @@ export const TeamPortal: React.FC = () => {
                           title="Delete client"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setEditingClient(client)}
+                          className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-lg text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Edit client photo, credentials & clinical data"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
                         </button>
 
                         <button
@@ -1696,10 +1725,17 @@ export const TeamPortal: React.FC = () => {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => quickSwitchTeamRole(staff.role, staff.id)}
-                        className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                        onClick={() => {
+                          const conf = window.confirm(`Sign out of ${currentCoach.name} to sign in as ${staff.name} using username and password?`);
+                          if (conf) {
+                            staffSignOut();
+                          }
+                        }}
+                        className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        title="Sign out and enter username and password to log in as this coach"
                       >
-                        Switch Session to {(staff.name || 'Coach').split(' ')[0]}
+                        <Lock className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Sign In as {(staff.name || 'Coach').split(' ')[0]}</span>
                       </button>
                     )}
                   </div>
@@ -1757,6 +1793,14 @@ export const TeamPortal: React.FC = () => {
         />
       )}
 
+      {editingClient && (
+        <EditClientModal
+          isOpen={!!editingClient}
+          onClose={() => setEditingClient(null)}
+          client={editingClient}
+        />
+      )}
+
       <ClientDossierModal
         isOpen={!!viewingClientDossier}
         onClose={() => setViewingClientDossier(null)}
@@ -1769,6 +1813,7 @@ export const TeamPortal: React.FC = () => {
           setSelectedClientIdForTip(cId);
           setIsSendTipOpen(true);
         }}
+        onOpenEditClient={(c) => setEditingClient(c)}
       />
 
       {/* Centre Device Modal & Send Tip Modal appear in front (z-[80]) of Dossier or any active tab without closing it */}

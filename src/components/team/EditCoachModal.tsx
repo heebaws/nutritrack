@@ -13,7 +13,7 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
   const { updateDietitian } = useApp();
 
   const [name, setName] = useState(coach?.name || '');
-  const [role, setRole] = useState<'admin' | 'dietitian'>(coach?.role || 'admin');
+  const [role, setRole] = useState<'super_admin' | 'admin' | 'dietitian'>(coach?.role || 'admin');
   const [title, setTitle] = useState(coach?.title || '');
   const [specialization, setSpecialization] = useState(coach?.specialization || '');
   const [email, setEmail] = useState(coach?.email || '');
@@ -48,6 +48,7 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
       ...coach,
       name: name.trim(),
       role,
+      isSuperAdmin: role === 'super_admin' || coach.isSuperAdmin,
       title: title.trim() || 'Wellness Coach',
       specialization: specialization.trim() || 'Holistic Wellness & Nutrition',
       email: email.trim() || 'coach@wellnessclinic.com',
@@ -107,9 +108,10 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
               </label>
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as 'admin' | 'dietitian')}
+                onChange={(e) => setRole(e.target.value as any)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-hidden"
               >
+                <option value="super_admin">👑 Super Admin (Full Clinic &amp; Food Library Authority)</option>
                 <option value="admin">Clinic Administrator &amp; Wellness Coach</option>
                 <option value="dietitian">Wellness Coach / Dietitian</option>
               </select>

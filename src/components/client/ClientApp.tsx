@@ -9,6 +9,7 @@ import { ActivityLogModal } from './ActivityLogModal';
 import { QuickWeightModal } from './QuickWeightModal';
 import { PrintReportModal } from '../common/PrintReportModal';
 import { AppointmentsModal } from '../common/AppointmentsModal';
+import { LoginPortal } from '../common/LoginPortal';
 import { MealType } from '../../types';
 import { calculateCalorieBreakdown, determineCalorieQuality } from '../../utils/calorieQuality';
 import { 
@@ -54,7 +55,8 @@ import {
   CalendarCheck,
   Footprints,
   Activity,
-  Bot
+  Bot,
+  LogOut
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -197,7 +199,7 @@ export const ClientApp: React.FC = () => {
   };
 
   if (!activeClient) {
-    return null;
+    return <LoginPortal defaultTab="client" />;
   }
 
   // Assigned dietitian and plan
@@ -2109,6 +2111,16 @@ export const ClientApp: React.FC = () => {
                 Active
               </span>
             </div>
+
+            {/* Sign Out Button */}
+            <button
+              type="button"
+              onClick={() => clientSignOut()}
+              className="w-full bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-700 font-bold py-3 px-4 rounded-2xl text-xs transition-colors border border-slate-200 hover:border-rose-200 flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out to Login Portal</span>
+            </button>
           </div>
 
         </div>

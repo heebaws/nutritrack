@@ -14,7 +14,8 @@ import {
   TrendingDown, 
   FileText,
   Utensils,
-  Printer
+  Printer,
+  Edit3
 } from 'lucide-react';
 import { PrintReportModal } from '../common/PrintReportModal';
 import {
@@ -34,6 +35,7 @@ interface ClientDossierModalProps {
   client: ClientProfile | null;
   onOpenCentreReading: (clientId: string) => void;
   onOpenSendTip: (clientId: string) => void;
+  onOpenEditClient?: (client: ClientProfile) => void;
 }
 
 export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
@@ -42,6 +44,7 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
   client,
   onOpenCentreReading,
   onOpenSendTip,
+  onOpenEditClient,
 }) => {
   const { dietitians, dietPlans, mealLogs, measurements, assignDietitian, assignDietPlan } = useApp();
 
@@ -102,6 +105,17 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {onOpenEditClient && (
+              <button
+                type="button"
+                onClick={() => onOpenEditClient(client)}
+                className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Edit client photo, credentials & clinical data"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Client &amp; Photo</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsPrintModalOpen(true)}
