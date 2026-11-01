@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { MealType, FoodCategory, AISuggestedMealFood, FoodItem } from '../../types';
+import { estimateNutrition, formatFoodMarkdown, detectEatenMealWithTime } from '../../utils/nutritionEstimator';
 import {
   Bot,
   Sparkles,
@@ -28,7 +29,10 @@ import {
   Layers,
   Search,
   GripHorizontal,
-  Move
+  Move,
+  Camera,
+  Image as ImageIcon,
+  Trash2
 } from 'lucide-react';
 
 interface FoodData {
@@ -290,6 +294,26 @@ export const AIChatBot: React.FC = () => {
   const [autoAddToColumnOnSearch, setAutoAddToColumnOnSearch] = useState<boolean>(false);
   // Quick food search input state
   const [foodSearchQuery, setFoodSearchQuery] = useState<string>('');
+  
+  // Multimodal meal photo upload state
+  const [selectedImage, setSelectedImage] = useState<{ base64: string; mimeType: string; preview: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result as string;
+      setSelectedImage({
+        base64: res,
+        mimeType: file.type || 'image/jpeg',
+        preview: res
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
   const [showFoodSearchBar, setShowFoodSearchBar] = useState<boolean>(true);
 
   const [savedFoodNotice, setSavedFoodNotice] = useState<string | null>(null);
@@ -336,9 +360,13 @@ export const AIChatBot: React.FC = () => {
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onEnd);
 
+      if (!moved) {
+        setIsOpen(true);
+      }
+
       setTimeout(() => {
         isDraggingBtnRef.current = false;
-      }, 60);
+      }, 80);
     };
 
     window.addEventListener('mousemove', onMove);
@@ -442,11 +470,16 @@ I am ready to help you with:
     }
   }, [messages, isOpen, showReferralGuide]);
 
+  const handleSendMessageRef = useRef<(customText?: string) => Promise<void>>(null as any);
+  useEffect(() => {
+    handleSendMessageRef.current = handleSendMessage;
+  });
+
   useEffect(() => {
     const handleOpen = (e: any) => {
       setIsOpen(true);
-      if (e.detail?.query) {
-        handleSendMessage(e.detail.query);
+      if (e.detail?.query && handleSendMessageRef.current) {
+        handleSendMessageRef.current(e.detail.query);
       }
     };
     window.addEventListener('open-nutribot', handleOpen);
@@ -491,6 +524,7 @@ I am ready to help you with:
         fat: foodItem.fat,
         fiber: foodItem.fiber || 1,
         glycemicIndex: (foodItem.glycemicIndex || 'Medium') as any,
+        servingUnit: foodItem.servingUnit || '1 serving',
         standardServingUnit: foodItem.servingUnit || '1 serving',
         standardServingGrams: 100,
         description: foodItem.verdict || 'Automatically added to Clinic Food Library via NutriBot chat'
@@ -500,264 +534,152 @@ I am ready to help you with:
     return false;
   };
 
-  // Resilient fallback parser matching local Kerala database
+  // Resilient fallback parser matching local Kerala database and universal nutrition engine
   const createLocalFallbackResponse = (query: string): { food: FoodData | null; answer: string; isMealLogReport: boolean; mealLogData: any } => {
-    const lower = query.toLowerCase();
+    const lower = query.toLowerCase().trim();
 
-    // Check if meal report with time (e.g. "ate 2 boiled eggs at 8:30 am")
-    const timeMatch = query.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
-    if (timeMatch || lower.includes("i ate") || lower.includes("had") || lower.includes("drank")) {
-      const timeGiven = timeMatch ? timeMatch[1].toUpperCase() : 'Today';
-      
-      // Determine slot by time
-      let detectedSlot: MealType = 'Evening Snack';
-      if (timeGiven.includes('AM')) {
-        const hour = parseInt(timeGiven);
-        detectedSlot = hour < 11 ? 'Breakfast' : 'Morning Snack';
-      } else if (timeGiven.includes('PM')) {
-        const hour = parseInt(timeGiven);
-        if (hour === 12 || hour < 4) detectedSlot = 'Lunch';
-        else if (hour < 7) detectedSlot = 'Evening Snack';
-        else detectedSlot = 'Dinner';
-      }
-
-      // Check matched foods
-      let detectedFoodName = 'Pazham Pori';
-      let cal = 185, p = 2.2, c = 34, f = 5.5, unit = '1 piece (80g)';
-
-      if (lower.includes('egg')) {
-        detectedFoodName = 'Boiled Eggs';
-        cal = 144; p = 12.6; c = 0.8; f = 9.6; unit = '2 large eggs';
-      } else if (lower.includes('parippu')) {
-        detectedFoodName = 'Parippu Vada';
-        cal = 148; p = 6.2; c = 16.5; f = 7.2; unit = '1 piece (50g)';
-      } else if (lower.includes('ela ada') || lower.includes('ada')) {
-        detectedFoodName = 'Ela Ada';
-        cal = 162; p = 2.8; c = 32; f = 3.0; unit = '1 piece (85g)';
-      } else if (lower.includes('bread')) {
-        detectedFoodName = 'Whole Wheat Bread';
-        cal = 80; p = 4.0; c = 14.0; f = 1.0; unit = '1 slice (30g)';
-      }
-
+    // 1. Check if user is reporting a meal eaten with a time (e.g. "I ate 2 eggs and 1 bread at 8:30 am")
+    const eatenMeal = detectEatenMealWithTime(query);
+    if (eatenMeal && eatenMeal.foods && eatenMeal.foods.length > 0) {
       return {
         food: null,
         isMealLogReport: true,
         mealLogData: {
-          timeGiven,
-          detectedMealType: detectedSlot,
-          foods: [
-            {
-              name: detectedFoodName,
-              servingUnit: unit,
-              quantity: 1,
-              calories: cal,
-              protein: p,
-              carbs: c,
-              fat: f,
-              category: 'Beverages & Snacks'
-            }
-          ],
-          totalCalories: cal,
-          totalProtein: p,
-          totalCarbs: c,
-          totalFat: f
+          timeGiven: eatenMeal.timeGiven || 'Today',
+          detectedMealType: eatenMeal.mealSlot || 'Evening Snack',
+          foods: eatenMeal.foods,
+          totalCalories: eatenMeal.totalCalories || 0,
+          totalProtein: eatenMeal.totalProtein || 0,
+          totalCarbs: eatenMeal.totalCarbs || 0,
+          totalFat: eatenMeal.totalFat || 0,
         },
-        answer: `### **Meal Reported at ${timeGiven}**
-Detected Meal Slot: **${detectedSlot}**
+        answer: `### **Meal Reported at ${eatenMeal.timeGiven || 'Today'}**
+Detected Meal Slot: **${eatenMeal.mealSlot || 'Evening Snack'}**
 
-🔥 **Calories Stated First:**
-- **${detectedFoodName} (${unit}):** **${cal} kcal** (P: ${p}g, C: ${c}g, F: ${f}g)
+🔥 **Each Food's Calories (Check First):**
+${eatenMeal.foods.map(f => `- **${f.name} (${f.quantity}x ${f.servingUnit}):** **${f.calories} kcal** (P: ${f.protein}g, C: ${f.carbs}g, F: ${f.fat}g)`).join('\n')}
+- **Total Meal Calories:** **${eatenMeal.totalCalories} kcal**
 
 ### **Was it oily? (3 Options Calculation)**
-- 🟢 **Steamed / No Oil:** ${cal} kcal
-- 🟡 **Medium Sauté:** ${cal + 45} kcal (+5g fat)
-- 🔴 **Deep Fried:** ${cal + 120} kcal (+13g fat)
+- 🟢 **Steamed / No Oil:** ${eatenMeal.totalCalories} kcal
+- 🟡 **Medium Sauté:** ${(eatenMeal.totalCalories || 0) + 45} kcal (+5g fat)
+- 🔴 **Deep Fried:** ${(eatenMeal.totalCalories || 0) + 120} kcal (+13g fat)
 
-✨ **Auto-Added to Clinic Food Library:** Staged for 1-click entry into your **${detectedSlot}** log!`
+✨ **Auto-Added to Clinic Food Library:** Staged for 1-click entry into your **${eatenMeal.mealSlot || 'Evening Snack'}** daily diary!`
       };
     }
 
-    // Check Kerala snack match
-    const snackMatch = KERALA_SNACKS_REFERRAL.find(s => 
-      lower.includes(s.name.toLowerCase()) ||
-      lower.includes(s.name.split(' ')[0].toLowerCase())
-    );
-
-    if (snackMatch) {
-      const foodItem: FoodData = {
-        name: snackMatch.name,
-        category: snackMatch.category,
-        servingUnit: snackMatch.servingUnit,
-        calories: snackMatch.steamedCal,
-        protein: snackMatch.protein,
-        carbs: snackMatch.carbs,
-        fat: snackMatch.baseFat,
-        glycemicIndex: 'Medium',
-        verdict: snackMatch.tips,
-        recommendation: `Official Saleem Valanchery Wellness Clinic guidelines: If fried, add +120 kcal from oil absorption.`
-      };
-
+    // 2. Greetings and general health topics (non-food queries)
+    if (lower === 'hi' || lower === 'hello' || lower === 'hey' || lower === 'help' || lower === 'test') {
       return {
-        food: foodItem,
+        food: null,
         isMealLogReport: false,
         mealLogData: null,
-        answer: `### **${snackMatch.name}**
-*Saleem Valanchery Wellness Clinic Food Library Entry*
+        answer: `👋 **NutriBot is Active & Ready to Assist You!**
 
-🔥 **Calories Stated First:**
-- **Standard Serving (${snackMatch.servingUnit}):** **${snackMatch.steamedCal} kcal**
+Welcome to the **Saleem Valanchery Wellness Clinic Assistant**! I am fully operational and equipped to estimate nutrition for ANY food, snack, or meal.
 
-### **Was it oily? (3 Cooking Options Calculation)**
-- 🟢 **No Oil / Steamed:** **${snackMatch.steamedCal} kcal** (Fat: ${snackMatch.baseFat}g)
-- 🟡 **Medium / Home Sauté:** **${snackMatch.sauteCal} kcal** (Fat: ${(snackMatch.baseFat + 5).toFixed(1)}g)
-- 🔴 **Deep Fried / Very Oily:** **${snackMatch.friedCal} kcal** (Fat: ${(snackMatch.baseFat + 13).toFixed(1)}g)
+### **What You Can Do Right Now:**
+1. **Search Any Food or Snack:** Type *any* food (e.g. *"Pazham Pori"*, *"Shawarma"*, *"Boiled Egg"*, *"Paneer Butter Masala"*, *"Salmon"*, *"Salad"*, *"Biryani"*) to see its **calories first in bold**!
+2. **"Was it oily?" 3-Options Calculator:** Recalculates calories live for:
+   - 🟢 **No Oil / Steamed** (Base calories)
+   - 🟡 **Medium / Home Sauté** (+45 kcal, +5g fat)
+   - 🔴 **Deep Fried / Very Oily** (+120 kcal, +13g fat)
+3. **1-Click Direct Add to Log Food:** You can add the searched food directly to your **Morning, Snack, Lunch, Evening, or Night** diary columns!
+4. **Automatic Food Library Sync:** Any food you search is automatically registered in your clinic food library.
 
-### **Macronutrients (Standard Portion)**
-- **Protein:** **${snackMatch.protein}g**
-- **Carbohydrates:** **${snackMatch.carbs}g**
-- **Fat:** **${snackMatch.baseFat}g**
-
-✨ **Automatically Added to Clinic Food Library:** This snack is now in your food database! You can adjust the oil option above and log it directly.`
+What food or snack would you like to check?`
       };
     }
 
-    // Check clinic food library match
-    const clinicFoodMatch = foods.find(f =>
-      lower.includes(f.name.toLowerCase()) || f.name.toLowerCase().includes(lower)
-    );
-
-    if (clinicFoodMatch) {
-      const foodItem: FoodData = {
-        name: clinicFoodMatch.name,
-        category: clinicFoodMatch.category,
-        servingUnit: clinicFoodMatch.servingUnit,
-        calories: clinicFoodMatch.calories,
-        protein: clinicFoodMatch.protein,
-        carbs: clinicFoodMatch.carbs,
-        fat: clinicFoodMatch.fat,
-        fiber: clinicFoodMatch.fiber,
-        glycemicIndex: clinicFoodMatch.glycemicIndex,
-        verdict: clinicFoodMatch.description || 'Clinic Registered Food Item',
-        recommendation: `Standard clinic serving: ${clinicFoodMatch.servingUnit}`
-      };
-
+    if (lower.includes('visceral') || lower.includes('inbody') || lower.includes('body fat')) {
       return {
-        food: foodItem,
+        food: null,
         isMealLogReport: false,
         mealLogData: null,
-        answer: `### **${clinicFoodMatch.name}**
-*Clinic Food Library Entry*
+        answer: `### **Visceral Fat & Body Composition Guide**
+*Clinical Protocol from Coach Saleem Valanchery & Faseela Saleem*
 
-🔥 **Calories Stated First:**
-- **Standard Serving (${clinicFoodMatch.servingUnit}):** **${clinicFoodMatch.calories} kcal**
-
-### **Was it oily? (3 Cooking Options Calculation)**
-- 🟢 **No Oil / Steamed:** **${clinicFoodMatch.calories} kcal** (Fat: ${clinicFoodMatch.fat}g)
-- 🟡 **Medium / Home Sauté:** **${clinicFoodMatch.calories + 45} kcal** (Fat: ${(clinicFoodMatch.fat + 5).toFixed(1)}g)
-- 🔴 **Deep Fried / Very Oily:** **${clinicFoodMatch.calories + 120} kcal** (Fat: ${(clinicFoodMatch.fat + 13).toFixed(1)}g)
-
-### **Macronutrients (Standard Portion)**
-- **Protein:** **${clinicFoodMatch.protein}g**
-- **Carbohydrates:** **${clinicFoodMatch.carbs}g**
-- **Fat:** **${clinicFoodMatch.fat}g**`
+- **Target Range:** Maintain visceral fat rating between **0.5 and 9**.
+- **Action Plan:**
+  1. Maintain a high-protein calorie deficit (1.2–1.6g protein/kg).
+  2. Minimize refined carbs, deep-fried snacks, and late-night heavy calories.
+  3. Combine 8,000–10,000 daily steps with resistance training 3x/week.
+  4. Track monthly updates in the clinic InBody 270/770 Body Composition Analyzer.`
       };
     }
 
-    // Common staples fast lookup
-    const commonStaples: Record<string, FoodData> = {
-      egg: { name: 'Boiled Egg', category: 'Proteins', servingUnit: '1 large egg (50g)', calories: 74, protein: 6.3, carbs: 0.4, fat: 5.0, fiber: 0, glycemicIndex: 'Low', verdict: 'High biological value protein with essential choline.' },
-      bread: { name: 'Whole Wheat Bread', category: 'Grains & Breads', servingUnit: '1 slice (30g)', calories: 75, protein: 3.5, carbs: 13.0, fat: 0.9, fiber: 1.9, glycemicIndex: 'Medium', verdict: 'Complex carbohydrates with dietary fiber.' },
-      rice: { name: 'Kerala Matta Rice', category: 'Grains & Breads', servingUnit: '1 cup cooked (150g)', calories: 195, protein: 4.2, carbs: 42.0, fat: 0.8, fiber: 2.2, glycemicIndex: 'Medium', verdict: 'Unpolished red rice rich in magnesium and zinc.' },
-      oats: { name: 'Rolled Oats Porridge', category: 'Grains & Breads', servingUnit: '1 bowl (40g dry)', calories: 150, protein: 5.0, carbs: 27.0, fat: 2.5, fiber: 4.0, glycemicIndex: 'Low', verdict: 'Beta-glucan soluble fiber supports heart health.' },
-      apple: { name: 'Fresh Apple', category: 'Fruits', servingUnit: '1 medium fruit (150g)', calories: 80, protein: 0.4, carbs: 21.0, fat: 0.3, fiber: 4.0, glycemicIndex: 'Low', verdict: 'Rich in polyphenols, pectin fiber, and hydration.' },
-      banana: { name: 'Kerala Robusta / Nendran Banana', category: 'Fruits', servingUnit: '1 medium (100g)', calories: 95, protein: 1.2, carbs: 23.0, fat: 0.3, fiber: 2.6, glycemicIndex: 'Medium', verdict: 'Natural potassium and pre-workout carbohydrates.' },
-      chicken: { name: 'Grilled Chicken Breast', category: 'Proteins', servingUnit: '100g cooked', calories: 165, protein: 31.0, carbs: 0.0, fat: 3.6, fiber: 0, glycemicIndex: 'Zero', verdict: 'Lean complete protein ideal for metabolic conditioning.' },
-      dosa: { name: 'Plain Dosa', category: 'Grains & Breads', servingUnit: '1 piece (60g)', calories: 120, protein: 3.0, carbs: 22.0, fat: 2.5, fiber: 1.0, glycemicIndex: 'Medium', verdict: 'Fermented rice and urad dal crepe.' },
-      idli: { name: 'Steamed Idli', category: 'Grains & Breads', servingUnit: '2 pieces (80g)', calories: 130, protein: 4.5, carbs: 26.0, fat: 0.6, fiber: 1.5, glycemicIndex: 'Medium', verdict: 'Zero-oil steamed probiotic breakfast.' },
-      chapati: { name: 'Whole Wheat Chapati (Roti)', category: 'Grains & Breads', servingUnit: '1 piece (40g)', calories: 104, protein: 3.1, carbs: 18.0, fat: 2.4, fiber: 2.5, glycemicIndex: 'Medium', verdict: 'Traditional stone-ground atta roti.' },
-      tea: { name: 'Kerala Black Tea / Sulaimani', category: 'Beverages & Snacks', servingUnit: '1 cup (150ml)', calories: 12, protein: 0.2, carbs: 2.5, fat: 0.0, fiber: 0, glycemicIndex: 'Low', verdict: 'Antioxidant-rich herbal brew without milk fat.' }
+    if (lower.includes('water') || lower.includes('hydration')) {
+      return {
+        food: null,
+        isMealLogReport: false,
+        mealLogData: null,
+        answer: `### **Hydration Target (Saleem Valanchery Wellness Clinic)**
+- **Daily Goal:** **2.5 to 3.5 Litres** daily.
+- **Tip:** Drink 500ml upon waking. Space water evenly throughout the day.
+- **Meal Rule:** Avoid chugging water immediately after heavy meals.`
+      };
+    }
+
+    // 3. UNIVERSAL FOOD RESOLUTION: Guarantees ANY searched food always returns a food card!
+    const estimated = estimateNutrition(query);
+    const foodItem: FoodData = {
+      name: estimated.name,
+      category: estimated.category,
+      servingUnit: estimated.servingUnit,
+      calories: estimated.calories,
+      protein: estimated.protein,
+      carbs: estimated.carbs,
+      fat: estimated.fat,
+      fiber: estimated.fiber,
+      glycemicIndex: estimated.glycemicIndex,
+      verdict: estimated.verdict,
+      recommendation: estimated.recommendation,
     };
 
-    for (const key of Object.keys(commonStaples)) {
-      if (lower.includes(key)) {
-        const item = commonStaples[key];
-        return {
-          food: item,
-          isMealLogReport: false,
-          mealLogData: null,
-          answer: `### **${item.name}**
-*Saleem Valanchery Wellness Clinic Nutrition Data*
-
-🔥 **Calories Stated First:**
-- **Standard Serving (${item.servingUnit}):** **${item.calories} kcal**
-
-### **Was it oily? (3 Cooking Options Calculation)**
-- 🟢 **No Oil / Steamed:** **${item.calories} kcal** (Fat: ${item.fat}g)
-- 🟡 **Medium / Home Sauté:** **${item.calories + 45} kcal** (Fat: ${(item.fat + 5).toFixed(1)}g)
-- 🔴 **Deep Fried / Very Oily:** **${item.calories + 120} kcal** (Fat: ${(item.fat + 13).toFixed(1)}g)
-
-### **Macronutrients (Standard Portion)**
-- **Protein:** **${item.protein}g**
-- **Carbohydrates:** **${item.carbs}g**
-- **Fat:** **${item.fat}g**`
-        };
-      }
-    }
-
-    // Generic referral list response
     return {
-      food: null,
+      food: foodItem,
       isMealLogReport: false,
       mealLogData: null,
-      answer: `### **Kerala Snacks & Calories Referral Guide**
-*Saleem Valanchery Wellness Clinic Official Reference*
-
-🔥 **Each Snack's Calories First:**
-- **Pazham Pori (Ethakka Appam - 1 pc):** **185 kcal** (Steamed: 185 | Sauté: 230 | Deep Fried: 305)
-- **Parippu Vada (Kerala Dal Vada - 1 pc):** **148 kcal** (Steamed: 148 | Sauté: 193 | Deep Fried: 268)
-- **Ulli Vada (Crispy Shallot Fritter - 1 pc):** **155 kcal** (Steamed: 155 | Sauté: 200 | Deep Fried: 275)
-- **Ela Ada (Steamed Rice Parcel - 1 pc):** **162 kcal** (Steamed, 0g trans fat)
-- **Kozhukkatta (Steamed Rice Dumpling - 1 pc):** **132 kcal** (Steamed, 0g trans fat)
-- **Unniyappam (Sweet Jaggery & Rice - 1 pc):** **115 kcal** (Steamed: 115 | Sauté: 160 | Fried: 235)
-- **Neyyappam (Ghee & Rice Fritter - 1 pc):** **145 kcal** (Steamed: 145 | Sauté: 190 | Fried: 265)
-- **Sukhiyan (Sweet Green Gram - 1 pc):** **140 kcal** (Steamed: 140 | Sauté: 185 | Fried: 260)
-- **Kerala Banana Chips (Upperi - 30g):** **158 kcal**
-- **Sharkara Upperi (Jaggery Banana - 30g):** **168 kcal**
-
-### **Was it oily? (3 Cooking Options Calculation)**
-- 🟢 **No Oil / Steamed:** Base calories (e.g. 185 kcal)
-- 🟡 **Medium / Home Sauté:** Add **+45 kcal** (+5g healthy coconut oil)
-- 🔴 **Deep Fried / Very Oily:** Add **+120 kcal** (+13g oil absorption)
-
-✨ **Automatic Library Sync:** Everything you write is saved to your Clinic Food Library!`
+      answer: formatFoodMarkdown(estimated, 'steamed', 1)
     };
   };
 
   const handleSendMessage = async (customText?: string) => {
     const textToSend = (customText || inputMessage).trim();
-    if (!textToSend || isLoading) return;
+    const currentImg = selectedImage;
+    if ((!textToSend && !currentImg) || isLoading) return;
 
+    const displayMsg = textToSend || "📸 [Uploaded Meal Photo for AI Analysis]";
     const userMsgId = 'msg-' + Date.now();
     const userMsg: ChatMessage = {
       id: userMsgId,
       sender: 'user',
-      text: textToSend,
+      text: displayMsg,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     setMessages(prev => [...prev, userMsg]);
     if (!customText) setInputMessage('');
+    setSelectedImage(null);
     setIsLoading(true);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
-          message: textToSend,
+          message: textToSend || "Analyze this meal photo, state each food calories first in bold, calculate 3 oil options, and stage for meal logging.",
+          imageBase64: currentImg?.base64,
+          mimeType: currentImg?.mimeType,
           clientContext
         })
       });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         throw new Error(`Server returned ${res.status}`);
@@ -1095,26 +1017,37 @@ Detected Meal Slot: **${detectedSlot}**
         <div
           id="nutribot-trigger-btn"
           style={btnPos ? { position: 'fixed', left: `${btnPos.x}px`, top: `${btnPos.y}px`, bottom: 'auto', right: 'auto' } : undefined}
-          className={btnPos ? "fixed z-50 flex items-center gap-2 group cursor-grab active:cursor-grabbing select-none" : "fixed bottom-5 right-5 z-50 flex items-center gap-2 group cursor-grab active:cursor-grabbing select-none"}
+          className={btnPos ? "fixed z-[9999] flex items-center gap-2 select-none" : "fixed bottom-5 right-5 z-[9999] flex items-center gap-2 select-none"}
         >
-          <div
-            onMouseDown={handleBtnDragStart}
-            onTouchStart={handleBtnDragStart}
-            className="flex items-center gap-2.5 bg-linear-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold px-4 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all cursor-grab active:cursor-grabbing border border-emerald-400/40"
-            title="Click to open NutriBot AI, or click and drag to move anywhere on screen"
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!isDraggingBtnRef.current) {
+                setIsOpen(true);
+              }
+            }}
+            className="flex items-center gap-2.5 bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold px-4 py-3 rounded-full shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-emerald-300/60"
+            title="Click to open NutriBot AI, or click and drag move handle to reposition anywhere"
           >
             <div className="relative">
               <Bot className="w-5 h-5 text-white" />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full" />
             </div>
-            <span className="text-xs sm:text-sm font-bold tracking-tight">
+            <span className="text-xs sm:text-sm font-extrabold tracking-tight">
               Ask NutriBot (Kerala Food AI)
             </span>
-            <div className="flex items-center gap-1 pl-1 border-l border-white/20 text-white/70" title="Drag to move">
-              <Move className="w-3.5 h-3.5 text-amber-300" />
+            <div
+              onMouseDown={handleBtnDragStart}
+              onTouchStart={handleBtnDragStart}
+              className="flex items-center gap-1 pl-1.5 border-l border-white/30 text-amber-300 cursor-grab active:cursor-grabbing hover:text-white"
+              title="Click & drag here to move button anywhere on screen"
+            >
+              <Move className="w-3.5 h-3.5" />
             </div>
-          </div>
+          </button>
         </div>
       )}
 
@@ -1123,7 +1056,7 @@ Detected Meal Slot: **${detectedSlot}**
         <div
           id="nutribot-window-container"
           style={!isExpanded && modalPos ? { position: 'fixed', left: `${modalPos.x}px`, top: `${modalPos.y}px`, bottom: 'auto', right: 'auto' } : undefined}
-          className={`fixed z-50 transition-all duration-150 flex flex-col bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden ${
+          className={`fixed z-[9999] transition-all duration-150 flex flex-col bg-white rounded-3xl shadow-2xl border-2 border-emerald-500/30 overflow-hidden ${
             isExpanded
               ? 'inset-4 sm:inset-8'
               : modalPos
@@ -1172,8 +1105,9 @@ Detected Meal Slot: **${detectedSlot}**
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-white text-sm tracking-tight">NutriBot AI Assistant</h3>
-                  <span className="text-[10px] uppercase font-extrabold bg-emerald-500/40 text-emerald-100 px-2 py-0.5 rounded-full border border-emerald-400/30">
-                    Kerala Diet AI
+                  <span className="text-[10px] uppercase font-extrabold bg-emerald-500/40 text-emerald-100 px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 shadow-xs">
+                    <Sparkles className="w-2.5 h-2.5 text-amber-300 animate-pulse" />
+                    Gemini 3.8 Flash
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-100/80">
@@ -1928,6 +1862,36 @@ Detected Meal Slot: **${detectedSlot}**
             ))}
           </div>
 
+          {/* Image Attachment Preview */}
+          {selectedImage && (
+            <div className="px-3 py-1.5 bg-emerald-50 border-t border-emerald-200 flex items-center justify-between text-xs shrink-0">
+              <div className="flex items-center gap-2">
+                <img src={selectedImage.preview} alt="Meal preview" className="w-9 h-9 rounded-lg object-cover border border-emerald-300 shadow-2xs" />
+                <div>
+                  <span className="font-bold text-emerald-900 block text-xs">📸 Meal Photo Attached</span>
+                  <span className="text-[10px] text-emerald-700">Gemini 3.8 Flash will analyze plate & calories</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedImage(null)}
+                className="text-slate-400 hover:text-red-600 p-1 rounded-full cursor-pointer transition-colors"
+                title="Remove photo"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Hidden File Input for Camera / Photo */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageSelect}
+            accept="image/*"
+            className="hidden"
+          />
+
           {/* Input Form */}
           <form
             onSubmit={(e) => {
@@ -1936,18 +1900,30 @@ Detected Meal Slot: **${detectedSlot}**
             }}
             className="p-3 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0"
           >
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`p-2.5 rounded-2xl border transition-colors cursor-pointer shrink-0 ${
+                selectedImage 
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 ring-2 ring-emerald-400' 
+                  : 'bg-slate-50 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 text-slate-500'
+              }`}
+              title="Upload or snap meal photo for Gemini AI analysis"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Ask about Pazham Pori, Parippu Vada, oil calories, or type what you ate..."
+              placeholder={selectedImage ? "Add note about this meal (optional)..." : "Ask about food, oil options, or snap a plate photo..."}
               disabled={isLoading}
               className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
             />
             <button
               type="submit"
-              disabled={isLoading || !inputMessage.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white p-2.5 rounded-2xl transition-colors cursor-pointer shadow-xs shrink-0"
+              disabled={isLoading || (!inputMessage.trim() && !selectedImage)}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white p-2.5 rounded-2xl transition-colors cursor-pointer shadow-xs shrink-0 flex items-center justify-center"
               title="Send message"
             >
               <Send className="w-4 h-4" />

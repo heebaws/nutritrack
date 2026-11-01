@@ -1,7 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { FoodCategory, FoodItem, MealType } from '../../types';
-import { X, Search, Plus, Check, Flame, Dumbbell, Wheat, Droplets, Sparkles, BookOpen } from 'lucide-react';
+import { estimateNutrition } from '../../utils/nutritionEstimator';
+import { determineCalorieQuality, CalorieQuality } from '../../utils/calorieQuality';
+import { X, Search, Plus, Check, Flame, Dumbbell, Wheat, Droplets, Sparkles, BookOpen, Camera, Loader2, ShieldCheck, CheckCircle2, Bot } from 'lucide-react';
 
 interface MealLogModalProps {
   isOpen: boolean;
@@ -53,34 +55,185 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
   const [aiEstimateNote, setAiEstimateNote] = useState<string | null>(null);
   // CRITICAL MANDATE: "Was it oily? 3 options"
   const [oilOption, setOilOption] = useState<'steamed' | 'medium' | 'fried'>('steamed');
+  // USER MANDATE: Good Calories vs Bad Calories toggle
+  const [customQuality, setCustomQuality] = useState<CalorieQuality>('good');
+
+  // NutriBot Live Search Extension states
+  const [searchExtensionOil, setSearchExtensionOil] = useState<'steamed' | 'medium' | 'fried'>('steamed');
+  const [searchExtensionQty, setSearchExtensionQty] = useState<number>(1);
+  const [extensionAddedNotice, setExtensionAddedNotice] = useState<string | null>(null);
+
+  const searchExtensionFood = useMemo(() => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 1) return null;
+    return estimateNutrition(searchQuery.trim());
+  }, [searchQuery]);
+
+  // MANDATE: "the extention of nutribot in log food will work just by name wegets the extention"
+  // Auto-resolve custom food by name with debouncing
+  useEffect(() => {
+    if (activeTab !== 'custom' || !customName.trim()) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      const est = estimateNutrition(customName);
+      setCustomCalories(String(est.calories));
+      setCustomProtein(String(est.protein));
+      setCustomCarbs(String(est.carbs));
+      setCustomFat(String(est.fat));
+      setCustomServing(est.servingUnit);
+      setCustomCategory(est.category);
+      setAiEstimateNote(`✨ NutriBot Extension: Auto-filled by name (${est.servingUnit})`);
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [customName, activeTab]);
+
+  const handleLogViaNutribotExtension = () => {
+    if (!activeClientId || !searchExtensionFood) return;
+
+    const oilCal = searchExtensionOil === 'fried' ? 120 : searchExtensionOil === 'medium' ? 45 : 0;
+    const oilFat = searchExtensionOil === 'fried' ? 13 : searchExtensionOil === 'medium' ? 5 : 0;
+    const qty = Math.max(0.1, Number(searchExtensionQty) || 1);
+
+    const totalCal = Math.round((searchExtensionFood.calories + oilCal) * qty);
+    const totalProt = Number((searchExtensionFood.protein * qty).toFixed(1));
+    const totalCarb = Number((searchExtensionFood.carbs * qty).toFixed(1));
+    const totalFat = Number(((searchExtensionFood.fat + oilFat) * qty).toFixed(1));
+
+    const prepLabel =
+      searchExtensionOil === 'fried' ? 'Deep Fried' :
+      searchExtensionOil === 'medium' ? 'Medium Sauté' :
+      'Steamed / No Oil';
+
+    const quality = determineCalorieQuality(
+      searchExtensionFood.name,
+      searchExtensionFood.category,
+      searchExtensionOil
+    );
+
+    // 1. Add to clinic food library
+    const savedFood = addFoodItem({
+      name: searchExtensionFood.name,
+      category: searchExtensionFood.category,
+      servingUnit: searchExtensionFood.servingUnit,
+      calories: searchExtensionFood.calories,
+      protein: searchExtensionFood.protein,
+      carbs: searchExtensionFood.carbs,
+      fat: searchExtensionFood.fat,
+      fiber: searchExtensionFood.fiber,
+      glycemicIndex: searchExtensionFood.glycemicIndex as any,
+      calorieQuality: quality
+    });
+
+    // 2. Add to client's daily meal log
+    addMealLog({
+      clientId: activeClientId,
+      date: selectedDate,
+      mealType,
+      foodId: savedFood.id,
+      foodName: `${searchExtensionFood.name} (${prepLabel})`,
+      quantity: qty,
+      servingUnit: searchExtensionFood.servingUnit,
+      calories: totalCal,
+      protein: totalProt,
+      carbs: totalCarb,
+      fat: totalFat,
+      calorieQuality: quality
+    });
+
+    setExtensionAddedNotice(`✓ Logged ${qty}x ${searchExtensionFood.name} (${totalCal} kcal) to ${mealType}!`);
+    setJustAdded(true);
+    setTimeout(() => {
+      setJustAdded(false);
+      setExtensionAddedNotice(null);
+      onClose();
+    }, 700);
+  };
 
   const handleAiEstimate = async () => {
     if (!customName.trim()) return;
     setIsAiEstimating(true);
     setAiEstimateNote(null);
     try {
-      const res = await fetch('/api/ai/chat', {
+      const localEst = estimateNutrition(customName);
+      setCustomCalories(String(localEst.calories));
+      setCustomProtein(String(localEst.protein));
+      setCustomCarbs(String(localEst.carbs));
+      setCustomFat(String(localEst.fat));
+      setCustomServing(localEst.servingUnit);
+      setCustomCategory(localEst.category);
+      setAiEstimateNote(`✨ Auto-filled by NutriBot AI (${localEst.servingUnit})`);
+
+      // Attempt server refinement in background
+      fetch('/api/ai/estimate-food', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: `Nutrition macros for ${customName}` })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.food) {
+        body: JSON.stringify({ name: customName })
+      })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.food) {
           setCustomCalories(String(data.food.calories));
           setCustomProtein(String(data.food.protein));
           setCustomCarbs(String(data.food.carbs));
           setCustomFat(String(data.food.fat));
           if (data.food.servingUnit) setCustomServing(data.food.servingUnit);
           if (data.food.category) setCustomCategory(data.food.category as FoodCategory);
-          setAiEstimateNote(`✨ Auto-filled by NutriBot AI (${data.food.servingUnit})`);
         }
-      }
+      })
+      .catch(() => {});
     } catch (e) {
       console.error(e);
     } finally {
       setIsAiEstimating(false);
     }
+  };
+
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [isPhotoScanning, setIsPhotoScanning] = useState(false);
+
+  const handlePhotoScan = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsPhotoScanning(true);
+    setAiEstimateNote(null);
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      try {
+        const res = await fetch('/api/ai/analyze-meal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: base64,
+            mimeType: file.type || 'image/jpeg'
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.plateSummary) setCustomName(data.plateSummary);
+          if (data.totalCalories) setCustomCalories(String(data.totalCalories));
+          if (data.totalProtein) setCustomProtein(String(data.totalProtein));
+          if (data.totalCarbs) setCustomCarbs(String(data.totalCarbs));
+          if (data.totalFat) setCustomFat(String(data.totalFat));
+          setCustomServing('1 meal plate');
+          if (data.cookingMethod === 'Deep Fried') setOilOption('fried');
+          else if (data.cookingMethod === 'Medium Sauté') setOilOption('medium');
+          else setOilOption('steamed');
+
+          setAiEstimateNote(`✨ Plate scanned by Gemini 3.8 Flash: ${data.dietitianVerdict || 'Nutrition calibrated'}`);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsPhotoScanning(false);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   useEffect(() => {
@@ -176,6 +329,12 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
     if (activeTab === 'library') {
       if (!selectedFood || !calculatedNutrition) return;
 
+      const quality = selectedFood.calorieQuality || determineCalorieQuality(
+        selectedFood.name,
+        selectedFood.category,
+        oilOption
+      );
+
       addMealLog({
         clientId: activeClientId,
         date: selectedDate,
@@ -188,6 +347,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         protein: calculatedNutrition.protein,
         carbs: calculatedNutrition.carbs,
         fat: calculatedNutrition.fat,
+        calorieQuality: quality
       });
     } else {
       // Custom food entry
@@ -213,7 +373,8 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
           glycemicIndex: 'medium',
           allergenInfo: 'None',
           clinicVerified: true,
-          dietaryTags: ['Custom']
+          dietaryTags: ['Custom'],
+          calorieQuality: customQuality
         });
         foodId = newFood.id;
       }
@@ -230,6 +391,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         protein: customCalculatedNutrition.protein,
         carbs: customCalculatedNutrition.carbs,
         fat: customCalculatedNutrition.fat,
+        calorieQuality: customQuality
       });
     }
 
@@ -253,13 +415,27 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
             <h2 className="text-base font-bold text-slate-900">Add Day's Calories &amp; Meals</h2>
             <p className="text-xs text-slate-500">Pick from food database or add a new food with calories</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                window.dispatchEvent(new CustomEvent('open-nutribot', { detail: { query: searchQuery || customName || '' } }));
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors cursor-pointer shadow-2xs"
+              title="Open NutriBot AI Assistant chat"
+            >
+              <Bot className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Ask NutriBot</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Selector: Library vs Custom Food */}
@@ -519,10 +695,129 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search food by name (e.g. Oats, Egg, Chicken, Apple)..."
+                      placeholder="Search any food by name (e.g. Shawarma, Boiled Egg, Oats, Apple, Salmon)..."
                       className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                     />
                   </div>
+
+                  {/* Feedback notice when logged via NutriBot Extension */}
+                  {extensionAddedNotice && (
+                    <div className="bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs px-3 py-2 rounded-xl flex items-center gap-2 font-bold animate-fadeIn">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                      <span>{extensionAddedNotice}</span>
+                    </div>
+                  )}
+
+                  {/* 🤖 NutriBot AI Live Extension Card: Appears in real-time as user types any food name! */}
+                  {searchExtensionFood && (
+                    <div className="p-3.5 bg-linear-to-br from-emerald-50 via-teal-50 to-amber-50/50 rounded-2xl border-2 border-emerald-400 shadow-sm space-y-2.5 animate-fadeIn">
+                      {/* Header */}
+                      <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
+                          <span className="text-xs font-black text-slate-900 tracking-tight">
+                            NutriBot AI Extension: Live Food Resolution
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-200 text-emerald-950 px-2 py-0.5 rounded-full">
+                          {searchExtensionFood.category}
+                        </span>
+                      </div>
+
+                      {/* Food name & serving */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="font-extrabold text-slate-900 text-sm">
+                            {searchExtensionFood.name}
+                          </h4>
+                          <p className="text-[11px] text-slate-600 font-medium">
+                            Standard serving: <strong>{searchExtensionFood.servingUnit}</strong>
+                          </p>
+                        </div>
+
+                        {/* Calories Stated First in Bold */}
+                        <div className="text-right shrink-0 bg-amber-100 border border-amber-300 px-3 py-1 rounded-xl shadow-2xs">
+                          <span className="text-[10px] font-black uppercase text-amber-800 block">
+                            Calories First Check
+                          </span>
+                          <span className="text-sm font-black text-amber-950">
+                            🔥 {Math.round((searchExtensionFood.calories + (searchExtensionOil === 'fried' ? 120 : searchExtensionOil === 'medium' ? 45 : 0)) * searchExtensionQty)} kcal
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Was it oily? 3 Cooking Options */}
+                      <div className="p-2 bg-white rounded-xl border border-emerald-200 space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-slate-700 flex items-center gap-1">
+                            <Droplets className="w-3 h-3 text-amber-600" />
+                            Was it oily? (3 Cooking Options):
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-semibold">
+                            {searchExtensionOil === 'fried' ? '+120 kcal' : searchExtensionOil === 'medium' ? '+45 kcal' : 'Base 0g fat'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          {[
+                            { id: 'steamed', label: '🟢 Steamed / No Oil', sub: '+0 kcal' },
+                            { id: 'medium', label: '🟡 Medium Sauté', sub: '+45 kcal' },
+                            { id: 'fried', label: '🔴 Deep Fried', sub: '+120 kcal' },
+                          ].map(opt => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setSearchExtensionOil(opt.id as any)}
+                              className={`py-1 px-1.5 rounded-lg text-center border transition-all cursor-pointer ${
+                                searchExtensionOil === opt.id
+                                  ? 'bg-amber-100 border-amber-400 text-amber-950 font-black shadow-2xs ring-1 ring-amber-300'
+                                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              <div className="text-[10px] font-bold leading-tight">{opt.label}</div>
+                              <div className="text-[9px] text-slate-500">{opt.sub}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Macros & Quantity */}
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        <div className="text-[10px] font-bold text-slate-600 bg-white px-2 py-1 rounded-lg border border-slate-200">
+                          P: <strong>{(searchExtensionFood.protein * searchExtensionQty).toFixed(1)}g</strong> • 
+                          C: <strong>{(searchExtensionFood.carbs * searchExtensionQty).toFixed(1)}g</strong> • 
+                          F: <strong>{((searchExtensionFood.fat + (searchExtensionOil === 'fried' ? 13 : searchExtensionOil === 'medium' ? 5 : 0)) * searchExtensionQty).toFixed(1)}g</strong>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-slate-500">Qty:</span>
+                          {[0.5, 1, 1.5, 2].map(p => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setSearchExtensionQty(p)}
+                              className={`px-1.5 py-0.5 text-[10px] font-black rounded-md transition-colors cursor-pointer ${
+                                searchExtensionQty === p
+                                  ? 'bg-emerald-700 text-white shadow-2xs'
+                                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              {p}x
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 1-Click Log with NutriBot Extension Button */}
+                      <button
+                        type="button"
+                        onClick={handleLogViaNutribotExtension}
+                        className="w-full py-2 px-3 bg-linear-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>➕ 1-Click Log with NutriBot Extension to {mealType}</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Category Pills */}
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
@@ -567,17 +862,23 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       ))
                     ) : (
                       <div className="p-6 text-center text-xs text-slate-500 space-y-2">
-                        <p>No foods found matching "{searchQuery}".</p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCustomName(searchQuery);
-                            setActiveTab('custom');
-                          }}
-                          className="text-xs text-emerald-700 font-bold underline cursor-pointer"
-                        >
-                          + Create "{searchQuery}" as a custom food
-                        </button>
+                        <p>No catalog foods matching "{searchQuery}".</p>
+                        {searchExtensionFood ? (
+                          <p className="text-emerald-700 font-bold bg-emerald-50 p-2 rounded-xl border border-emerald-200">
+                            ✨ NutriBot has resolved <strong>{searchExtensionFood.name}</strong>! Tap the green button above to log it to your {mealType} diary with 1-click.
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomName(searchQuery);
+                              setActiveTab('custom');
+                            }}
+                            className="text-xs text-emerald-700 font-bold underline cursor-pointer"
+                          >
+                            + Create "{searchQuery}" as a custom food
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -592,15 +893,34 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                   <label className="block text-xs font-semibold text-slate-700">
                     Food Name <span className="text-rose-500">*</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleAiEstimate}
-                    disabled={isAiEstimating || !customName.trim()}
-                    className="text-[11px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 border border-emerald-300 shadow-2xs"
-                  >
-                    <Sparkles className="w-3 h-3 text-amber-600" />
-                    <span>{isAiEstimating ? 'NutriBot Estimating...' : '✨ Auto-Fill with NutriBot AI'}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      ref={photoInputRef}
+                      onChange={handlePhotoScan}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={isPhotoScanning}
+                      className="text-[11px] font-bold text-teal-800 bg-teal-100 hover:bg-teal-200 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-40 border border-teal-300 shadow-2xs"
+                      title="Take or upload food photo to analyze with Gemini 3.8 Flash"
+                    >
+                      <Camera className="w-3 h-3 text-teal-700" />
+                      <span>{isPhotoScanning ? 'Scanning Plate...' : '📸 Scan Plate Photo'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAiEstimate}
+                      disabled={isAiEstimating || !customName.trim()}
+                      className="text-[11px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 border border-emerald-300 shadow-2xs"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-600" />
+                      <span>{isAiEstimating ? 'Estimating...' : '✨ Auto-Fill with AI'}</span>
+                    </button>
+                  </div>
                 </div>
                 <input
                   type="text"
@@ -745,6 +1065,51 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       <div className="text-[9px] text-slate-500">{opt.sub}</div>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* USER MANDATE: Good Calories vs Bad / Cheat Calories Classification */}
+              <div className="pt-2 border-t border-slate-200 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700">
+                    Calorie Quality:
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-semibold">
+                    Classifies toward Good vs Bad ratio
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCustomQuality('good')}
+                    className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                      customQuality === 'good'
+                        ? 'bg-emerald-50 border-emerald-400 text-emerald-950 font-black ring-1 ring-emerald-300'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="text-xs font-bold flex items-center gap-1.5">
+                      <span>🍏</span>
+                      <span>Good Calories</span>
+                    </div>
+                    <div className="text-[10px] text-emerald-700 mt-0.5">Wholesome, protein, clean food</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCustomQuality('bad')}
+                    className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                      customQuality === 'bad'
+                        ? 'bg-amber-50 border-amber-400 text-amber-950 font-black ring-1 ring-amber-300'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="text-xs font-bold flex items-center gap-1.5">
+                      <span>🍟</span>
+                      <span>Bad / Cheat Calories</span>
+                    </div>
+                    <div className="text-[10px] text-amber-700 mt-0.5">Fried, sugary, junk, cheat food</div>
+                  </button>
                 </div>
               </div>
 

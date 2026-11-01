@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Connectivity health-check path
+    match /test/{testId} {
+      allow read, write: if true;
+    }
+
+    // Clients collection
+    match /clients/{clientId} {
+      allow get: if isValidId(clientId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(clientId);
+    }
+
+    // Dietitians / Coaches collection
+    match /dietitians/{dietitianId} {
+      allow get: if isValidId(dietitianId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(dietitianId);
+    }
+
+    // Clinic food library
+    match /foods/{foodId} {
+      allow get: if isValidId(foodId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(foodId);
+    }
+
+    // Prescribed diet plans
+    match /dietPlans/{dietPlanId} {
+      allow get: if isValidId(dietPlanId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(dietPlanId);
+    }
+
+    // Meal Logs (Client phone logs & coach reviews)
+    match /mealLogs/{mealLogId} {
+      allow get: if isValidId(mealLogId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(mealLogId);
+    }
+
+    // Body Measurements (Client weigh-ins & InBody scans)
+    match /measurements/{measurementId} {
+      allow get: if isValidId(measurementId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(measurementId);
+    }
+
+    // Hydration logs
+    match /waterLogs/{waterLogId} {
+      allow get: if isValidId(waterLogId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(waterLogId);
+    }
+
+    // Physical activities
+    match /activities/{activityId} {
+      allow get: if isValidId(activityId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(activityId);
+    }
+
+    // Daily habits
+    match /habits/{habitId} {
+      allow get: if isValidId(habitId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(habitId);
+    }
+
+    // Clinic appointments
+    match /appointments/{appointmentId} {
+      allow get: if isValidId(appointmentId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(appointmentId);
+    }
+
+    // Dietitian tips and motivational announcements
+    match /tips/{tipId} {
+      allow get: if isValidId(tipId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(tipId);
+    }
+
+    // Client reminders
+    match /reminders/{reminderId} {
+      allow get: if isValidId(reminderId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(reminderId);
+    }
+
+    // Fallback deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

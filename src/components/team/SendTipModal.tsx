@@ -25,6 +25,34 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [isSent, setIsSent] = useState(false);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+
+  const handleGenerateAiTip = async () => {
+    setIsGeneratingAi(true);
+    try {
+      const selectedClient = clients.find(c => c.id === selectedClientId);
+      const res = await fetch('/api/ai/generate-tip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          clientName: targetAudience === 'specific' ? selectedClient?.name : 'Valued Member',
+          goal: selectedClient?.goal || 'Visceral Fat Loss & Overall Wellness',
+          topic: type === 'reminder' ? 'Daily hydration & meal logging' : 'Kerala healthy swaps & metabolic activation'
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.title) setTitle(data.title);
+        if (data.message) setMessage(data.message);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -176,9 +204,21 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
 
           {/* Title */}
           <div>
-            <label className="block font-semibold uppercase text-slate-600 mb-1">
-              Subject / Title *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block font-semibold uppercase text-slate-600">
+                Subject / Title *
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerateAiTip}
+                disabled={isGeneratingAi}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Use Gemini 3.8 Flash to write personalized clinical tip"
+              >
+                <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                <span>{isGeneratingAi ? 'Drafting with Gemini...' : '✨ AI Draft with Gemini'}</span>
+              </button>
+            </div>
             <input
               type="text"
               value={title}

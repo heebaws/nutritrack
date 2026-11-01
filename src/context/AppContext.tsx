@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   ClientProfile,
   DietitianProfile,
@@ -8,8 +8,12 @@ import {
   BodyMeasurement,
   DietitianTip,
   ClientReminder,
-  MealType,
-  AISuggestedMeal
+  AISuggestedMeal,
+  WaterLog,
+  ActivityLog,
+  DailyHabits,
+  ClinicAppointment,
+  ViewMode
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -19,16 +23,33 @@ import {
   INITIAL_MEAL_LOGS,
   INITIAL_MEASUREMENTS,
   INITIAL_TIPS,
-  INITIAL_REMINDERS
+  INITIAL_REMINDERS,
+  INITIAL_WATER_LOGS,
+  INITIAL_ACTIVITIES,
+  INITIAL_HABITS,
+  INITIAL_APPOINTMENTS
 } from '../data/mockData';
 import { getTodayString, clampToToday } from '../utils/dateUtils';
+import {
+  testFirestoreConnection,
+  subscribeToCollection,
+  saveDocumentToFirestore,
+  deleteDocumentFromFirestore,
+  seedInitialFirestoreData,
+  forceSeedInitialFirestoreData
+} from '../services/firebase';
 
 interface AppContextType {
   // Navigation & View Mode
-  viewMode: 'client' | 'team';
-  setViewMode: (mode: 'client' | 'team') => void;
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
   phoneFrameEnabled: boolean;
   setPhoneFrameEnabled: (enabled: boolean) => void;
+
+  // Cloud Sync Status
+  cloudSyncStatus: 'connected' | 'syncing' | 'offline';
+  lastSyncedAt: Date | null;
+  forceCloudSync: () => Promise<void>;
 
   // Active Users & Auth
   activeClient: ClientProfile | null;
@@ -39,6 +60,13 @@ interface AppContextType {
 
   activeTeamUser: DietitianProfile;
   teamSignIn: (teamMemberId: string) => void;
+  staffSignIn: (identifier: string, password?: string) => { success: boolean; message?: string };
+  staffSignOut: () => void;
+  unifiedSignIn: (
+    identifier: string, 
+    password?: string, 
+    targetRole?: 'client' | 'coach' | 'auto'
+  ) => { success: boolean; role?: 'client' | 'coach'; message?: string };
   quickSwitchTeamRole: (role: 'dietitian' | 'admin', id?: string) => void;
   updateDietitian: (profile: DietitianProfile) => void;
   addDietitian: (profile: Omit<DietitianProfile, 'id'>) => void;
@@ -57,6 +85,10 @@ interface AppContextType {
   measurements: BodyMeasurement[];
   tips: DietitianTip[];
   reminders: ClientReminder[];
+  waterLogs: WaterLog[];
+  activities: ActivityLog[];
+  habits: DailyHabits[];
+  appointments: ClinicAppointment[];
 
   // Client Operations
   addMealLog: (meal: Omit<MealLogItem, 'id' | 'timeLogged'>) => void;
@@ -67,6 +99,23 @@ interface AppContextType {
   clearSuggestedMeals: () => void;
   addMeasurement: (data: Omit<BodyMeasurement, 'id'>) => void;
   toggleReminder: (id: string) => void;
+
+  // Hydration Operations
+  addWaterLog: (amountMl: number, date?: string) => void;
+  deleteWaterLog: (id: string) => void;
+  resetWaterLogForDate: (date: string) => void;
+
+  // Physical Activity Operations
+  addActivity: (activity: Omit<ActivityLog, 'id' | 'timeLogged'>) => void;
+  deleteActivity: (id: string) => void;
+
+  // Daily Habits Operations
+  updateDailyHabits: (date: string, partial: Partial<DailyHabits>) => void;
+
+  // Clinic Appointments
+  addAppointment: (app: Omit<ClinicAppointment, 'id'>) => void;
+  updateAppointment: (app: ClinicAppointment) => void;
+  deleteAppointment: (id: string) => void;
 
   // Team Operations
   addClient: (client: Omit<ClientProfile, 'id' | 'joinedDate' | 'lastActiveDate' | 'status'>) => void;
@@ -93,8 +142,12 @@ const STORAGE_KEY_PREFIX = 'nutritrack_clinic_v1_';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // View mode
-  const [viewMode, setViewMode] = useState<'client' | 'team'>('client');
+  const [viewMode, setViewMode] = useState<ViewMode>('client');
   const [phoneFrameEnabled, setPhoneFrameEnabled] = useState<boolean>(false);
+
+  // Cloud Sync state
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'connected' | 'syncing' | 'offline'>('syncing');
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   // Selected date (defaults to genuine today)
   const [selectedDate, setSelectedDateState] = useState<string>(() => getTodayString());
@@ -116,7 +169,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [clients, setClients] = useState<ClientProfile[]>(() => {
     const stored = loadStored<ClientProfile[]>('clients', INITIAL_CLIENTS);
-    if (Array.isArray(stored) && stored.length > 0 && !stored[0].username) {
+    if (!Array.isArray(stored) || stored.length === 0 || !stored[0]?.username) {
       return INITIAL_CLIENTS;
     }
     return stored;
@@ -124,8 +177,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [dietitians, setDietitians] = useState<DietitianProfile[]>(() => {
     const stored = loadStored<DietitianProfile[]>('dietitians', INITIAL_DIETITIANS);
-    if (Array.isArray(stored)) {
-      const hasSaleem = stored.some(d => d.name.toLowerCase().includes('saleem'));
+    if (Array.isArray(stored) && stored.length > 0) {
+      const hasSaleem = stored.some(d => d?.name && d.name.toLowerCase().includes('saleem'));
       if (hasSaleem) return stored;
     }
     return INITIAL_DIETITIANS;
@@ -138,8 +191,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [measurements, setMeasurements] = useState<BodyMeasurement[]>(() => loadStored('measurements', INITIAL_MEASUREMENTS));
   const [tips, setTips] = useState<DietitianTip[]>(() => loadStored('tips', INITIAL_TIPS));
   const [reminders, setReminders] = useState<ClientReminder[]>(() => loadStored('reminders', INITIAL_REMINDERS));
+  const [waterLogs, setWaterLogs] = useState<WaterLog[]>(() => loadStored('waterLogs', INITIAL_WATER_LOGS));
+  const [activities, setActivities] = useState<ActivityLog[]>(() => loadStored('activities', INITIAL_ACTIVITIES));
+  const [habits, setHabits] = useState<DailyHabits[]>(() => loadStored('habits', INITIAL_HABITS));
+  const [appointments, setAppointments] = useState<ClinicAppointment[]>(() => loadStored('appointments', INITIAL_APPOINTMENTS));
 
-  // Current client ID (defaults to active client so no login portal screen blocks usage)
+  // Current client ID
   const [activeClientId, setActiveClientId] = useState<string>(() => {
     const stored = loadStored<string | null>('activeClientId', null);
     if (stored && INITIAL_CLIENTS.some(c => c.id === stored)) {
@@ -153,36 +210,254 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return loadStored('activeTeamUserId', 'admin-1');
   });
 
-  // 1. Initial Centralized Server Sync (Fetch database from server for cross-device shared state)
-  const isInitialSyncDone = useRef(false);
+  // 1. Initial Firestore Setup & Real-time Collection Listeners
   useEffect(() => {
-    const fetchCentralDatabase = async () => {
+    let unsubs: Array<() => void> = [];
+
+    const initializeFirestoreSync = async () => {
       try {
-        const res = await fetch('/api/sync');
-        if (res.ok) {
-          const json = await res.json();
-          if (json?.data) {
-            const d = json.data;
-            if (Array.isArray(d.clients) && d.clients.length > 0) setClients(d.clients);
-            if (Array.isArray(d.dietitians) && d.dietitians.length > 0) setDietitians(d.dietitians);
-            if (Array.isArray(d.foods)) setFoods(d.foods);
-            if (Array.isArray(d.dietPlans)) setDietPlans(d.dietPlans);
-            if (Array.isArray(d.mealLogs)) setMealLogs(d.mealLogs);
-            if (Array.isArray(d.measurements)) setMeasurements(d.measurements);
-            if (Array.isArray(d.tips)) setTips(d.tips);
-            if (Array.isArray(d.reminders)) setReminders(d.reminders);
+        setCloudSyncStatus('syncing');
+        await testFirestoreConnection();
+
+        // Seed initial collections in Firestore if they are empty
+        await Promise.all([
+          seedInitialFirestoreData('clients', INITIAL_CLIENTS),
+          seedInitialFirestoreData('dietitians', INITIAL_DIETITIANS),
+          seedInitialFirestoreData('foods', INITIAL_FOODS),
+          seedInitialFirestoreData('dietPlans', INITIAL_DIET_PLANS),
+          seedInitialFirestoreData('mealLogs', INITIAL_MEAL_LOGS),
+          seedInitialFirestoreData('measurements', INITIAL_MEASUREMENTS),
+          seedInitialFirestoreData('tips', INITIAL_TIPS),
+          seedInitialFirestoreData('reminders', INITIAL_REMINDERS),
+          seedInitialFirestoreData('waterLogs', INITIAL_WATER_LOGS),
+          seedInitialFirestoreData('activities', INITIAL_ACTIVITIES),
+          seedInitialFirestoreData('habits', INITIAL_HABITS),
+          seedInitialFirestoreData('appointments', INITIAL_APPOINTMENTS),
+        ]);
+
+        // Attach live real-time listeners with non-destructive state merging
+        // Prevents Firestore network drops from erasing data added on specific dates
+        const unsubClients = subscribeToCollection<ClientProfile>('clients', (items) => {
+          if (items && items.length > 0) {
+            setClients(prev => {
+              const map = new Map<string, ClientProfile>();
+              INITIAL_CLIENTS.forEach(c => map.set(c.id, c));
+              prev.forEach(c => {
+                if (c && c.name && c.name.trim().length > 0) {
+                  map.set(c.id, c);
+                }
+              });
+
+              items.forEach(incoming => {
+                if (!incoming || !incoming.id) return;
+                const existing = map.get(incoming.id);
+
+                // Clean up ghost clients that have no name or blank name
+                if (!incoming.name || incoming.name.trim().length === 0) {
+                  if (existing && existing.name && existing.name.trim().length > 0) {
+                    // Repair in state and Firestore
+                    const repaired: ClientProfile = {
+                      ...existing,
+                      ...incoming,
+                      name: existing.name,
+                      phone: existing.phone || incoming.phone || '555-0100',
+                      goal: existing.goal || incoming.goal || 'General Health & Nutrition',
+                      assignedDietitianId: existing.assignedDietitianId || incoming.assignedDietitianId || 'admin-1',
+                      dietPlanId: existing.dietPlanId || incoming.dietPlanId || 'dp-1'
+                    };
+                    map.set(incoming.id, repaired);
+                    saveDocumentToFirestore('clients', incoming.id, repaired).catch(() => {});
+                  } else {
+                    // Corrupted ghost doc from prior bug -> prune from Firestore
+                    deleteDocumentFromFirestore('clients', incoming.id).catch(() => {});
+                  }
+                  return;
+                }
+
+                // Valid client record with name
+                map.set(incoming.id, existing ? { ...existing, ...incoming } : incoming);
+              });
+
+              return Array.from(map.values());
+            });
+            setLastSyncedAt(new Date());
           }
-        }
-      } catch {
-        // Fallback to local storage gracefully
-      } finally {
-        isInitialSyncDone.current = true;
+        });
+
+        const unsubDietitians = subscribeToCollection<DietitianProfile>('dietitians', (items) => {
+          if (items && items.length > 0) {
+            setDietitians(prev => {
+              const map = new Map<string, DietitianProfile>();
+              INITIAL_DIETITIANS.forEach(d => map.set(d.id, d));
+              prev.forEach(d => { if (d?.id) map.set(d.id, d); });
+              items.forEach(d => { if (d?.id) map.set(d.id, { ...map.get(d.id), ...d }); });
+              return Array.from(map.values());
+            });
+          }
+        });
+
+        const unsubFoods = subscribeToCollection<FoodItem>('foods', (items) => {
+          if (items && items.length > 0) {
+            setFoods(prev => {
+              const map = new Map<string, FoodItem>();
+              INITIAL_FOODS.forEach(f => map.set(f.id, f));
+              prev.forEach(f => { if (f?.id) map.set(f.id, f); });
+              items.forEach(f => { if (f?.id) map.set(f.id, { ...map.get(f.id), ...f }); });
+              return Array.from(map.values());
+            });
+          }
+        });
+
+        const unsubDietPlans = subscribeToCollection<DietPlan>('dietPlans', (items) => {
+          if (items && items.length > 0) {
+            setDietPlans(prev => {
+              const map = new Map<string, DietPlan>();
+              INITIAL_DIET_PLANS.forEach(p => map.set(p.id, p));
+              prev.forEach(p => { if (p?.id) map.set(p.id, p); });
+              items.forEach(p => { if (p?.id) map.set(p.id, { ...map.get(p.id), ...p }); });
+              return Array.from(map.values());
+            });
+          }
+        });
+
+        const unsubMealLogs = subscribeToCollection<MealLogItem>('mealLogs', (items) => {
+          if (items && items.length > 0) {
+            setMealLogs(prev => {
+              const map = new Map<string, MealLogItem>();
+              prev.forEach(m => { if (m?.id) map.set(m.id, m); });
+              items.forEach(m => { if (m?.id) map.set(m.id, { ...map.get(m.id), ...m }); });
+              return Array.from(map.values()).sort((a, b) => b.id.localeCompare(a.id));
+            });
+            setLastSyncedAt(new Date());
+          }
+        });
+
+        const unsubMeasurements = subscribeToCollection<BodyMeasurement>('measurements', (items) => {
+          if (items && items.length > 0) {
+            setMeasurements(prev => {
+              const map = new Map<string, BodyMeasurement>();
+              prev.forEach(m => { if (m?.id) map.set(m.id, m); });
+              items.forEach(m => { if (m?.id) map.set(m.id, { ...map.get(m.id), ...m }); });
+              return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+            });
+            setLastSyncedAt(new Date());
+          }
+        });
+
+        const unsubWater = subscribeToCollection<WaterLog>('waterLogs', (items) => {
+          if (items && items.length > 0) {
+            setWaterLogs(prev => {
+              const map = new Map<string, WaterLog>();
+              prev.forEach(w => { if (w?.id) map.set(w.id, w); });
+              items.forEach(w => { if (w?.id) map.set(w.id, { ...map.get(w.id), ...w }); });
+              return Array.from(map.values());
+            });
+            setLastSyncedAt(new Date());
+          }
+        });
+
+        const unsubActivities = subscribeToCollection<ActivityLog>('activities', (items) => {
+          if (items && items.length > 0) {
+            setActivities(prev => {
+              const map = new Map<string, ActivityLog>();
+              prev.forEach(a => { if (a?.id) map.set(a.id, a); });
+              items.forEach(a => { if (a?.id) map.set(a.id, { ...map.get(a.id), ...a }); });
+              return Array.from(map.values());
+            });
+            setLastSyncedAt(new Date());
+          }
+        });
+
+        const unsubHabits = subscribeToCollection<DailyHabits>('habits', (items) => {
+          if (items && items.length > 0) {
+            setHabits(prev => {
+              const map = new Map<string, DailyHabits>();
+              prev.forEach(h => { if (h?.id) map.set(h.id, h); });
+              items.forEach(h => { if (h?.id) map.set(h.id, { ...map.get(h.id), ...h }); });
+              return Array.from(map.values());
+            });
+            setLastSyncedAt(new Date());
+          }
+        });
+
+        const unsubAppointments = subscribeToCollection<ClinicAppointment>('appointments', (items) => {
+          if (items && items.length > 0) {
+            setAppointments(prev => {
+              const map = new Map<string, ClinicAppointment>();
+              prev.forEach(a => { if (a?.id) map.set(a.id, a); });
+              items.forEach(a => { if (a?.id) map.set(a.id, { ...map.get(a.id), ...a }); });
+              return Array.from(map.values());
+            });
+            setLastSyncedAt(new Date());
+          }
+        });
+
+        const unsubTips = subscribeToCollection<DietitianTip>('tips', (items) => {
+          if (items && items.length > 0) {
+            setTips(prev => {
+              const map = new Map<string, DietitianTip>();
+              prev.forEach(t => { if (t?.id) map.set(t.id, t); });
+              items.forEach(t => { if (t?.id) map.set(t.id, { ...map.get(t.id), ...t }); });
+              return Array.from(map.values());
+            });
+            setLastSyncedAt(new Date());
+          }
+        });
+
+        const unsubReminders = subscribeToCollection<ClientReminder>('reminders', (items) => {
+          if (items && items.length > 0) {
+            setReminders(prev => {
+              const map = new Map<string, ClientReminder>();
+              prev.forEach(r => { if (r?.id) map.set(r.id, r); });
+              items.forEach(r => { if (r?.id) map.set(r.id, { ...map.get(r.id), ...r }); });
+              return Array.from(map.values());
+            });
+          }
+        });
+
+        unsubs = [
+          unsubClients,
+          unsubDietitians,
+          unsubFoods,
+          unsubDietPlans,
+          unsubMealLogs,
+          unsubMeasurements,
+          unsubWater,
+          unsubActivities,
+          unsubHabits,
+          unsubAppointments,
+          unsubTips,
+          unsubReminders,
+        ];
+
+        setCloudSyncStatus('connected');
+        setLastSyncedAt(new Date());
+      } catch (err) {
+        console.warn('Real-time Firestore sync encountered an issue, running with local and API fallback:', err);
+        setCloudSyncStatus('offline');
       }
     };
-    fetchCentralDatabase();
+
+    initializeFirestoreSync();
+
+    return () => {
+      unsubs.forEach(unsub => unsub());
+    };
   }, []);
 
-  // 2. Save changes to localStorage AND centralized server sync
+  // Manual trigger to force cloud sync
+  const forceCloudSync = useCallback(async () => {
+    setCloudSyncStatus('syncing');
+    try {
+      await testFirestoreConnection();
+      setCloudSyncStatus('connected');
+      setLastSyncedAt(new Date());
+    } catch {
+      setCloudSyncStatus('offline');
+    }
+  }, []);
+
+  // 2. Save changes to localStorage AND centralized server fallback
   const syncTimeoutRef = useRef<any>(null);
   useEffect(() => {
     try {
@@ -195,47 +470,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(STORAGE_KEY_PREFIX + 'measurements', JSON.stringify(measurements));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'tips', JSON.stringify(tips));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'reminders', JSON.stringify(reminders));
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'waterLogs', JSON.stringify(waterLogs));
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'activities', JSON.stringify(activities));
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'habits', JSON.stringify(habits));
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'appointments', JSON.stringify(appointments));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'activeClientId', JSON.stringify(activeClientId));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'activeTeamUserId', JSON.stringify(activeTeamUserId));
     } catch {
-      // ignore storage errors
+      // ignore local storage errors
     }
 
-    // Debounced centralized sync to /api/sync so changes persist server-side
-    if (isInitialSyncDone.current) {
-      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-      syncTimeoutRef.current = setTimeout(() => {
-        fetch('/api/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            data: {
-              clients,
-              dietitians,
-              foods,
-              dietPlans,
-              mealLogs,
-              suggestedMeals,
-              measurements,
-              tips,
-              reminders
-            },
-            timestamp: Date.now()
-          })
-        }).catch(() => {
-          // network sync silently retries on next edit
-        });
-      }, 600);
-    }
-  }, [clients, dietitians, foods, dietPlans, mealLogs, suggestedMeals, measurements, tips, reminders, activeClientId, activeTeamUserId]);
+    // Debounced centralized sync to /api/sync for server file cache
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    syncTimeoutRef.current = setTimeout(() => {
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            clients,
+            dietitians,
+            foods,
+            dietPlans,
+            mealLogs,
+            suggestedMeals,
+            measurements,
+            tips,
+            reminders,
+            waterLogs,
+            activities,
+            habits,
+            appointments
+          },
+          timestamp: Date.now()
+        })
+      }).catch(() => {});
+    }, 1000);
+  }, [clients, dietitians, foods, dietPlans, mealLogs, suggestedMeals, measurements, tips, reminders, waterLogs, activities, habits, appointments, activeClientId, activeTeamUserId]);
 
-  // Derived current client (always valid client)
-  const activeClient = clients.find(c => c.id === activeClientId) || clients[0];
+  // Derived current client (guaranteed fallback to INITIAL_CLIENTS[0])
+  const activeClient = (clients && clients.find(c => c.id === activeClientId)) || (clients && clients[0]) || INITIAL_CLIENTS[0] || null;
 
-  // Derived current team member
-  const activeTeamUser = dietitians.find(d => d.id === activeTeamUserId) || dietitians[0];
+  // Derived current team member (guaranteed fallback to INITIAL_DIETITIANS[0])
+  const activeTeamUser = (dietitians && dietitians.find(d => d.id === activeTeamUserId)) || (dietitians && dietitians[0]) || INITIAL_DIETITIANS[0];
 
-  // Client Sign in with username/phone/email and password
+  // Client Sign in
   const clientSignIn = (identifier: string, password?: string): { success: boolean; message?: string } => {
     const trimmed = identifier.trim().toLowerCase();
     const cleanedDigits = identifier.replace(/\D/g, '');
@@ -266,7 +545,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const clientSignOut = () => {
-    setActiveClientId(null);
+    setActiveClientId('');
+    setViewMode('login');
   };
 
   const quickSwitchClient = (clientId: string) => {
@@ -280,6 +560,112 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const staffSignIn = (identifier: string, password?: string): { success: boolean; message?: string } => {
+    const trimmed = identifier.trim().toLowerCase();
+    const cleanedDigits = identifier.replace(/\D/g, '');
+
+    const found = dietitians.find(d => {
+      const matchUsername = d.username && d.username.toLowerCase() === trimmed;
+      const matchEmail = d.email && d.email.toLowerCase() === trimmed;
+      const matchPhone = cleanedDigits.length >= 4 && (
+        d.phone.replace(/\D/g, '').endsWith(cleanedDigits) || 
+        cleanedDigits.endsWith(d.phone.replace(/\D/g, ''))
+      );
+      return matchUsername || matchEmail || matchPhone;
+    });
+
+    if (!found) {
+      return { success: false, message: 'No coach or clinic staff account found with this username or phone number.' };
+    }
+
+    if (password !== undefined && password !== '') {
+      const expectedPassword = found.password || 'password123';
+      if (password !== expectedPassword) {
+        return { success: false, message: 'Incorrect password. Please verify your coach credentials.' };
+      }
+    }
+
+    setActiveTeamUserId(found.id);
+    return { success: true };
+  };
+
+  const staffSignOut = () => {
+    setViewMode('login');
+  };
+
+  const unifiedSignIn = (
+    identifier: string, 
+    password?: string, 
+    targetRole?: 'client' | 'coach' | 'auto'
+  ): { success: boolean; role?: 'client' | 'coach'; message?: string } => {
+    const trimmed = identifier.trim().toLowerCase();
+    const cleanedDigits = identifier.replace(/\D/g, '');
+
+    // 1. Explicit Coach / Staff Login
+    if (targetRole === 'coach') {
+      const staffRes = staffSignIn(identifier, password);
+      if (staffRes.success) {
+        setViewMode('team');
+        return { success: true, role: 'coach' };
+      }
+      return { success: false, message: staffRes.message };
+    }
+
+    // 2. Explicit Client Login
+    if (targetRole === 'client') {
+      const clientRes = clientSignIn(identifier, password);
+      if (clientRes.success) {
+        setViewMode('client');
+        return { success: true, role: 'client' };
+      }
+      return { success: false, message: clientRes.message };
+    }
+
+    // 3. Auto Mode: detect if client or coach
+    const clientMatch = clients.find(c => {
+      const matchUsername = c.username && c.username.toLowerCase() === trimmed;
+      const matchEmail = c.email && c.email.toLowerCase() === trimmed;
+      const matchPhone = cleanedDigits.length >= 4 && (
+        c.phone.replace(/\D/g, '').endsWith(cleanedDigits) || 
+        cleanedDigits.endsWith(c.phone.replace(/\D/g, ''))
+      );
+      return matchUsername || matchEmail || matchPhone;
+    });
+
+    if (clientMatch) {
+      const clientRes = clientSignIn(identifier, password);
+      if (clientRes.success) {
+        setViewMode('client');
+        return { success: true, role: 'client' };
+      }
+      return { success: false, message: clientRes.message };
+    }
+
+    const staffMatch = dietitians.find(d => {
+      const matchUsername = d.username && d.username.toLowerCase() === trimmed;
+      const matchEmail = d.email && d.email.toLowerCase() === trimmed;
+      const matchPhone = cleanedDigits.length >= 4 && (
+        d.phone.replace(/\D/g, '').endsWith(cleanedDigits) || 
+        cleanedDigits.endsWith(d.phone.replace(/\D/g, ''))
+      );
+      return matchUsername || matchEmail || matchPhone;
+    });
+
+    if (staffMatch) {
+      const staffRes = staffSignIn(identifier, password);
+      if (staffRes.success) {
+        setViewMode('team');
+        return { success: true, role: 'coach' };
+      }
+      return { success: false, message: staffRes.message };
+    }
+
+    return {
+      success: false,
+      message: 'No client or coach profile found matching this username or phone. Please verify your details or use the quick test logins below.'
+    };
+  };
+
   const quickSwitchTeamRole = (role: 'dietitian' | 'admin', id?: string) => {
     if (id) {
       setActiveTeamUserId(id);
@@ -291,7 +677,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Add meal log
+  // Add meal log (real-time synced to Firestore so coach sees it immediately)
   const addMealLog = (meal: Omit<MealLogItem, 'id' | 'timeLogged'>) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -300,16 +686,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `ml-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
       timeLogged: timeStr,
     };
+
     setMealLogs(prev => [newLog, ...prev]);
+
+    // Save to Firestore
+    saveDocumentToFirestore('mealLogs', newLog.id, newLog).catch(() => {});
 
     // Update client's last active date
     if (meal.clientId) {
-      setClients(prev => prev.map(c => c.id === meal.clientId ? { ...c, lastActiveDate: meal.date, status: 'active' } : c));
+      setClients(prev => {
+        const target = prev.find(c => c.id === meal.clientId);
+        if (target) {
+          const updated = { ...target, lastActiveDate: meal.date, status: 'active' as const };
+          saveDocumentToFirestore('clients', meal.clientId, updated).catch(() => {});
+          return prev.map(c => c.id === meal.clientId ? updated : c);
+        }
+        return prev;
+      });
     }
   };
 
   const deleteMealLog = (id: string) => {
     setMealLogs(prev => prev.filter(m => m.id !== id));
+    deleteDocumentFromFirestore('mealLogs', id).catch(() => {});
   };
 
   // AI Suggested Meals from Chatbot
@@ -345,13 +744,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         timeLogged: timeStr,
       };
       setMealLogs(prev => [newLog, ...prev]);
+      saveDocumentToFirestore('mealLogs', newLog.id, newLog).catch(() => {});
     });
 
-    // Mark suggestion as accepted
     setSuggestedMeals(prev => prev.map(s => s.id === suggestionId ? { ...s, status: 'accepted' } : s));
 
     if (suggestion.clientId) {
-      setClients(prev => prev.map(c => c.id === suggestion.clientId ? { ...c, lastActiveDate: suggestion.date, status: 'active' } : c));
+      setClients(prev => {
+        const target = prev.find(c => c.id === suggestion.clientId);
+        if (target) {
+          const updated = { ...target, lastActiveDate: suggestion.date, status: 'active' as const };
+          saveDocumentToFirestore('clients', suggestion.clientId, updated).catch(() => {});
+          return prev.map(c => c.id === suggestion.clientId ? updated : c);
+        }
+        return prev;
+      });
     }
   };
 
@@ -363,35 +770,151 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSuggestedMeals([]);
   };
 
-  // Add client self measurement
+  // Add client self measurement (real-time sync to Firestore so coach sees weight and InBody updates)
   const addMeasurement = (data: Omit<BodyMeasurement, 'id'>) => {
     const newMeasurement: BodyMeasurement = {
       ...data,
       id: `m-${Date.now()}`,
     };
     setMeasurements(prev => [newMeasurement, ...prev]);
+    saveDocumentToFirestore('measurements', newMeasurement.id, newMeasurement).catch(() => {});
 
-    // Update client current weight
+    // Update client current weight in Firestore
     if (data.weightKg) {
-      setClients(prev => prev.map(c => c.id === data.clientId ? { 
-        ...c, 
-        currentWeightKg: data.weightKg, 
-        lastActiveDate: data.date, 
-        status: 'active' 
-      } : c));
+      setClients(prev => {
+        const target = prev.find(c => c.id === data.clientId);
+        if (target) {
+          const updated = { 
+            ...target, 
+            currentWeightKg: data.weightKg, 
+            lastActiveDate: data.date, 
+            status: 'active' as const 
+          };
+          saveDocumentToFirestore('clients', data.clientId, updated).catch(() => {});
+          return prev.map(c => c.id === data.clientId ? updated : c);
+        }
+        return prev;
+      });
     }
   };
 
   const toggleReminder = (id: string) => {
-    setReminders(prev => prev.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
+    setReminders(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r);
+      const target = updated.find(r => r.id === id);
+      if (target) {
+        saveDocumentToFirestore('reminders', target.id, target).catch(() => {});
+      }
+      return updated;
+    });
+  };
+
+  // Water Operations (real-time sync to Firestore)
+  const addWaterLog = (amountMl: number, date?: string) => {
+    const targetDate = date || selectedDate;
+    const now = new Date();
+    const timeLogged = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newEntry: WaterLog = {
+      id: `w-${Date.now()}`,
+      clientId: activeClientId || 'cl-1',
+      date: targetDate,
+      amountMl,
+      timeLogged
+    };
+    setWaterLogs(prev => [newEntry, ...prev]);
+    saveDocumentToFirestore('waterLogs', newEntry.id, newEntry).catch(() => {});
+  };
+
+  const deleteWaterLog = (id: string) => {
+    setWaterLogs(prev => prev.filter(w => w.id !== id));
+    deleteDocumentFromFirestore('waterLogs', id).catch(() => {});
+  };
+
+  const resetWaterLogForDate = (date: string) => {
+    const itemsToDelete = waterLogs.filter(w => w.clientId === activeClientId && w.date === date);
+    itemsToDelete.forEach(item => {
+      deleteDocumentFromFirestore('waterLogs', item.id).catch(() => {});
+    });
+    setWaterLogs(prev => prev.filter(w => !(w.clientId === activeClientId && w.date === date)));
+  };
+
+  // Physical Activity Operations (real-time sync to Firestore)
+  const addActivity = (activity: Omit<ActivityLog, 'id' | 'timeLogged'>) => {
+    const now = new Date();
+    const timeLogged = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newEntry: ActivityLog = {
+      ...activity,
+      id: `act-${Date.now()}`,
+      timeLogged
+    };
+    setActivities(prev => [newEntry, ...prev]);
+    saveDocumentToFirestore('activities', newEntry.id, newEntry).catch(() => {});
+  };
+
+  const deleteActivity = (id: string) => {
+    setActivities(prev => prev.filter(a => a.id !== id));
+    deleteDocumentFromFirestore('activities', id).catch(() => {});
+  };
+
+  // Daily Habits Operations (real-time sync to Firestore)
+  const updateDailyHabits = (date: string, partial: Partial<DailyHabits>) => {
+    setHabits(prev => {
+      const existing = prev.find(h => h.clientId === activeClientId && h.date === date);
+      let updatedHabit: DailyHabits;
+      let newHabitsList: DailyHabits[];
+
+      if (existing) {
+        updatedHabit = { ...existing, ...partial };
+        newHabitsList = prev.map(h => (h.id === existing.id ? updatedHabit : h));
+      } else {
+        updatedHabit = {
+          id: `hab-${Date.now()}`,
+          clientId: activeClientId || 'cl-1',
+          date,
+          steps: 0,
+          targetSteps: 8000,
+          sleepHours: 7,
+          supplementsTaken: false,
+          saladEaten: false,
+          stretchingDone: false,
+          ...partial
+        };
+        newHabitsList = [updatedHabit, ...prev];
+      }
+
+      saveDocumentToFirestore('habits', updatedHabit.id, updatedHabit).catch(() => {});
+      return newHabitsList;
+    });
+  };
+
+  // Appointments Operations (real-time sync to Firestore)
+  const addAppointment = (app: Omit<ClinicAppointment, 'id'>) => {
+    const newApp: ClinicAppointment = {
+      ...app,
+      id: `app-${Date.now()}`
+    };
+    setAppointments(prev => [newApp, ...prev]);
+    saveDocumentToFirestore('appointments', newApp.id, newApp).catch(() => {});
+  };
+
+  const updateAppointment = (app: ClinicAppointment) => {
+    setAppointments(prev => prev.map(a => a.id === app.id ? app : a));
+    saveDocumentToFirestore('appointments', app.id, app).catch(() => {});
+  };
+
+  const deleteAppointment = (id: string) => {
+    setAppointments(prev => prev.filter(a => a.id !== id));
+    deleteDocumentFromFirestore('appointments', id).catch(() => {});
   };
 
   const deleteClient = (clientId: string) => {
     setClients(prev => prev.filter(c => c.id !== clientId));
+    deleteDocumentFromFirestore('clients', clientId).catch(() => {});
   };
 
   const updateDietitian = (profile: DietitianProfile) => {
     setDietitians(prev => prev.map(d => d.id === profile.id ? profile : d));
+    saveDocumentToFirestore('dietitians', profile.id, profile).catch(() => {});
   };
 
   const addDietitian = (profileData: Omit<DietitianProfile, 'id'>) => {
@@ -400,31 +923,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `coach-${Date.now()}`
     };
     setDietitians(prev => [...prev, newDietitian]);
+    saveDocumentToFirestore('dietitians', newDietitian.id, newDietitian).catch(() => {});
   };
 
   // Team: Add Client
   const addClient = (clientData: Omit<ClientProfile, 'id' | 'joinedDate' | 'lastActiveDate' | 'status'>) => {
     const today = getTodayString();
+    const cleanName = (clientData.name || '').trim();
+    const finalName = cleanName.length > 0 ? cleanName : 'New Registered Client';
+    const finalPhone = (clientData.phone || '').trim() || '5550199';
+    const finalGoal = (clientData.goal || '').trim() || 'Metabolic Health & Nutrition';
+    const finalDietitianId = clientData.assignedDietitianId || dietitians[0]?.id || 'admin-1';
+    const finalDietPlanId = clientData.dietPlanId || dietPlans[0]?.id || 'dp-1';
+    const finalUsername = (clientData.username || '').trim() || finalName.toLowerCase().replace(/[^a-z0-9]/g, '') || `client${Date.now().toString().slice(-4)}`;
+    const finalPassword = (clientData.password || '').trim() || 'password123';
+
     const newClient: ClientProfile = {
       ...clientData,
+      name: finalName,
+      username: finalUsername,
+      password: finalPassword,
+      phone: finalPhone,
+      goal: finalGoal,
+      assignedDietitianId: finalDietitianId,
+      dietPlanId: finalDietPlanId,
       id: `cl-${Date.now()}`,
       joinedDate: today,
       lastActiveDate: today,
-      status: 'active'
+      status: 'active',
+      avatarUrl: clientData.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150',
     };
     setClients(prev => [newClient, ...prev]);
+    saveDocumentToFirestore('clients', newClient.id, newClient).catch(() => {});
   };
 
   const updateClient = (updated: ClientProfile) => {
     setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+    saveDocumentToFirestore('clients', updated.id, updated).catch(() => {});
   };
 
   const assignDietitian = (clientId: string, dietitianId: string) => {
-    setClients(prev => prev.map(c => c.id === clientId ? { ...c, assignedDietitianId: dietitianId } : c));
+    setClients(prev => {
+      const target = prev.find(c => c.id === clientId);
+      if (target) {
+        const updated = { ...target, assignedDietitianId: dietitianId };
+        saveDocumentToFirestore('clients', clientId, updated).catch(() => {});
+        return prev.map(c => c.id === clientId ? updated : c);
+      }
+      return prev;
+    });
   };
 
   const assignDietPlan = (clientId: string, dietPlanId: string) => {
-    setClients(prev => prev.map(c => c.id === clientId ? { ...c, dietPlanId } : c));
+    setClients(prev => {
+      const target = prev.find(c => c.id === clientId);
+      if (target) {
+        const updated = { ...target, dietPlanId };
+        saveDocumentToFirestore('clients', clientId, updated).catch(() => {});
+        return prev.map(c => c.id === clientId ? updated : c);
+      }
+      return prev;
+    });
   };
 
   // Team: Food items
@@ -435,15 +994,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isCustom: true
     };
     setFoods(prev => [newFood, ...prev]);
+    saveDocumentToFirestore('foods', newFood.id, newFood).catch(() => {});
     return newFood;
   };
 
   const updateFoodItem = (food: FoodItem) => {
     setFoods(prev => prev.map(f => f.id === food.id ? food : f));
+    saveDocumentToFirestore('foods', food.id, food).catch(() => {});
   };
 
   const deleteFoodItem = (id: string) => {
     setFoods(prev => prev.filter(f => f.id !== id));
+    deleteDocumentFromFirestore('foods', id).catch(() => {});
   };
 
   // Team: Diet plans
@@ -456,11 +1018,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: today
     };
     setDietPlans(prev => [newPlan, ...prev]);
+    saveDocumentToFirestore('dietPlans', newPlan.id, newPlan).catch(() => {});
   };
 
   const updateDietPlan = (plan: DietPlan) => {
     const today = getTodayString();
-    setDietPlans(prev => prev.map(p => p.id === plan.id ? { ...plan, updatedAt: today } : p));
+    const updated = { ...plan, updatedAt: today };
+    setDietPlans(prev => prev.map(p => p.id === plan.id ? updated : p));
+    saveDocumentToFirestore('dietPlans', updated.id, updated).catch(() => {});
   };
 
   // Team: Centre device reading entry
@@ -471,14 +1036,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       source: 'centre_device',
     };
     setMeasurements(prev => [newRecord, ...prev]);
+    saveDocumentToFirestore('measurements', newRecord.id, newRecord).catch(() => {});
 
-    // Update client current weight
+    // Update client current weight with full profile preservation
     if (data.weightKg) {
-      setClients(prev => prev.map(c => c.id === data.clientId ? { 
-        ...c, 
-        currentWeightKg: data.weightKg, 
-        lastActiveDate: data.date 
-      } : c));
+      setClients(prev => {
+        const target = prev.find(c => c.id === data.clientId);
+        if (target) {
+          const updated = { 
+            ...target, 
+            currentWeightKg: data.weightKg, 
+            lastActiveDate: data.date,
+            status: 'active' as const 
+          };
+          saveDocumentToFirestore('clients', data.clientId, updated).catch(() => {});
+          return prev.map(c => c.id === data.clientId ? updated : c);
+        }
+        return prev;
+      });
     }
   };
 
@@ -492,6 +1067,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: timeStr,
     };
     setTips(prev => [newTip, ...prev]);
+    saveDocumentToFirestore('tips', newTip.id, newTip).catch(() => {});
   };
 
   const sendFollowupReminderToInactive = (clientId: string) => {
@@ -508,19 +1084,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const resetAllData = () => {
-    localStorage.clear();
-    fetch('/api/sync/reset', { method: 'POST' }).catch(() => {});
-    setClients(INITIAL_CLIENTS);
-    setDietitians(INITIAL_DIETITIANS);
-    setFoods(INITIAL_FOODS);
-    setDietPlans(INITIAL_DIET_PLANS);
-    setMealLogs(INITIAL_MEAL_LOGS);
-    setMeasurements(INITIAL_MEASUREMENTS);
-    setTips(INITIAL_TIPS);
-    setReminders(INITIAL_REMINDERS);
-    setActiveClientId('cl-1');
-    setActiveTeamUserId('admin-1');
+  const resetAllData = async () => {
+    try {
+      localStorage.clear();
+      fetch('/api/sync/reset', { method: 'POST' }).catch(() => {});
+
+      // Reset in-memory React states immediately
+      setClients(INITIAL_CLIENTS);
+      setDietitians(INITIAL_DIETITIANS);
+      setFoods(INITIAL_FOODS);
+      setDietPlans(INITIAL_DIET_PLANS);
+      setMealLogs(INITIAL_MEAL_LOGS);
+      setMeasurements(INITIAL_MEASUREMENTS);
+      setTips(INITIAL_TIPS);
+      setReminders(INITIAL_REMINDERS);
+      setWaterLogs(INITIAL_WATER_LOGS);
+      setActivities(INITIAL_ACTIVITIES);
+      setHabits(INITIAL_HABITS);
+      setAppointments(INITIAL_APPOINTMENTS);
+      setActiveClientId('cl-1');
+      setActiveTeamUserId('admin-1');
+
+      // Re-populate Firestore cloud database with complete default clinic records
+      setCloudSyncStatus('syncing');
+      await Promise.allSettled([
+        forceSeedInitialFirestoreData('clients', INITIAL_CLIENTS),
+        forceSeedInitialFirestoreData('dietitians', INITIAL_DIETITIANS),
+        forceSeedInitialFirestoreData('foods', INITIAL_FOODS),
+        forceSeedInitialFirestoreData('dietPlans', INITIAL_DIET_PLANS),
+        forceSeedInitialFirestoreData('mealLogs', INITIAL_MEAL_LOGS),
+        forceSeedInitialFirestoreData('measurements', INITIAL_MEASUREMENTS),
+        forceSeedInitialFirestoreData('tips', INITIAL_TIPS),
+        forceSeedInitialFirestoreData('reminders', INITIAL_REMINDERS),
+        forceSeedInitialFirestoreData('waterLogs', INITIAL_WATER_LOGS),
+        forceSeedInitialFirestoreData('activities', INITIAL_ACTIVITIES),
+        forceSeedInitialFirestoreData('habits', INITIAL_HABITS),
+        forceSeedInitialFirestoreData('appointments', INITIAL_APPOINTMENTS),
+      ]);
+      setCloudSyncStatus('connected');
+      setLastSyncedAt(new Date());
+    } catch (err) {
+      console.warn('Reset encountered error:', err);
+    }
   };
 
   return (
@@ -530,6 +1135,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setViewMode,
         phoneFrameEnabled,
         setPhoneFrameEnabled,
+        cloudSyncStatus,
+        lastSyncedAt,
+        forceCloudSync,
         activeClient,
         activeClientId,
         clientSignIn,
@@ -537,6 +1145,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         quickSwitchClient,
         activeTeamUser,
         teamSignIn,
+        staffSignIn,
+        staffSignOut,
+        unifiedSignIn,
         quickSwitchTeamRole,
         updateDietitian,
         addDietitian,
@@ -551,6 +1162,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         measurements,
         tips,
         reminders,
+        waterLogs,
+        activities,
+        habits,
+        appointments,
         addMealLog,
         deleteMealLog,
         addSuggestedMeal,
@@ -559,6 +1174,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearSuggestedMeals,
         addMeasurement,
         toggleReminder,
+        addWaterLog,
+        deleteWaterLog,
+        resetWaterLogForDate,
+        addActivity,
+        deleteActivity,
+        updateDailyHabits,
+        addAppointment,
+        updateAppointment,
+        deleteAppointment,
         addClient,
         updateClient,
         deleteClient,

@@ -1,0 +1,269 @@
+{
+  "entities": {
+    "ClientProfile": {
+      "title": "ClientProfile",
+      "description": "Patient or client enrolled in the nutrition clinic",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "age": { "type": "number" },
+        "gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "phone": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "maxLength": 100 },
+        "username": { "type": "string", "maxLength": 50 },
+        "password": { "type": "string", "maxLength": 100 },
+        "heightCm": { "type": "number" },
+        "startWeightKg": { "type": "number" },
+        "currentWeightKg": { "type": "number" },
+        "targetWeightKg": { "type": "number" },
+        "dailyCalorieTarget": { "type": "number" },
+        "healthConditions": { "type": "array" },
+        "goal": { "type": "string", "maxLength": 200 },
+        "assignedDietitianId": { "type": "string", "maxLength": 128 },
+        "dietPlanId": { "type": "string", "maxLength": 128 },
+        "joinedDate": { "type": "string", "maxLength": 30 },
+        "lastActiveDate": { "type": "string", "maxLength": 30 },
+        "status": { "type": "string", "enum": ["active", "inactive", "paused"] },
+        "notes": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "name", "phone", "currentWeightKg", "targetWeightKg"]
+    },
+    "DietitianProfile": {
+      "title": "DietitianProfile",
+      "description": "Dietitian or coach profile at the clinic",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "title": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["dietitian", "admin"] },
+        "specialization": { "type": "string", "maxLength": 200 },
+        "assignedClientIds": { "type": "array" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "FoodItem": {
+      "title": "FoodItem",
+      "description": "Food nutritional reference item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 100 },
+        "servingUnit": { "type": "string", "maxLength": 50 },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fat": { "type": "number" },
+        "isCustom": { "type": "boolean" }
+      },
+      "required": ["id", "name", "calories", "protein", "carbs", "fat"]
+    },
+    "DietPlan": {
+      "title": "DietPlan",
+      "description": "Prescribed diet plan for a client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 100 },
+        "targetCalories": { "type": "number" },
+        "proteinGrams": { "type": "number" },
+        "carbsGrams": { "type": "number" },
+        "fatsGrams": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 30 },
+        "updatedAt": { "type": "string", "maxLength": 30 }
+      },
+      "required": ["id", "title", "targetCalories", "proteinGrams", "carbsGrams", "fatsGrams"]
+    },
+    "MealLogItem": {
+      "title": "MealLogItem",
+      "description": "Meal logged by client on mobile phone or web",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "mealType": { "type": "string", "maxLength": 30 },
+        "foodId": { "type": "string", "maxLength": 128 },
+        "foodName": { "type": "string", "maxLength": 150 },
+        "quantity": { "type": "number" },
+        "servingUnit": { "type": "string", "maxLength": 50 },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fat": { "type": "number" },
+        "timeLogged": { "type": "string", "maxLength": 20 },
+        "notes": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "clientId", "date", "mealType", "foodName", "calories", "timeLogged"]
+    },
+    "BodyMeasurement": {
+      "title": "BodyMeasurement",
+      "description": "Body weight and InBody clinic body composition metrics",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "weightKg": { "type": "number" },
+        "visceralFatLevel": { "type": "number" },
+        "bodyFatPercent": { "type": "number" },
+        "muscleMassKg": { "type": "number" },
+        "bmi": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "source": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "clientId", "date", "weightKg"]
+    },
+    "WaterLog": {
+      "title": "WaterLog",
+      "description": "Client hydration log entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "amountMl": { "type": "number" },
+        "timeLogged": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["id", "clientId", "date", "amountMl"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Physical exercise logged by client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "name": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 50 },
+        "durationMinutes": { "type": "number" },
+        "caloriesBurned": { "type": "number" },
+        "intensity": { "type": "string", "enum": ["light", "moderate", "vigorous"] },
+        "timeLogged": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["id", "clientId", "date", "name", "durationMinutes", "caloriesBurned"]
+    },
+    "DailyHabits": {
+      "title": "DailyHabits",
+      "description": "Daily lifestyle habits including steps, sleep, and supplements",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "steps": { "type": "number" },
+        "targetSteps": { "type": "number" },
+        "sleepHours": { "type": "number" },
+        "supplementsTaken": { "type": "boolean" },
+        "saladEaten": { "type": "boolean" },
+        "stretchingDone": { "type": "boolean" },
+        "postMealWalkMinutes": { "type": "number" }
+      },
+      "required": ["id", "clientId", "date"]
+    },
+    "ClinicAppointment": {
+      "title": "ClinicAppointment",
+      "description": "Scheduled clinic consultation or InBody scan appointment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "dietitianId": { "type": "string", "maxLength": 128 },
+        "dietitianName": { "type": "string", "maxLength": 100 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "type": { "type": "string", "enum": ["consultation", "inbody_scan", "diet_review", "followup"] },
+        "status": { "type": "string", "enum": ["scheduled", "completed", "cancelled", "no_show"] },
+        "notes": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "clientId", "clientName", "date", "time", "type", "status"]
+    },
+    "DietitianTip": {
+      "title": "DietitianTip",
+      "description": "Coach recommendation or tip sent to client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "dietitianId": { "type": "string", "maxLength": 128 },
+        "dietitianName": { "type": "string", "maxLength": 100 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "targetAudience": { "type": "string", "enum": ["all", "specific"] },
+        "type": { "type": "string", "enum": ["tip", "motivation", "warning", "reminder"] },
+        "title": { "type": "string", "maxLength": 150 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["id", "dietitianId", "title", "message"]
+    },
+    "ClientReminder": {
+      "title": "ClientReminder",
+      "description": "Daily notification reminder for the client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "time": { "type": "string", "maxLength": 20 },
+        "text": { "type": "string", "maxLength": 200 },
+        "enabled": { "type": "boolean" },
+        "type": { "type": "string", "enum": ["meal", "water", "weigh_in", "steps", "supplement"] }
+      },
+      "required": ["id", "time", "text", "enabled", "type"]
+    }
+  },
+  "firestore": {
+    "/clients/{clientId}": {
+      "schema": "ClientProfile",
+      "description": "Stores client health profiles and goals"
+    },
+    "/dietitians/{dietitianId}": {
+      "schema": "DietitianProfile",
+      "description": "Stores coach and clinical dietitian profiles"
+    },
+    "/foods/{foodId}": {
+      "schema": "FoodItem",
+      "description": "Nutritional database items and custom foods"
+    },
+    "/dietPlans/{dietPlanId}": {
+      "schema": "DietPlan",
+      "description": "Prescribed diet plan templates"
+    },
+    "/mealLogs/{mealLogId}": {
+      "schema": "MealLogItem",
+      "description": "Real-time client meal diary entries logged from phone"
+    },
+    "/measurements/{measurementId}": {
+      "schema": "BodyMeasurement",
+      "description": "Weight entries and InBody body composition scans"
+    },
+    "/waterLogs/{waterLogId}": {
+      "schema": "WaterLog",
+      "description": "Real-time client hydration logs"
+    },
+    "/activities/{activityId}": {
+      "schema": "ActivityLog",
+      "description": "Real-time physical activity entries"
+    },
+    "/habits/{habitId}": {
+      "schema": "DailyHabits",
+      "description": "Daily lifestyle habits including steps and sleep"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "ClinicAppointment",
+      "description": "Clinic appointments and consultation bookings"
+    },
+    "/tips/{tipId}": {
+      "schema": "DietitianTip",
+      "description": "Coach tips and motivational broadcasts"
+    },
+    "/reminders/{reminderId}": {
+      "schema": "ClientReminder",
+      "description": "Scheduled reminder alarms"
+    }
+  }
+}

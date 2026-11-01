@@ -9,9 +9,9 @@ interface MeasurementModalProps {
 }
 
 export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onClose }) => {
-  const { activeClient, addMeasurement } = useApp();
+  const { activeClient, selectedDate, addMeasurement } = useApp();
 
-  const [date, setDate] = useState<string>(() => getTodayString());
+  const [date, setDate] = useState<string>(() => selectedDate || getTodayString());
   const [weightKg, setWeightKg] = useState<string>(activeClient ? String(activeClient.currentWeightKg) : '');
   const [waistCm, setWaistCm] = useState<string>('');
   const [hipCm, setHipCm] = useState<string>('');
@@ -24,7 +24,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
   useEffect(() => {
     if (isOpen && activeClient) {
       setWeightKg(String(activeClient.currentWeightKg));
-      setDate(getTodayString());
+      setDate(selectedDate || getTodayString());
       setWaistCm('');
       setHipCm('');
       setBodyFatPercentage('');

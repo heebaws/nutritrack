@@ -23,9 +23,22 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
   const [startingWeightKg, setStartingWeightKg] = useState<number>(70);
   const [targetWeightKg, setTargetWeightKg] = useState<number>(64);
   const [goal, setGoal] = useState('');
-  const [assignedDietitianId, setAssignedDietitianId] = useState<string>(dietitians[0]?.id || '');
-  const [dietPlanId, setDietPlanId] = useState<string>(dietPlans[0]?.id || '');
+  const [assignedDietitianId, setAssignedDietitianId] = useState<string>(dietitians[0]?.id || 'admin-1');
+  const [dietPlanId, setDietPlanId] = useState<string>(dietPlans[0]?.id || 'dp-1');
   const [medicalNotes, setMedicalNotes] = useState('');
+
+  // Synchronize coach and diet plan defaults when data loads
+  React.useEffect(() => {
+    if ((!assignedDietitianId || assignedDietitianId === '') && dietitians.length > 0) {
+      setAssignedDietitianId(dietitians[0].id);
+    }
+  }, [dietitians, assignedDietitianId]);
+
+  React.useEffect(() => {
+    if ((!dietPlanId || dietPlanId === '') && dietPlans.length > 0) {
+      setDietPlanId(dietPlans[0].id);
+    }
+  }, [dietPlans, dietPlanId]);
 
   // New Body Composition & Health Metrics
   const [bodyFatPercentage, setBodyFatPercentage] = useState<number>(gender === 'Male' ? 24 : 32);
@@ -99,9 +112,14 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim() || !goal.trim()) return;
+    const cleanName = name.trim();
+    if (!cleanName) return;
 
-    const finalUsername = username.trim() || name.toLowerCase().replace(/[^a-z0-9]/g, '') || `user${Date.now().toString().slice(-4)}`;
+    const finalDietitianId = assignedDietitianId || dietitians[0]?.id || 'admin-1';
+    const finalDietPlanId = dietPlanId || dietPlans[0]?.id || 'dp-1';
+    const finalPhone = phone.trim() || '5550199';
+    const finalGoal = goal.trim() || 'Weight Loss & Metabolic Health';
+    const finalUsername = username.trim() || cleanName.toLowerCase().replace(/[^a-z0-9]/g, '') || `user${Date.now().toString().slice(-4)}`;
     const finalPassword = password.trim() || 'password123';
 
     // Status helpers
@@ -126,10 +144,10 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
       : 'Normal (18-23)';
 
     addClient({
-      name: name.trim(),
+      name: cleanName,
       username: finalUsername,
       password: finalPassword,
-      phone: phone.trim(),
+      phone: finalPhone,
       email: email.trim() || undefined,
       gender,
       age: Number(age) || 30,
@@ -164,12 +182,12 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
       targetMuscleMassKg: targetMuscleMassKg ? parseFloat(targetMuscleMassKg) : undefined,
       boneMassKg: boneMassKg ? parseFloat(boneMassKg) : undefined,
       bodyWaterPercentage: bodyWaterPercentage ? parseFloat(bodyWaterPercentage) : undefined,
-      dailyWaterTargetLiters: dailyWaterTargetLiters ? parseFloat(dailyWaterTargetLiters) : undefined,
+      dailyWaterTargetLiters: dailyWaterTargetLiters ? parseFloat(dailyWaterTargetLiters) : 3.0,
       proteinTargetGrams: proteinTargetGrams ? parseFloat(proteinTargetGrams) : undefined,
 
-      goal: goal.trim(),
-      assignedDietitianId,
-      dietPlanId,
+      goal: finalGoal,
+      assignedDietitianId: finalDietitianId,
+      dietPlanId: finalDietPlanId,
       medicalNotes: medicalNotes.trim() || undefined,
       avatarUrl: avatarPreview || `https://images.unsplash.com/photo-${gender === 'Female' ? '1544005313-94ddf0286df2' : '1507003211169-0a1dd7228f2d'}?auto=format&fit=crop&q=80&w=150`,
     });

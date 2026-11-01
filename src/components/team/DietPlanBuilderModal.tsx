@@ -42,6 +42,62 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
 
   const [meals, setMeals] = useState(existingPlan?.meals || defaultMeals);
 
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
+
+  const handleGenerateWithAI = async () => {
+    setIsGeneratingAi(true);
+    setAiNotice(null);
+    try {
+      const res = await fetch('/api/ai/generate-diet-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetCalories,
+          targetProtein,
+          targetCarbs,
+          targetFat,
+          clientGoal: 'Visceral Fat Loss & Sustainable Energy',
+          dietaryPreference: 'Kerala Traditional & Balanced (Matta rice, fish curry, eggs, vegetables)'
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.title) setTitle(data.title);
+        if (data.description) setDescription(data.description);
+        if (data.targetCalories) setTargetCalories(data.targetCalories);
+        if (data.targetProtein) setTargetProtein(data.targetProtein);
+        if (data.targetCarbs) setTargetCarbs(data.targetCarbs);
+        if (data.targetFat) setTargetFat(data.targetFat);
+        if (data.waterTargetLitres) setWaterTargetLitres(data.waterTargetLitres);
+        if (data.generalGuidelines && Array.isArray(data.generalGuidelines)) {
+          setGuidelinesText(data.generalGuidelines.join('\n'));
+        }
+        if (data.meals && Array.isArray(data.meals)) {
+          setMeals(data.meals.map((m: any) => ({
+            mealType: m.mealType,
+            timeGuideline: m.timeGuideline || '',
+            instructions: m.instructions || '',
+            recommendedFoods: (m.recommendedFoods || []).map((rf: any) => ({
+              foodId: 'ai-rec-' + Math.random().toString(36).substring(7),
+              foodName: rf.foodName,
+              portion: rf.portion || 1,
+              unit: rf.unit || '1 serving',
+              notes: rf.notes
+            }))
+          })));
+        }
+        setAiNotice("✨ Clinical plan generated and loaded into all 5 meal slots by Gemini 3.8 Flash!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setAiNotice("Could not reach AI generator. You can continue creating plans manually.");
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
   // Temporary food picker for currently selected slot
   const [selectedFoodId, setSelectedFoodId] = useState<string>(foods[0]?.id || '');
   const [portion, setPortion] = useState<number>(1);
@@ -171,6 +227,37 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
         {/* Content */}
         <form onSubmit={handleSavePlan} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
           
+          {/* AI Clinical Plan Generator Banner */}
+          <div className="p-3 bg-linear-to-r from-blue-50 via-indigo-50 to-emerald-50 rounded-xl border border-blue-200 flex items-center justify-between gap-3 shadow-2xs">
+            <div>
+              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
+                <span>AI Clinical Diet Plan Generator</span>
+                <span className="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.5 rounded-full border border-blue-300">
+                  Gemini 3.8 Flash
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Calibrates 5 meal slots with wholesome Kerala staples for {targetCalories} kcal with 1-click
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleGenerateWithAI}
+              disabled={isGeneratingAi}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{isGeneratingAi ? 'Calibrating...' : '✨ AI Generate Plan'}</span>
+            </button>
+          </div>
+
+          {aiNotice && (
+            <div className="p-2.5 bg-emerald-100 text-emerald-900 rounded-xl text-xs font-semibold border border-emerald-300 animate-in fade-in">
+              {aiNotice}
+            </div>
+          )}
+
           {/* Plan Title and Description */}
           <div className="space-y-3">
             <div>

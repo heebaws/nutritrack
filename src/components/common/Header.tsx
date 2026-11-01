@@ -5,11 +5,11 @@ import {
   ShieldCheck, 
   RotateCcw, 
   Stethoscope, 
-  Globe,
   LayoutDashboard,
-  LogOut,
   Bot,
-  Sparkles
+  Cloud,
+  RefreshCw,
+  Smartphone
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -19,11 +19,13 @@ export const Header: React.FC = () => {
     activeClient,
     clients,
     quickSwitchClient,
-    clientSignOut,
     activeTeamUser,
     dietitians,
     quickSwitchTeamRole,
     resetAllData,
+    cloudSyncStatus,
+    lastSyncedAt,
+    forceCloudSync,
   } = useApp();
 
   return (
@@ -126,11 +128,16 @@ export const Header: React.FC = () => {
                     aria-label="Select demo client"
                     className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
                   >
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.status === 'active' ? 'Active' : 'Inactive'})
-                      </option>
-                    ))}
+                    {clients
+                      .filter(c => c && c.id && ((c.name && c.name.trim().length > 0) || (c.phone && c.phone.trim().length > 0)))
+                      .map((c) => {
+                        const clientName = (c.name && c.name.trim().length > 0) ? c.name.trim() : 'Registered Client';
+                        return (
+                          <option key={c.id} value={c.id}>
+                            {clientName} ({c.status === 'active' ? 'Active' : 'Inactive'})
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
               </div>
@@ -141,7 +148,7 @@ export const Header: React.FC = () => {
                   <Stethoscope className="w-3.5 h-3.5 text-blue-600" />
                   <span className="hidden lg:inline text-slate-400">Coach / Staff:</span>
                   <select
-                    value={activeTeamUser.id}
+                    value={activeTeamUser?.id || ''}
                     onChange={(e) => quickSwitchTeamRole(
                       dietitians.find(d => d.id === e.target.value)?.role || 'dietitian',
                       e.target.value
@@ -159,10 +166,38 @@ export const Header: React.FC = () => {
 
                 <div className="text-[11px] px-2 py-0.5 rounded-md font-semibold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
-                  {activeTeamUser.role === 'admin' ? 'Admin Access' : 'Coach Access'}
+                  {activeTeamUser?.role === 'admin' ? 'Admin Access' : 'Coach Access'}
                 </div>
               </div>
             )}
+
+            {/* Real-time Cloud Storage Sync Indicator */}
+            <button
+              type="button"
+              onClick={() => forceCloudSync()}
+              title={`Cloud Storage: ${cloudSyncStatus === 'connected' ? 'Real-Time Live (Client Phone updates show instantly to Coach)' : cloudSyncStatus === 'syncing' ? 'Syncing...' : 'Offline'}. Click to refresh.`}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
+                cloudSyncStatus === 'connected'
+                  ? 'bg-emerald-50/80 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                  : cloudSyncStatus === 'syncing'
+                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : 'bg-slate-50 text-slate-600 border-slate-200'
+              }`}
+            >
+              <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus === 'connected' ? 'text-emerald-600' : 'text-slate-400'}`} />
+              <span className="hidden xl:inline text-[11px]">
+                {cloudSyncStatus === 'connected' ? 'Cloud Sync: Live' : cloudSyncStatus === 'syncing' ? 'Syncing...' : 'Local'}
+              </span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  cloudSyncStatus === 'connected'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : cloudSyncStatus === 'syncing'
+                    ? 'bg-amber-400 animate-spin'
+                    : 'bg-slate-300'
+                }`}
+              />
+            </button>
 
             {/* Ask AI Bot Button */}
             <button

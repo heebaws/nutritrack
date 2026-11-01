@@ -3,7 +3,14 @@ import { useApp } from '../../context/AppContext';
 import { MealLogModal } from './MealLogModal';
 import { MeasurementModal } from './MeasurementModal';
 import { CalorieWeightTrajectoryCard } from './CalorieWeightTrajectoryCard';
+import { WaterTrackerCard } from './WaterTrackerCard';
+import { DailyHabitsCard } from './DailyHabitsCard';
+import { ActivityLogModal } from './ActivityLogModal';
+import { QuickWeightModal } from './QuickWeightModal';
+import { PrintReportModal } from '../common/PrintReportModal';
+import { AppointmentsModal } from '../common/AppointmentsModal';
 import { MealType } from '../../types';
+import { calculateCalorieBreakdown, determineCalorieQuality } from '../../utils/calorieQuality';
 import { 
   getTodayString, 
   getYesterdayString, 
@@ -42,7 +49,12 @@ import {
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
-  Layers
+  Layers,
+  Printer,
+  CalendarCheck,
+  Footprints,
+  Activity,
+  Bot
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -72,7 +84,9 @@ export const ClientApp: React.FC = () => {
     addMealLog,
     suggestedMeals,
     acceptSuggestedMeal,
-    dismissSuggestedMeal
+    dismissSuggestedMeal,
+    activities,
+    appointments
   } = useApp();
 
   // Active website navigation tab
@@ -94,12 +108,18 @@ export const ClientApp: React.FC = () => {
   const [isMealModalOpen, setIsMealModalOpen] = useState(false);
   const [activeMealTypeForLog, setActiveMealTypeForLog] = useState<MealType>('Breakfast');
   const [isMeasurementModalOpen, setIsMeasurementModalOpen] = useState(false);
+  const [isQuickWeightModalOpen, setIsQuickWeightModalOpen] = useState(false);
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isAppointmentsModalOpen, setIsAppointmentsModalOpen] = useState(false);
   const [planLoggedNotice, setPlanLoggedNotice] = useState<string | null>(null);
 
   // Front page sections visibility for customized, non-boring layout with sleek "Show" lines
   interface FrontSections {
     trajectory: boolean;      // 8,000 kcal Weight & Calorie Trajectory
     nutritionTarget: boolean; // Daily Target & Macro Breakdown
+    waterTracker: boolean;    // Daily Hydration Tracker
+    dailyHabits: boolean;     // Daily Lifestyle & Recovery Habits
     suggestions: boolean;     // AI Meal Suggestions
     mealsTimeline: boolean;   // Today's Meals Timeline
     sideWidgets: boolean;     // Assigned Coach & Habits Reminders
@@ -113,6 +133,8 @@ export const ClientApp: React.FC = () => {
     return {
       trajectory: true,
       nutritionTarget: true,
+      waterTracker: true,
+      dailyHabits: true,
       suggestions: true,
       mealsTimeline: true,
       sideWidgets: true,
@@ -133,6 +155,8 @@ export const ClientApp: React.FC = () => {
     const all: FrontSections = {
       trajectory: true,
       nutritionTarget: true,
+      waterTracker: true,
+      dailyHabits: true,
       suggestions: true,
       mealsTimeline: true,
       sideWidgets: true,
@@ -147,6 +171,8 @@ export const ClientApp: React.FC = () => {
     const none: FrontSections = {
       trajectory: false,
       nutritionTarget: false,
+      waterTracker: false,
+      dailyHabits: false,
       suggestions: false,
       mealsTimeline: false,
       sideWidgets: false,
@@ -206,6 +232,30 @@ export const ClientApp: React.FC = () => {
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
   }, [clientLogsForDay]);
 
+  // Physical activities and calories burned today
+  const clientActivitiesForDay = useMemo(() => {
+    return activities.filter(a => a.clientId === activeClient.id && a.date === selectedDate);
+  }, [activities, activeClient.id, selectedDate]);
+
+  const caloriesBurnedToday = useMemo(() => {
+    return clientActivitiesForDay.reduce((sum, a) => sum + a.caloriesBurned, 0);
+  }, [clientActivitiesForDay]);
+
+  // Comprehensive Good Calories vs Bad Calories and Net Burned breakdown
+  const calorieBreakdown = useMemo(() => {
+    return calculateCalorieBreakdown(clientLogsForDay, caloriesBurnedToday);
+  }, [clientLogsForDay, caloriesBurnedToday]);
+
+  const netCalories = calorieBreakdown.netCalories;
+
+  // Next upcoming clinic consultation or InBody scan
+  const nextAppointment = useMemo(() => {
+    const today = getTodayString();
+    return appointments
+      .filter(a => a.clientId === activeClient.id && a.date >= today && a.status === 'scheduled')
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+  }, [appointments, activeClient.id]);
+
   // Determine client goal requirement: Weight Loss vs Weight Gain
   const isWeightGainGoal = activeClient.goalType === 'gain' || 
     (!activeClient.goalType && /gain|bulk|surplus|muscle|build/i.test(activeClient.goal)) ||
@@ -213,16 +263,15 @@ export const ClientApp: React.FC = () => {
 
   const isWeightLossGoal = activeClient.goalType === 'loss' || (!activeClient.goalType && !isWeightGainGoal);
 
-  // USER MANDATE:
-  // "and if any clients requirement is weight loss the calorie lesser than the denominator will turn green else it will turn red
-  //  and when the clients requirement is weight gain the numerator the calorie needed to be greater than the denominator in that case it will turn green else it will turn red"
+  // Calorie target compliance
   const isCalorieGreen = isWeightGainGoal
-    ? (consumedTotals.calories >= targetCalories)
-    : (consumedTotals.calories <= targetCalories);
+    ? (netCalories >= targetCalories)
+    : (netCalories <= targetCalories);
 
-  const caloriesRemaining = Math.max(0, targetCalories - consumedTotals.calories);
-  const caloriesSurplus = Math.max(0, consumedTotals.calories - targetCalories);
-  const caloriesPercent = targetCalories > 0 ? Math.round((consumedTotals.calories / targetCalories) * 100) : 0;
+  const caloriesRemaining = Math.max(0, targetCalories - netCalories);
+  const caloriesSurplus = Math.max(0, netCalories - targetCalories);
+  const caloriesPercent = targetCalories > 0 ? Math.round((netCalories / targetCalories) * 100) : 0;
+
 
   // Measurements for this client sorted by date
   const clientMeasurements = useMemo(() => {
@@ -333,11 +382,11 @@ export const ClientApp: React.FC = () => {
           </div>
 
           {/* Quick Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => openLogForSlot('Breakfast')}
-              className="bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+              className="bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-xs sm:text-sm px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4 text-emerald-700" />
               <span>Log Meal</span>
@@ -345,15 +394,65 @@ export const ClientApp: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setIsMeasurementModalOpen(true)}
-              className="bg-emerald-600/80 hover:bg-emerald-600 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl transition-all border border-emerald-400/40 flex items-center gap-2 cursor-pointer backdrop-blur-xs"
+              onClick={() => setIsQuickWeightModalOpen(true)}
+              className="bg-emerald-600/90 hover:bg-emerald-600 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl transition-all border border-emerald-400/40 flex items-center gap-1.5 cursor-pointer backdrop-blur-xs"
+              title="Quick 5-second morning weigh-in"
             >
-              <Scale className="w-4 h-4" />
-              <span>Record Scan</span>
+              <Scale className="w-4 h-4 text-emerald-200" />
+              <span>Morning Weight</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsActivityModalOpen(true)}
+              className="bg-emerald-600/90 hover:bg-emerald-600 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl transition-all border border-emerald-400/40 flex items-center gap-1.5 cursor-pointer backdrop-blur-xs"
+              title="Record workout / calories burned"
+            >
+              <Flame className="w-4 h-4 text-amber-300" />
+              <span>Log Workout</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsAppointmentsModalOpen(true)}
+              className="bg-emerald-600/90 hover:bg-emerald-600 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl transition-all border border-emerald-400/40 flex items-center gap-1.5 cursor-pointer backdrop-blur-xs"
+              title="Clinic appointment & consultation"
+            >
+              <CalendarCheck className="w-4 h-4 text-teal-200" />
+              <span>Appointments</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="bg-black/25 hover:bg-black/35 text-white font-semibold text-xs sm:text-sm px-3 py-2 rounded-xl transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer"
+              title="Print official clinical diet plan & progress dossier"
+            >
+              <Printer className="w-4 h-4 text-emerald-200" />
+              <span className="hidden sm:inline">Print Report</span>
             </button>
           </div>
 
         </div>
+
+        {/* Upcoming Appointment Alert Strip inside banner */}
+        {nextAppointment && (
+          <div className="mt-4 pt-3 border-t border-white/15 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-100">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
+              <span>
+                <b>Next Clinic Visit:</b> {nextAppointment.type.replace('_', ' ')} on <b className="text-white">{nextAppointment.date} at {nextAppointment.time}</b> with {nextAppointment.dietitianName}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAppointmentsModalOpen(true)}
+              className="text-[11px] font-bold underline hover:text-white cursor-pointer"
+            >
+              View Appointment Details →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ================= WEBSITE NAVIGATION TABS ================= */}
@@ -526,9 +625,20 @@ export const ClientApp: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-              <Clock className="w-4 h-4 text-slate-400" />
-              <span>Real-time calorie &amp; macronutrient aggregation</span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-nutribot'))}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                title="Ask NutriBot AI Assistant (Instant Food Calories & 1-Click Diary Logging)"
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span>Ask NutriBot (Food AI)</span>
+              </button>
+              <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <span>Live Calorie Aggregation</span>
+              </div>
             </div>
           </div>
 
@@ -569,6 +679,34 @@ export const ClientApp: React.FC = () => {
               >
                 {visibleSections.nutritionTarget ? <Check className="w-3 h-3 text-amber-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
                 <span>Daily Targets</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleSection('waterTracker')}
+                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                  visibleSections.waterTracker
+                    ? 'bg-cyan-50 text-cyan-900 border-cyan-300'
+                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                }`}
+                title="Toggle Daily Hydration Tracker"
+              >
+                {visibleSections.waterTracker ? <Check className="w-3 h-3 text-cyan-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
+                <span>Hydration (Water)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleSection('dailyHabits')}
+                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                  visibleSections.dailyHabits
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                }`}
+                title="Toggle Daily Lifestyle Habits (Steps, Sleep, Vitamins)"
+              >
+                {visibleSections.dailyHabits ? <Check className="w-3 h-3 text-emerald-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
+                <span>Daily Habits</span>
               </button>
 
               <button
@@ -718,18 +856,30 @@ export const ClientApp: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <Flame className="w-5 h-5 text-amber-500" />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Daily Calorie Target
+                          Daily Calorie Balance &amp; Targets
                         </span>
                       </div>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <span className="text-3xl sm:text-4xl font-black text-slate-900">{consumedTotals.calories}</span>
-                        <span className="text-sm sm:text-base font-semibold text-slate-500">/ {targetCalories} kcal</span>
+                      <div className="flex items-baseline gap-2 mt-1 flex-wrap">
+                        <span className={`text-3xl sm:text-4xl font-black ${isCalorieGreen ? 'text-emerald-700' : 'text-rose-600'}`}>
+                          {netCalories}
+                        </span>
+                        <span className="text-sm sm:text-base font-semibold text-slate-500">
+                          Net / {targetCalories} kcal (Target)
+                        </span>
+                        {caloriesBurnedToday > 0 && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
+                            <Activity className="w-3 h-3 text-blue-600" />
+                            -{caloriesBurnedToday} kcal Burned
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <span className="text-xs font-bold text-slate-500 block">Remaining</span>
+                        <span className="text-xs font-bold text-slate-500 block">
+                          {isWeightLossGoal ? 'Deficit Remaining' : 'Calorie Surplus Needed'}
+                        </span>
                         <span className="text-lg font-black text-emerald-700">{caloriesRemaining} kcal</span>
                       </div>
                       <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col items-center justify-center font-bold text-emerald-800">
@@ -749,15 +899,116 @@ export const ClientApp: React.FC = () => {
                     </div>
                   </div>
 
-                {/* Calorie Progress Bar */}
-                <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden p-0.5">
-                  <div
-                    className={`h-full transition-all duration-500 rounded-full ${
-                      caloriesPercent > 105 ? 'bg-rose-500' : 'bg-emerald-600'
-                    }`}
-                    style={{ width: `${Math.min(100, caloriesPercent)}%` }}
-                  />
-                </div>
+                  {/* USER MANDATE: Good Calories vs Bad Calories Columns + Burned Calories Minus Calculation */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                    {/* Column 1: Total Consumed */}
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+                      <span className="text-[10px] uppercase font-black tracking-wider text-slate-500 block">
+                        Total Food Eaten
+                      </span>
+                      <div className="text-lg font-black text-slate-900 mt-0.5">
+                        {calorieBreakdown.totalCalories} <span className="text-xs font-normal text-slate-500">kcal</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">Gross food intake</span>
+                    </div>
+
+                    {/* Column 2: Good Calories */}
+                    <div className="bg-emerald-50/70 rounded-2xl p-3 border border-emerald-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-emerald-900 block">
+                          🍏 Good Calories
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 rounded">
+                          {calorieBreakdown.totalCalories > 0 ? Math.round((calorieBreakdown.goodCalories / calorieBreakdown.totalCalories) * 100) : 0}%
+                        </span>
+                      </div>
+                      <div className="text-lg font-black text-emerald-800 mt-0.5">
+                        {calorieBreakdown.goodCalories} <span className="text-xs font-normal text-emerald-600">kcal</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-600 block mt-0.5">Wholesome &amp; Nutritious</span>
+                    </div>
+
+                    {/* Column 3: Bad Calories */}
+                    <div className="bg-amber-50/70 rounded-2xl p-3 border border-amber-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-amber-900 block">
+                          🍟 Bad Calories
+                        </span>
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 rounded">
+                          {calorieBreakdown.totalCalories > 0 ? Math.round((calorieBreakdown.badCalories / calorieBreakdown.totalCalories) * 100) : 0}%
+                        </span>
+                      </div>
+                      <div className="text-lg font-black text-amber-900 mt-0.5">
+                        {calorieBreakdown.badCalories} <span className="text-xs font-normal text-amber-700">kcal</span>
+                      </div>
+                      <span className="text-[10px] text-amber-700 block mt-0.5">Fried / Refined / Treats</span>
+                    </div>
+
+                    {/* Column 4: Calories Burned & Sports */}
+                    <div className="bg-blue-50/70 rounded-2xl p-3 border border-blue-200 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-black tracking-wider text-blue-900 block">
+                            ⚽ Calorie Burn
+                          </span>
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 rounded">
+                            Exercise
+                          </span>
+                        </div>
+                        <div className="text-lg font-black text-blue-800 mt-0.5">
+                          -{calorieBreakdown.caloriesBurned} <span className="text-xs font-normal text-blue-600">kcal</span>
+                        </div>
+                        <span className="text-[10px] text-blue-600 block mt-0.5">Deducted from total</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsActivityModalOpen(true)}
+                        className="mt-2 text-[10px] font-bold text-blue-700 bg-white border border-blue-200 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        title="Log Football, Workout, Gym, or Walking to minus calories burned"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Log Burn (e.g. Football)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dual Split Calorie Progress Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
+                      <span>Calorie Meter: {calorieBreakdown.goodCalories} good + {calorieBreakdown.badCalories} bad - {calorieBreakdown.caloriesBurned} burned = <b>{netCalories} net kcal</b></span>
+                      <span>Target: {targetCalories} kcal</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden p-0.5 flex">
+                      {/* Good Calories Segment */}
+                      <div
+                        className="bg-emerald-600 h-full rounded-l-full transition-all duration-500"
+                        style={{ width: `${targetCalories > 0 ? Math.min(100, (calorieBreakdown.goodCalories / targetCalories) * 100) : 0}%` }}
+                        title={`Good Calories: ${calorieBreakdown.goodCalories} kcal`}
+                      />
+                      {/* Bad Calories Segment */}
+                      <div
+                        className="bg-amber-500 h-full transition-all duration-500"
+                        style={{ width: `${targetCalories > 0 ? Math.min(100, (calorieBreakdown.badCalories / targetCalories) * 100) : 0}%` }}
+                        title={`Bad Calories: ${calorieBreakdown.badCalories} kcal`}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
+                        Good ({calorieBreakdown.goodCalories} kcal)
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                        Bad ({calorieBreakdown.badCalories} kcal)
+                      </span>
+                      {calorieBreakdown.caloriesBurned > 0 && (
+                        <span className="flex items-center gap-1 text-blue-600 font-semibold">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
+                          Burned (-{calorieBreakdown.caloriesBurned} kcal)
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                 {/* Macronutrient breakdown cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
@@ -827,8 +1078,44 @@ export const ClientApp: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Net Calorie & Exercise Burn Row */}
+                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                      <Flame className="w-4 h-4 text-orange-500" />
+                      <span>Activity Burn:</span>
+                      <span className="text-orange-600 font-extrabold">-{caloriesBurnedToday} kcal</span>
+                    </div>
+                    <span className="text-slate-300">•</span>
+                    <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                      <span>Net Energy:</span>
+                      <span className="text-emerald-800 font-extrabold">{netCalories} kcal</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsActivityModalOpen(true)}
+                    className="text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-xl border border-orange-200 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{caloriesBurnedToday > 0 ? `${clientActivitiesForDay.length} Workouts Logged` : 'Log Workout / Burn'}</span>
+                  </button>
+                </div>
               </div>
               )}
+
+              {/* Daily Hydration Tracker Card */}
+              {visibleSections.waterTracker && (
+                <WaterTrackerCard />
+              )}
+
+              {/* Daily Clinical Habits & Recovery Card */}
+              {visibleSections.dailyHabits && (
+                <DailyHabitsCard />
+              )}
+
 
               {/* Suggested Meals from AI Chatbot */}
               {pendingSuggestions.length > 0 && (
@@ -1045,7 +1332,7 @@ export const ClientApp: React.FC = () => {
 
                   {(['Breakfast', 'Morning Snack', 'Lunch', 'Evening Snack', 'Dinner'] as MealType[]).map((slot) => {
                     const itemsInSlot = clientLogsForDay.filter(m => m.mealType === slot);
-                    const slotCalories = itemsInSlot.reduce((sum, item) => sum + item.calories, 0);
+                    const slotBreakdown = calculateCalorieBreakdown(itemsInSlot);
                     const slotSuggestions = pendingSuggestions.filter(s => s.mealType === slot);
                     const isSlotOpen = openMealSlots[slot] ?? true;
 
@@ -1054,17 +1341,29 @@ export const ClientApp: React.FC = () => {
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                           <div 
                             onClick={() => toggleMealSlot(slot)}
-                            className="flex items-center gap-2.5 cursor-pointer group select-none"
+                            className="flex items-center gap-2.5 cursor-pointer group select-none flex-wrap"
                             title={`Click to ${isSlotOpen ? 'collapse' : 'expand'} ${slot}`}
                           >
                             <span className="p-1 rounded-md text-slate-400 group-hover:text-slate-700 hover:bg-slate-100 transition-colors">
                               {isSlotOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                             </span>
                             <span className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors">{slot}</span>
-                            {slotCalories > 0 ? (
-                              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
-                                {slotCalories} kcal
-                              </span>
+                            {slotBreakdown.totalCalories > 0 ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                                  {slotBreakdown.totalCalories} kcal
+                                </span>
+                                {slotBreakdown.goodCalories > 0 && (
+                                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded-md border border-emerald-200">
+                                    🍏 {slotBreakdown.goodCalories} good
+                                  </span>
+                                )}
+                                {slotBreakdown.badCalories > 0 && (
+                                  <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded-md border border-amber-200">
+                                    🍟 {slotBreakdown.badCalories} bad
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-xs text-slate-400">0 kcal</span>
                             )}
@@ -1147,33 +1446,47 @@ export const ClientApp: React.FC = () => {
                             {/* Logged food items list */}
                             {itemsInSlot.length > 0 ? (
                               <div className="divide-y divide-slate-100 pt-1">
-                                {itemsInSlot.map((item) => (
-                                  <div key={item.id} className="py-2.5 flex items-center justify-between text-xs sm:text-sm">
-                                    <div>
-                                      <span className="font-bold text-slate-800">{item.foodName}</span>
-                                      <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-2">
-                                        <span>{item.quantity}x ({item.servingUnit})</span>
-                                        <span>•</span>
-                                        <span className="text-emerald-700 font-medium">P: {item.protein}g</span>
-                                        <span>•</span>
-                                        <span className="text-blue-700 font-medium">C: {item.carbs}g</span>
-                                        <span>•</span>
-                                        <span className="text-amber-700 font-medium">F: {item.fat}g</span>
+                                {itemsInSlot.map((item) => {
+                                  const itemQuality = item.calorieQuality || determineCalorieQuality(item.foodName);
+                                  return (
+                                    <div key={item.id} className="py-2.5 flex items-center justify-between text-xs sm:text-sm">
+                                      <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="font-bold text-slate-800">{item.foodName}</span>
+                                          {itemQuality === 'good' ? (
+                                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-md">
+                                              🍏 Good Calories
+                                            </span>
+                                          ) : (
+                                            <span className="text-[10px] font-bold text-amber-900 bg-amber-50 border border-amber-300 px-1.5 py-0.2 rounded-md">
+                                              🍟 Bad / Cheat Calories
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-2">
+                                          <span>{item.quantity}x ({item.servingUnit})</span>
+                                          <span>•</span>
+                                          <span className="text-emerald-700 font-medium">P: {item.protein}g</span>
+                                          <span>•</span>
+                                          <span className="text-blue-700 font-medium">C: {item.carbs}g</span>
+                                          <span>•</span>
+                                          <span className="text-amber-700 font-medium">F: {item.fat}g</span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <span className="font-bold text-slate-800 text-sm">{item.calories} kcal</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => deleteMealLog(item.id)}
+                                          title="Remove food"
+                                          className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                      <span className="font-bold text-slate-800 text-sm">{item.calories} kcal</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => deleteMealLog(item.id)}
-                                        title="Remove food"
-                                        className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             ) : (
                               <div className="py-4 text-center">
@@ -1813,6 +2126,25 @@ export const ClientApp: React.FC = () => {
         onClose={() => setIsMeasurementModalOpen(false)}
       />
 
+      <QuickWeightModal
+        isOpen={isQuickWeightModalOpen}
+        onClose={() => setIsQuickWeightModalOpen(false)}
+      />
+
+      <ActivityLogModal
+        isOpen={isActivityModalOpen}
+        onClose={() => setIsActivityModalOpen(false)}
+      />
+
+      <PrintReportModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+      />
+
+      <AppointmentsModal
+        isOpen={isAppointmentsModalOpen}
+        onClose={() => setIsAppointmentsModalOpen(false)}
+      />
     </div>
   );
 };

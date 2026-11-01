@@ -794,3 +794,72 @@ export const INITIAL_REMINDERS: ClientReminder[] = [
     message: 'Step on your scale and measure waist circumference for your dietitian review.'
   }
 ];
+
+export const INITIAL_WATER_LOGS = [
+  { id: 'w-1', clientId: 'cl-1', date: getTodayString(), amountMl: 500, timeLogged: '07:30 AM' },
+  { id: 'w-2', clientId: 'cl-1', date: getTodayString(), amountMl: 250, timeLogged: '09:45 AM' },
+  { id: 'w-3', clientId: 'cl-1', date: getTodayString(), amountMl: 500, timeLogged: '01:15 PM' },
+  { id: 'w-4', clientId: 'cl-1', date: getTodayString(), amountMl: 250, timeLogged: '04:30 PM' },
+  { id: 'w-5', clientId: 'cl-1', date: getYesterdayString(), amountMl: 2500, timeLogged: '08:00 PM' },
+  { id: 'w-6', clientId: 'cl-2', date: getTodayString(), amountMl: 2000, timeLogged: '03:00 PM' },
+];
+
+export const INITIAL_ACTIVITIES = [
+  { id: 'act-1', clientId: 'cl-1', date: getTodayString(), activityName: 'Brisk Walking', durationMinutes: 35, caloriesBurned: 160, intensity: 'moderate' as const, timeLogged: '06:45 AM' },
+  { id: 'act-2', clientId: 'cl-1', date: getYesterdayString(), activityName: 'Home Core & Stretching', durationMinutes: 25, caloriesBurned: 110, intensity: 'light' as const, timeLogged: '07:00 AM' },
+];
+
+export const INITIAL_HABITS = [
+  {
+    id: 'hab-1',
+    clientId: 'cl-1',
+    date: getTodayString(),
+    steps: 6420,
+    targetSteps: 8000,
+    sleepHours: 7.5,
+    supplementsTaken: true,
+    saladEaten: true,
+    stretchingDone: false,
+  },
+  {
+    id: 'hab-2',
+    clientId: 'cl-1',
+    date: getYesterdayString(),
+    steps: 8850,
+    targetSteps: 8000,
+    sleepHours: 8.0,
+    supplementsTaken: true,
+    saladEaten: true,
+    stretchingDone: true,
+  }
+];
+
+export const INITIAL_APPOINTMENTS = [
+  {
+    id: 'app-1',
+    clientId: 'cl-1',
+    clientName: 'Aisha Rahman',
+    dietitianId: 'admin-1',
+    dietitianName: 'Saleem Valanchery',
+    date: getTodayString(),
+    time: '04:30 PM',
+    type: 'inbody_scan' as const,
+    status: 'scheduled' as const,
+    location: 'NutriTrack Clinic Valanchery - Diagnostic Room',
+    notes: 'Monthly full-body InBody 270 scan, visceral fat check, and calorie target reassessment.'
+  },
+  {
+    id: 'app-2',
+    clientId: 'cl-2',
+    clientName: 'Mohammed Faheem',
+    dietitianId: 'dt-1',
+    dietitianName: 'Faseela Saleem',
+    date: getTodayString(),
+    time: '06:00 PM',
+    type: 'diet_review' as const,
+    status: 'scheduled' as const,
+    location: 'NutriTrack Clinic - Consultation Room 1',
+    notes: 'High-protein diet review and evening snack oil management.'
+  }
+];
+

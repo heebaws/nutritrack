@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ClientProfile, MealLogItem } from '../../types';
+import { useApp } from '../../context/AppContext';
+import { calculateCalorieBreakdown } from '../../utils/calorieQuality';
 import { 
   Flame, 
   TrendingUp, 
@@ -41,6 +43,7 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
   onOpenLogModal,
   onToggleHide
 }) => {
+  const { activities } = useApp();
   // Option to show/hide the detailed breakdown and previous days table when touching the main point
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   // 1. Determine client needed calories & goal direction
@@ -80,8 +83,12 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
 
     const rows = sortedDates.map(date => {
       const dayLogs = clientLogs.filter(l => l.date === date);
-      const consumed = dayLogs.reduce((sum, l) => sum + (Number(l.calories) || 0), 0);
-      const dayDifference = consumed - neededCalories; // > 0 is excess, < 0 is low/deficit
+      const dayActivities = activities.filter(a => a.clientId === client.id && a.date === date);
+      const dayBurn = dayActivities.reduce((sum, a) => sum + (Number(a.caloriesBurned) || 0), 0);
+      const breakdown = calculateCalorieBreakdown(dayLogs, dayBurn);
+
+      // MANDATE: burned calories minused from total eaten = net calories
+      const dayDifference = breakdown.netCalories - neededCalories; // > 0 is excess, < 0 is deficit
 
       runningCalorieBalance += dayDifference;
 
@@ -100,7 +107,11 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
         date,
         logsCount: dayLogs.length,
         needed: neededCalories,
-        consumed,
+        consumed: breakdown.totalCalories,
+        goodCalories: breakdown.goodCalories,
+        badCalories: breakdown.badCalories,
+        caloriesBurned: breakdown.caloriesBurned,
+        netCalories: breakdown.netCalories,
         dayDifference,
         runningCalorieBalance,
         projectedKgChange,
@@ -109,7 +120,7 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
     });
 
     return rows;
-  }, [clientLogs, neededCalories, isWeightGainGoal]);
+  }, [clientLogs, activities, client.id, neededCalories, isWeightGainGoal]);
 
   // Current overall cumulative status (as of the latest row / today)
   const latestRow = trajectoryRows[trajectoryRows.length - 1] || {
@@ -341,10 +352,14 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
                   <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Target Needed</th>
-                  <th className="py-3 px-4">Logged Intake</th>
-                  <th className="py-3 px-4">Day Balance (Excess / Low)</th>
-                  <th className="py-3 px-4">Cumulative Calorie Balance</th>
+                  <th className="py-3 px-4">Normal Baseline</th>
+                  <th className="py-3 px-3 text-emerald-800">🍏 Good Cal</th>
+                  <th className="py-3 px-3 text-amber-900">🍟 Bad Cal</th>
+                  <th className="py-3 px-3">Total Eaten</th>
+                  <th className="py-3 px-3 text-orange-700">⚽ Sports Burn</th>
+                  <th className="py-3 px-3 text-blue-900">Net Intake</th>
+                  <th className="py-3 px-4">Day Balance</th>
+                  <th className="py-3 px-4">Cumulative Balance</th>
                   <th className="py-3 px-4">Projected Weight Impact</th>
                   <th className="py-3 px-4">Goal Evaluation</th>
                   <th className="py-3 px-4 text-right">Action</th>
@@ -398,16 +413,52 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
                         {row.needed} kcal
                       </td>
 
-                      {/* Logged Intake */}
-                      <td className="py-3.5 px-4">
+                      {/* Good Calories */}
+                      <td className="py-3.5 px-3">
+                        <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-xs">
+                          🍏 {row.goodCalories} kcal
+                        </span>
+                      </td>
+
+                      {/* Bad Calories */}
+                      <td className="py-3.5 px-3">
+                        <span className={`font-bold px-2 py-0.5 rounded-md border text-xs ${
+                          row.badCalories > 0 
+                            ? 'text-amber-900 bg-amber-50 border-amber-300' 
+                            : 'text-slate-400 bg-slate-50 border-slate-200'
+                        }`}>
+                          🍟 {row.badCalories} kcal
+                        </span>
+                      </td>
+
+                      {/* Logged Intake Total */}
+                      <td className="py-3.5 px-3">
                         {row.logsCount > 0 ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-900">{row.consumed} kcal</span>
-                            <span className="text-[11px] text-slate-500">({row.logsCount} items)</span>
+                          <div className="flex items-center gap-1">
+                            <span className="font-extrabold text-slate-900">{row.consumed} kcal</span>
+                            <span className="text-[10px] text-slate-400">({row.logsCount})</span>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400 italic">No food logged</span>
+                          <span className="text-xs text-slate-400 italic">0 kcal</span>
                         )}
+                      </td>
+
+                      {/* Activity Burn (e.g. Football) */}
+                      <td className="py-3.5 px-3">
+                        {row.caloriesBurned > 0 ? (
+                          <span className="font-extrabold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md text-xs">
+                            -{row.caloriesBurned} kcal
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">0 kcal</span>
+                        )}
+                      </td>
+
+                      {/* Net Intake */}
+                      <td className="py-3.5 px-3">
+                        <span className="font-black text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md text-xs">
+                          {row.netCalories} kcal
+                        </span>
                       </td>
 
                       {/* Day Balance */}

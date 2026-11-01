@@ -1,3 +1,5 @@
+export type ViewMode = 'client' | 'team' | 'login';
+
 export type UserRole = 'client' | 'dietitian' | 'admin' | 'coach';
 
 export interface ClientProfile {
@@ -87,8 +89,16 @@ export interface FoodItem {
   carbs: number;    // grams
   fat: number;      // grams
   fiber?: number;   // grams
+  glycemicIndex?: 'low' | 'medium' | 'high' | string;
+  allergenInfo?: string;
+  clinicVerified?: boolean;
+  dietaryTags?: string[];
+  standardServingUnit?: string;
+  standardServingGrams?: number;
+  description?: string;
   isCustom?: boolean;
   addedBy?: string;
+  calorieQuality?: 'good' | 'bad'; // Good calories (wholesome nutrients) vs Bad calories (refined/oily)
 }
 
 export type MealType = 
@@ -112,6 +122,7 @@ export interface MealLogItem {
   carbs: number;
   fat: number;
   timeLogged: string;
+  calorieQuality?: 'good' | 'bad'; // Good calories vs Bad calories
 }
 
 export interface RecommendedFood {
@@ -214,3 +225,49 @@ export interface AISuggestedMeal {
   createdAt: string;
   note?: string;
 }
+
+export interface WaterLog {
+  id: string;
+  clientId: string;
+  date: string; // YYYY-MM-DD
+  amountMl: number; // e.g. 250, 500, 1000
+  timeLogged: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  clientId: string;
+  date: string; // YYYY-MM-DD
+  activityName: string; // e.g. "Brisk Walking", "Strength Training", "Yoga", "Jogging"
+  durationMinutes: number;
+  caloriesBurned: number;
+  intensity: 'light' | 'moderate' | 'vigorous';
+  timeLogged: string;
+}
+
+export interface DailyHabits {
+  id: string;
+  clientId: string;
+  date: string; // YYYY-MM-DD
+  steps: number;
+  targetSteps: number;
+  sleepHours: number;
+  supplementsTaken: boolean;
+  saladEaten: boolean;
+  stretchingDone: boolean;
+}
+
+export interface ClinicAppointment {
+  id: string;
+  clientId: string;
+  clientName: string;
+  dietitianId: string;
+  dietitianName: string;
+  date: string; // YYYY-MM-DD
+  time: string; // e.g. "10:30 AM"
+  type: 'inbody_scan' | 'diet_review' | 'initial_consult' | 'virtual_checkin';
+  status: 'scheduled' | 'completed' | 'cancelled';
+  location: string; // e.g. "Valanchery Clinic - Room 2" or "WhatsApp Video Consultation"
+  notes?: string;
+}
+

@@ -14,7 +14,14 @@ function getAI(): GoogleGenAI | null {
     return null;
   }
   if (!aiClient) {
-    aiClient = new GoogleGenAI({ apiKey: key });
+    aiClient = new GoogleGenAI({
+      apiKey: key,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build'
+        }
+      }
+    });
   }
   return aiClient;
 }
@@ -1293,13 +1300,13 @@ async function startServer() {
   // AI Chat & Food Inquiry Endpoint
   app.post("/api/ai/chat", async (req, res) => {
     try {
-      const { message, clientContext } = req.body;
+      const { message, imageBase64, mimeType, clientContext } = req.body;
 
-      if (!message || typeof message !== "string") {
-        return res.status(400).json({ error: "Message is required" });
+      if ((!message || typeof message !== "string") && !imageBase64) {
+        return res.status(400).json({ error: "Message or image is required" });
       }
 
-      const lowerMsg = message.toLowerCase().trim();
+      const lowerMsg = (message || "").toLowerCase().trim();
       const ai = getAI();
 
       // Check if this inquiry matches common foods or is an explicit food lookup
@@ -1460,15 +1467,28 @@ Return a JSON object with this EXACT schema:
 }`;
 
         // Use standard models per @google/genai guidelines:
-        // Basic Text Tasks / Q&A: 'gemini-2.5-flash' is the primary recommended model
-        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+        // Basic Text Tasks & Multimodal: 'gemini-3.8-flash' is the standard model
+        const modelsToTry = ['gemini-3.8-flash', 'gemini-3.8-pro'];
         
         for (const modelName of modelsToTry) {
           try {
+            const promptParts: any[] = [
+              { text: `${systemPrompt}\n\nUser Question/Input: ${message || "Analyze this meal photo and provide accurate calories stated first in bold, nutritional breakdown, and the 3 oil options."}` }
+            ];
+
+            if (imageBase64) {
+              promptParts.push({
+                inlineData: {
+                  mimeType: mimeType || 'image/jpeg',
+                  data: imageBase64.replace(/^data:image\/\w+;base64,/, '')
+                }
+              });
+            }
+
             const geminiResponse = await ai.models.generateContent({
               model: modelName,
               contents: [
-                { role: 'user', parts: [{ text: `${systemPrompt}\n\nUser Question: ${message}` }] }
+                { role: 'user', parts: promptParts }
               ],
               config: {
                 responseMimeType: 'application/json',
@@ -1480,6 +1500,16 @@ Return a JSON object with this EXACT schema:
             try {
               const parsed = JSON.parse(rawText);
               if (parsed && (parsed.answer || parsed.food || parsed.mealLogData)) {
+                if (!parsed.oilImpact) {
+                  parsed.oilImpact = {
+                    question: "Was it oily?",
+                    options: [
+                      { id: "none", label: "No Oil / Steamed", calorieAdjustment: 0, fatAdjustment: 0, description: "Base calories" },
+                      { id: "medium", label: "Medium / Home Sauté", calorieAdjustment: 45, fatAdjustment: 5, description: "+45 kcal (+5g fat)" },
+                      { id: "fried", label: "Deep Fried / Very Oily", calorieAdjustment: 120, fatAdjustment: 13, description: "+120 kcal (+13g fat)" }
+                    ]
+                  };
+                }
                 return res.json(parsed);
               }
             } catch (e) {
@@ -1492,7 +1522,7 @@ Return a JSON object with this EXACT schema:
               }
             }
           } catch (geminiError: any) {
-            // Silently fall through to next model candidate without noisy logs
+            console.warn(`Gemini model ${modelName} error:`, geminiError?.message || geminiError);
             continue;
           }
         }
@@ -1650,22 +1680,95 @@ What Kerala snack or meal would you like to check?`
 
       // If user mentioned a food or word with food potential:
       const cleanFoodName = message.replace(/how many calories in|how many calories|calories in|calories|macro|macros|what is|tell me about|is|can i eat/gi, '').trim() || message.trim();
-      const estimatedCalories = 175;
+      
+      // Intelligent fallback nutritional calibration:
+      let cat = "Beverages & Snacks";
+      let serving = "1 serving (100g)";
+      let baseCal = 180;
+      let p = 5.0;
+      let c = 24.0;
+      let f = 6.5;
+      let fib = 2.0;
+      let gi = "Medium";
+      let clinicalNote = `Traditional preparation of ${cleanFoodName}. Added to your clinic food library.`;
+
+      const lowFood = cleanFoodName.toLowerCase();
+      if (lowFood.includes('chicken') || lowFood.includes('egg') || lowFood.includes('fish') || lowFood.includes('meat') || lowFood.includes('beef') || lowFood.includes('mutton')) {
+        cat = "Proteins";
+        serving = "1 portion (120g)";
+        baseCal = 210;
+        p = 26.0;
+        c = 1.5;
+        f = 11.0;
+        fib = 0.5;
+        gi = "Low";
+        clinicalNote = `High-protein tissue repair source. Choose steamed, baked, or light tawa preparation.`;
+      } else if (lowFood.includes('rice') || lowFood.includes('bread') || lowFood.includes('roti') || lowFood.includes('porotta') || lowFood.includes('pasta') || lowFood.includes('oats')) {
+        cat = "Grains & Breads";
+        serving = "1 plate / piece (120g)";
+        baseCal = 220;
+        p = 5.0;
+        c = 44.0;
+        f = 3.0;
+        fib = 2.5;
+        gi = "Medium";
+        clinicalNote = `Complex carbohydrate source. Pair with lean protein and vegetable fiber to slow glucose absorption.`;
+      } else if (lowFood.includes('salad') || lowFood.includes('spinach') || lowFood.includes('vegetable') || lowFood.includes('broccoli')) {
+        cat = "Vegetables";
+        serving = "1 bowl (150g)";
+        baseCal = 65;
+        p = 2.8;
+        c = 9.5;
+        f = 1.0;
+        fib = 4.0;
+        gi = "Low";
+        clinicalNote = `High-fiber, nutrient-dense volume food. Enhances metabolic satiety and regulates blood glucose.`;
+      } else if (lowFood.includes('apple') || lowFood.includes('banana') || lowFood.includes('orange') || lowFood.includes('fruit') || lowFood.includes('mango')) {
+        cat = "Fruits";
+        serving = "1 medium fruit (140g)";
+        baseCal = 80;
+        p = 0.8;
+        c = 20.0;
+        f = 0.3;
+        fib = 3.2;
+        gi = "Low-Medium";
+        clinicalNote = `Natural cellular hydration with bioavailable vitamins and antioxidant polyphenols.`;
+      } else if (lowFood.includes('shake') || lowFood.includes('whey') || lowFood.includes('protein')) {
+        cat = "Proteins";
+        serving = "1 scoop / glass (300ml)";
+        baseCal = 140;
+        p = 24.0;
+        c = 4.0;
+        f = 2.0;
+        fib = 0.5;
+        gi = "Low";
+        clinicalNote = `Fast-absorbing complete protein for immediate muscle protein synthesis and recovery.`;
+      } else if (lowFood.includes('shawarma') || lowFood.includes('burger') || lowFood.includes('pizza') || lowFood.includes('sandwich')) {
+        cat = "Grains & Breads";
+        serving = "1 item / roll (180g)";
+        baseCal = 385;
+        p = 24.0;
+        c = 38.0;
+        f = 14.5;
+        fib = 2.5;
+        gi = "Medium";
+        clinicalNote = `Complete meal item. Request extra vegetables and light yogurt/tahini dressing to optimize caloric efficiency.`;
+      }
       
       return res.json({
         isFoodInquiry: true,
         food: {
           name: cleanFoodName.charAt(0).toUpperCase() + cleanFoodName.slice(1),
-          category: "Beverages & Snacks",
-          servingUnit: "1 serving (100g)",
-          calories: estimatedCalories,
-          protein: 5.0,
-          carbs: 24.0,
-          fat: 6.5,
-          fiber: 2.0,
-          glycemicIndex: "Medium",
-          verdict: `Traditional preparation of ${cleanFoodName}. Added to your clinic food library.`,
-          recommendation: "Balance with plenty of hydration and check whether it was steamed or deep fried."
+          category: cat,
+          servingUnit: serving,
+          calories: baseCal,
+          protein: p,
+          carbs: c,
+          fat: f,
+          fiber: fib,
+          glycemicIndex: gi,
+          verdict: clinicalNote,
+          recommendation: "Check whether it was steamed, light sauteed, or deep fried to adjust calories live."
         },
         oilImpact: {
           question: "Was it oily?",
@@ -1675,36 +1778,319 @@ What Kerala snack or meal would you like to check?`
             { id: "fried", label: "Deep Fried / Very Oily", calorieAdjustment: 120, fatAdjustment: 13, description: "+120 kcal (+13g fat)" }
           ]
         },
-        answer: `🔥 **Calories:** **${estimatedCalories} kcal** (per **1 serving / 100g**)
+        answer: `🔥 **Calories:** **${baseCal} kcal** (per **${serving}**)
 
 ### **Was it oily? (3 Calorie Options)**
-- 🟢 **No Oil / Steamed:** **${estimatedCalories} kcal** (Base, 0g added cooking oil)
-- 🟡 **Medium / Home Sauté:** **${estimatedCalories + 45} kcal** (+5g fat, light tawa preparation)
-- 🔴 **Deep Fried / Very Oily:** **${estimatedCalories + 120} kcal** (+13g fat, deep oil bath)
+- 🟢 **No Oil / Steamed:** **${baseCal} kcal** (Base, 0g added cooking oil)
+- 🟡 **Medium / Home Sauté:** **${baseCal + 45} kcal** (+5g fat, light tawa preparation)
+- 🔴 **Deep Fried / Very Oily:** **${baseCal + 120} kcal** (+13g fat, deep oil bath)
 
 ### **Nutritional Details**
 - **Food Item:** **${cleanFoodName}**
-- **Food Category:** **Beverages & Snacks / Traditional Food**
-- **Standard Serving Unit:** **1 serving (100g)**
-- **Estimated Protein:** **5.0 g**
-- **Estimated Carbohydrates:** **24.0 g**
-- **Estimated Healthy Fats:** **6.5 g**
-- **Estimated Dietary Fiber:** **2.0 g**
+- **Food Category:** **${cat}**
+- **Standard Serving Unit:** **${serving}**
+- **Protein:** **${p} g**
+- **Carbohydrates:** **${c} g**
+- **Healthy Fats:** **${f} g**
+- **Dietary Fiber:** **${fib} g**
+- **Glycemic Index:** **${gi}**
 
 ### **Clinical Verdict & Recommendation**
-✨ **${cleanFoodName}** has been analyzed and automatically added to your **Clinic Food Library**! You can adjust the oil option above or log it directly to your meal diary.`
+${clinicalNote}
+
+✨ **${cleanFoodName}** is automatically added to your **Clinic Food Library**! You can adjust the oil option above or directly log it into your meal diary.`
       });
 
     } catch (err: any) {
       console.error("Chatbot endpoint caught error safely:", err);
-      // Return guaranteed working response instead of 500
       return res.json({
         isFoodInquiry: false,
         food: null,
-        answer: `### **NutriBot Assistant Active**\n\nI am ready to help you with:\n- **Kerala Snacks & Calories:** Ask for any snack (Pazham Pori, Parippu Vada, Ela Ada, Banana Chips, etc.)\n- **Was it oily? 3 Options:** Calculate calories based on Steamed, Medium Sauté, or Deep Fried!\n- **Automatic Library Add:** Every food you write is automatically saved to the clinic food library.`
+        answer: `### **NutriBot Assistant Active**\n\nI am ready to help you with:\n- **Kerala Snacks & Food Calories:** Ask for any food or snack!\n- **Was it oily? 3 Options:** Calculate calories live (+0, +45, +120 kcal)\n- **Direct Log to Diary:** Log any searched food directly into your meal diary.`
       });
     }
   });
+
+  // Dedicated NutriBot Food Resolution & Extension Endpoint
+  app.all(["/api/ai/estimate-food"], async (req, res) => {
+    try {
+      const foodName = (req.body?.name || req.query?.name || "").toString().trim();
+      if (!foodName) {
+        return res.status(400).json({ error: "Food name is required" });
+      }
+
+      const lowerName = foodName.toLowerCase();
+      let matched = CLINIC_FOOD_LOOKUP[lowerName];
+      if (!matched) {
+        for (const [k, v] of Object.entries(CLINIC_FOOD_LOOKUP)) {
+          if (lowerName.includes(k) || k.includes(lowerName)) {
+            matched = v;
+            break;
+          }
+        }
+      }
+
+      if (matched) {
+        return res.json({
+          food: {
+            name: matched.name,
+            category: matched.category,
+            servingUnit: matched.servingUnit,
+            calories: matched.calories,
+            protein: matched.protein,
+            carbs: matched.carbs,
+            fat: matched.fat,
+            fiber: matched.fiber || 1.5,
+            glycemicIndex: matched.glycemicIndex || "Medium",
+            verdict: matched.verdict,
+            recommendation: matched.tips
+          }
+        });
+      }
+
+      // Dynamic fallback estimation
+      let cat = "Beverages & Snacks";
+      let serving = "1 serving (100g)";
+      let baseCal = 175;
+      let p = 5.0;
+      let c = 22.0;
+      let f = 6.0;
+      let fib = 2.0;
+
+      if (lowerName.includes('chicken') || lowerName.includes('fish') || lowerName.includes('egg') || lowerName.includes('meat') || lowerName.includes('beef')) {
+        cat = "Proteins";
+        serving = "100g cooked";
+        baseCal = 195;
+        p = 26.0;
+        c = 1.0;
+        f = 9.0;
+        fib = 0;
+      } else if (lowerName.includes('rice') || lowerName.includes('bread') || lowerName.includes('roti') || lowerName.includes('oats') || lowerName.includes('pasta')) {
+        cat = "Grains & Breads";
+        serving = "1 serving (120g)";
+        baseCal = 210;
+        p = 5.0;
+        c = 42.0;
+        f = 2.5;
+        fib = 2.5;
+      } else if (lowerName.includes('apple') || lowerName.includes('banana') || lowerName.includes('fruit') || lowerName.includes('mango') || lowerName.includes('orange')) {
+        cat = "Fruits";
+        serving = "1 medium fruit (140g)";
+        baseCal = 80;
+        p = 0.8;
+        c = 20.0;
+        f = 0.3;
+        fib = 3.0;
+      } else if (lowerName.includes('salad') || lowerName.includes('vegetable')) {
+        cat = "Vegetables";
+        serving = "1 bowl (150g)";
+        baseCal = 65;
+        p = 2.5;
+        c = 9.0;
+        f = 1.0;
+        fib = 4.0;
+      } else if (lowerName.includes('shake') || lowerName.includes('whey')) {
+        cat = "Proteins";
+        serving = "1 scoop (300ml)";
+        baseCal = 135;
+        p = 24.0;
+        c = 3.5;
+        f = 1.5;
+        fib = 0.5;
+      }
+
+      return res.json({
+        food: {
+          name: foodName.charAt(0).toUpperCase() + foodName.slice(1),
+          category: cat,
+          servingUnit: serving,
+          calories: baseCal,
+          protein: p,
+          carbs: c,
+          fat: f,
+          fiber: fib,
+          glycemicIndex: "Medium",
+          verdict: `NutriBot calibrated nutrition for ${foodName}`,
+          recommendation: "Check oil preparation to adjust calories live."
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // AI Meal Plate & Photo Analyzer
+  app.post("/api/ai/analyze-meal", async (req, res) => {
+    try {
+      const { imageBase64, mimeType, description } = req.body;
+      const ai = getAI();
+
+      if (!ai) {
+        return res.status(503).json({ error: "AI service not configured" });
+      }
+
+      const prompt = `You are NutriBot, expert clinical dietitian at Saleem Valanchery Wellness Clinic.
+Analyze this meal plate (from photo or description: "${description || 'Food image'}").
+Identify all individual food items present, estimate realistic portions in grams or standard clinic units, calculate accurate macronutrients and calories, and determine if it appears steamed/boiled, lightly sauteed, or deep-fried.
+
+Return a JSON object with this exact schema:
+{
+  "plateSummary": "Short 1-line title of the plate",
+  "detectedMealType": "Breakfast" | "Morning Snack" | "Lunch" | "Evening Snack" | "Dinner",
+  "cookingMethod": "Steamed / No Oil" | "Medium Sauté" | "Deep Fried",
+  "oilCalories": 0 | 45 | 120,
+  "foods": [
+    {
+      "name": string,
+      "servingUnit": string,
+      "quantity": number,
+      "calories": number,
+      "protein": number,
+      "carbs": number,
+      "fat": number,
+      "category": string
+    }
+  ],
+  "totalCalories": number,
+  "totalProtein": number,
+  "totalCarbs": number,
+  "totalFat": number,
+  "dietitianVerdict": string,
+  "glycemicImpact": "Low" | "Medium" | "High"
+}`;
+
+      const promptParts: any[] = [{ text: prompt }];
+      if (imageBase64) {
+        promptParts.push({
+          inlineData: {
+            mimeType: mimeType || 'image/jpeg',
+            data: imageBase64.replace(/^data:image\/\w+;base64,/, '')
+          }
+        });
+      }
+
+      const result = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: [{ role: 'user', parts: promptParts }],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.2
+        }
+      });
+
+      const parsed = JSON.parse(result.text || "{}");
+      return res.json(parsed);
+    } catch (err: any) {
+      console.error("Meal analyzer error:", err);
+      return res.status(500).json({ error: err.message || "Meal analysis failed" });
+    }
+  });
+
+  // AI Diet Plan Generator for Dietitians
+  app.post("/api/ai/generate-diet-plan", async (req, res) => {
+    try {
+      const { targetCalories, targetProtein, targetCarbs, targetFat, clientGoal, dietaryPreference, medicalConditions } = req.body;
+      const ai = getAI();
+
+      if (!ai) {
+        return res.status(503).json({ error: "AI service not configured" });
+      }
+
+      const prompt = `You are Senior Clinical Dietitians Coach Saleem Valanchery and Faseela Saleem at the Saleem Valanchery Wellness Clinic.
+Generate a comprehensive, scientifically calibrated 1-day clinical meal plan.
+Client Profile:
+- Target Calories: ${targetCalories || 1600} kcal
+- Target Protein: ${targetProtein || 90}g
+- Target Carbs: ${targetCarbs || 150}g
+- Target Fat: ${targetFat || 45}g
+- Client Goal: ${clientGoal || 'Visceral Fat Reduction & Metabolic Reversal'}
+- Preference: ${dietaryPreference || 'Kerala Traditional Wholesome (Matta rice, fish curry, thoran, puttu, kadala, eggs, etc.)'}
+- Medical Considerations: ${medicalConditions ? (Array.isArray(medicalConditions) ? medicalConditions.join(', ') : medicalConditions) : 'None / General Wellness'}
+
+Return a JSON object with this EXACT schema:
+{
+  "title": string,
+  "description": string,
+  "targetCalories": number,
+  "targetProtein": number,
+  "targetCarbs": number,
+  "targetFat": number,
+  "waterTargetLitres": number,
+  "generalGuidelines": string[],
+  "meals": [
+    {
+      "mealType": "Breakfast" | "Morning Snack" | "Lunch" | "Evening Snack" | "Dinner",
+      "timeGuideline": string,
+      "instructions": string,
+      "recommendedFoods": [
+        {
+          "foodName": string,
+          "portion": number,
+          "unit": string,
+          "notes": string
+        }
+      ]
+    }
+  ]
+}`;
+
+      const result = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.3
+        }
+      });
+
+      const parsed = JSON.parse(result.text || "{}");
+      return res.json(parsed);
+    } catch (err: any) {
+      console.error("Generate diet plan error:", err);
+      return res.status(500).json({ error: err.message || "Failed to generate diet plan" });
+    }
+  });
+
+  // AI Coach Tip & Reminder Generator
+  app.post("/api/ai/generate-tip", async (req, res) => {
+    try {
+      const { type, clientName, goal, topic } = req.body;
+      const ai = getAI();
+
+      if (!ai) {
+        return res.status(503).json({ error: "AI service not configured" });
+      }
+
+      const prompt = `You are Coach Saleem Valanchery and Faseela Saleem at the Saleem Valanchery Wellness Clinic.
+Generate a personalized, warm, highly practical ${type || 'tip'} to deliver to a client's mobile app.
+- Client Name: ${clientName || 'Valued Member'}
+- Goal: ${goal || 'Fat Loss & Vitality'}
+- Topic Focus: ${topic || 'Metabolic health, hydration, mindful eating, or evening routine'}
+- Type: ${type || 'tip'} (either "tip", "note", or "reminder")
+
+Return a JSON object with:
+{
+  "title": string (engaging, short, max 60 chars),
+  "message": string (2-3 sentences, direct, motivating, clinically actionable)
+}`;
+
+      const result = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.4
+        }
+      });
+
+      const parsed = JSON.parse(result.text || "{}");
+      return res.json(parsed);
+    } catch (err: any) {
+      console.error("Generate tip error:", err);
+      return res.status(500).json({ error: err.message || "Failed to generate tip" });
+    }
+  });
+
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

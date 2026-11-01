@@ -13,8 +13,10 @@ import {
   Plus, 
   TrendingDown, 
   FileText,
-  Utensils
+  Utensils,
+  Printer
 } from 'lucide-react';
+import { PrintReportModal } from '../common/PrintReportModal';
 import {
   ResponsiveContainer,
   LineChart,
@@ -44,6 +46,7 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
   const { dietitians, dietPlans, mealLogs, measurements, assignDietitian, assignDietPlan } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'meals' | 'measurements' | 'plan'>('overview');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   const assignedDietitian = useMemo(() => {
     if (!client) return null;
@@ -101,11 +104,20 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Print official clinical report & diet plan"
+            >
+              <Printer className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Print Dossier</span>
+            </button>
+            <button
+              type="button"
               onClick={() => onOpenSendTip(client.id)}
               className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors"
             >
               <Send className="w-3.5 h-3.5 text-blue-600" />
-              <span>Send Message / Tip</span>
+              <span>Send Tip</span>
             </button>
             <button
               type="button"
@@ -118,7 +130,7 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full text-slate-400 hover:text-slate-600"
+              className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -617,6 +629,12 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
         </div>
 
       </div>
+
+      <PrintReportModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        clientId={client.id}
+      />
     </div>
   );
 };

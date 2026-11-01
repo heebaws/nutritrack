@@ -12,27 +12,28 @@ interface EditCoachModalProps {
 export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose, coach }) => {
   const { updateDietitian } = useApp();
 
-  const [name, setName] = useState(coach.name);
-  const [role, setRole] = useState<'admin' | 'dietitian'>(coach.role);
-  const [title, setTitle] = useState(coach.title);
-  const [specialization, setSpecialization] = useState(coach.specialization);
-  const [email, setEmail] = useState(coach.email);
-  const [phone, setPhone] = useState(coach.phone);
-  const [bio, setBio] = useState(coach.bio);
-  const [username, setUsername] = useState(coach.username || coach.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
-  const [password, setPassword] = useState(coach.password || 'password123');
-  const [avatarUrl, setAvatarUrl] = useState(coach.avatarUrl || '');
+  const [name, setName] = useState(coach?.name || '');
+  const [role, setRole] = useState<'admin' | 'dietitian'>(coach?.role || 'admin');
+  const [title, setTitle] = useState(coach?.title || '');
+  const [specialization, setSpecialization] = useState(coach?.specialization || '');
+  const [email, setEmail] = useState(coach?.email || '');
+  const [phone, setPhone] = useState(coach?.phone || '');
+  const [bio, setBio] = useState(coach?.bio || '');
+  const [username, setUsername] = useState(coach?.username || coach?.name?.toLowerCase().replace(/[^a-z0-9]/g, '') || '');
+  const [password, setPassword] = useState(coach?.password || 'password123');
+  const [avatarUrl, setAvatarUrl] = useState(coach?.avatarUrl || '');
   const [fileName, setFileName] = useState('');
 
   useEffect(() => {
-    setName(coach.name);
-    setRole(coach.role);
-    setTitle(coach.title);
-    setSpecialization(coach.specialization);
-    setEmail(coach.email);
-    setPhone(coach.phone);
-    setBio(coach.bio);
-    setUsername(coach.username || coach.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    if (!coach) return;
+    setName(coach.name || '');
+    setRole(coach.role || 'admin');
+    setTitle(coach.title || '');
+    setSpecialization(coach.specialization || '');
+    setEmail(coach.email || '');
+    setPhone(coach.phone || '');
+    setBio(coach.bio || '');
+    setUsername(coach.username || coach.name?.toLowerCase().replace(/[^a-z0-9]/g, '') || '');
     setPassword(coach.password || 'password123');
     setAvatarUrl(coach.avatarUrl || '');
   }, [coach, isOpen]);

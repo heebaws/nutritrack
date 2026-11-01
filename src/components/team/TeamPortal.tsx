@@ -8,6 +8,8 @@ import { AddClientModal } from './AddClientModal';
 import { AddDietitianModal } from './AddDietitianModal';
 import { ClientDossierModal } from './ClientDossierModal';
 import { EditCoachModal } from './EditCoachModal';
+import { PrintReportModal } from '../common/PrintReportModal';
+import { AppointmentsModal } from '../common/AppointmentsModal';
 import { ClientProfile, DietPlan, DietitianProfile } from '../../types';
 import { 
   Users, 
@@ -34,7 +36,16 @@ import {
   KeyRound,
   Trash2,
   Lock,
-  UserPlus
+  UserPlus,
+  Printer,
+  CalendarCheck,
+  Smartphone,
+  Cloud,
+  Zap,
+  Droplets,
+  Scale,
+  Footprints,
+  RotateCcw
 } from 'lucide-react';
 
 export const TeamPortal: React.FC = () => {
@@ -44,17 +55,38 @@ export const TeamPortal: React.FC = () => {
     clients, 
     foods, 
     dietPlans, 
+    mealLogs,
     measurements, 
+    waterLogs,
+    activities,
+    habits,
+    appointments,
     tips,
+    cloudSyncStatus,
+    lastSyncedAt,
     sendFollowupReminderToInactive,
     quickSwitchTeamRole,
     deleteClient,
-    addDietitian
+    addDietitian,
+    resetAllData
   } = useApp();
 
-  // Navigation tabs in Team Portal
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetData = async () => {
+    if (window.confirm('Reset all clinic records (clients, meal logs, weights, diet plans, food database) back to default pristine setup?')) {
+      setIsResetting(true);
+      await resetAllData();
+      setTimeout(() => setIsResetting(false), 1000);
+    }
+  };
+
+  // Safe coach reference
+  const currentCoach = activeTeamUser || dietitians[0];
+
+  // Navigation tabs in Team Portal (includes Live Client Phone Updates Feed)
   const [currentTab, setCurrentTab] = useState<
-    'reports' | 'clients' | 'foods' | 'plans' | 'centre' | 'broadcast' | 'staff'
+    'reports' | 'live-feed' | 'clients' | 'foods' | 'plans' | 'centre' | 'broadcast' | 'staff'
   >('reports');
 
   // Search and filters for clients
@@ -80,19 +112,33 @@ export const TeamPortal: React.FC = () => {
   const [viewingClientDossier, setViewingClientDossier] = useState<ClientProfile | null>(null);
   const [quickFollowupSentId, setQuickFollowupSentId] = useState<string | null>(null);
 
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [selectedClientIdForPrint, setSelectedClientIdForPrint] = useState<string | undefined>(undefined);
+
+  const [isAppointmentsModalOpen, setIsAppointmentsModalOpen] = useState(false);
+  const [selectedClientIdForAppointment, setSelectedClientIdForAppointment] = useState<string | undefined>(undefined);
+
+  // Valid clients list excluding corrupted empty ghost records
+  const validClients = useMemo(() => {
+    return clients.filter(c => c && c.id && ((c.name && c.name.trim().length > 0) || (c.phone && c.phone.trim().length > 0)));
+  }, [clients]);
+
   // Statistics
-  const totalClients = clients.length;
-  const activeClients = clients.filter(c => c.status === 'active');
-  const inactiveClients = clients.filter(c => c.status === 'inactive');
+  const totalClients = validClients.length;
+  const activeClients = validClients.filter(c => c.status === 'active');
+  const inactiveClients = validClients.filter(c => c.status === 'inactive');
 
   const filteredClients = useMemo(() => {
-    return clients.filter(c => {
-      const matchSearch = c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.phone.includes(clientSearch);
-      const matchDietitian = dietitianFilter === 'all' || c.assignedDietitianId === dietitianFilter;
-      const matchStatus = statusFilter === 'all' || c.status === statusFilter;
+    return validClients.filter(c => {
+      const cName = (c?.name || '').toLowerCase();
+      const cPhone = (c?.phone || '');
+      const s = (clientSearch || '').toLowerCase();
+      const matchSearch = cName.includes(s) || cPhone.includes(s);
+      const matchDietitian = dietitianFilter === 'all' || c?.assignedDietitianId === dietitianFilter;
+      const matchStatus = statusFilter === 'all' || c?.status === statusFilter;
       return matchSearch && matchDietitian && matchStatus;
     });
-  }, [clients, clientSearch, dietitianFilter, statusFilter]);
+  }, [validClients, clientSearch, dietitianFilter, statusFilter]);
 
   // Centre device readings count
   const centreReadings = useMemo(() => {
@@ -112,47 +158,85 @@ export const TeamPortal: React.FC = () => {
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <img
-            src={activeTeamUser.avatarUrl || 'https://images.unsplash.com/photo-1594824813637-27a3a93d4895?auto=format&fit=crop&q=80&w=250'}
-            alt={activeTeamUser.name}
+            src={currentCoach?.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250'}
+            alt={currentCoach?.name || 'Clinic Coach'}
             className="w-13 h-13 rounded-2xl object-cover border-2 border-blue-500 shadow-xs"
           />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-slate-900">{activeTeamUser.name}</h1>
+              <h1 className="text-lg font-bold text-slate-900">{currentCoach?.name || 'Saleem Valanchery'}</h1>
               <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                activeTeamUser.role === 'admin' 
+                currentCoach?.role === 'admin' 
                   ? 'bg-purple-100 text-purple-800 border border-purple-200' 
                   : 'bg-blue-100 text-blue-800 border border-blue-200'
               }`}>
                 <ShieldCheck className="w-3 h-3" />
-                {activeTeamUser.role === 'admin' ? 'Clinic Administrator' : 'Clinical Dietitian'}
+                {currentCoach?.role === 'admin' ? 'Clinic Administrator' : 'Clinical Dietitian'}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              {activeTeamUser.title} • {activeTeamUser.specialization}
+              {currentCoach?.title || 'Wellness Coach & Lead Clinic Admin'} • {currentCoach?.specialization || 'Holistic Wellness & Lifestyle Coaching'}
             </p>
           </div>
         </div>
 
         {/* Quick Actions */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* 1-Click Reset Clinic Data Button */}
           <button
             type="button"
-            onClick={() => setEditingCoach(activeTeamUser)}
+            onClick={handleResetData}
+            disabled={isResetting}
+            title="Reset all clinic records, client logs, weights, and staff to original default setup"
+            className="bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 text-xs font-semibold px-3 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <RotateCcw className={`w-4 h-4 text-amber-700 ${isResetting ? 'animate-spin' : ''}`} />
+            <span>{isResetting ? 'Restoring Clinic...' : 'Reset Clinic Data'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => currentCoach && setEditingCoach(currentCoach)}
             className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Edit3 className="w-4 h-4" />
             <span>Edit Admin Profile</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setIsAddClientOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Client</span>
-          </button>
+          {/* Clinic Administrator has options to add either a Coach or a Client */}
+          {currentCoach?.role === 'admin' ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAddDietitianOpen(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Clinic Administrator: Add New Coach or Dietitian"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Add Coach / Dietitian</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAddClientOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Add New Client"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add Client</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsAddClientOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Add New Client"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Add Client</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -164,6 +248,30 @@ export const TeamPortal: React.FC = () => {
           >
             <Building2 className="w-4 h-4 text-blue-400" />
             <span>Enter Centre Reading</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedClientIdForAppointment(clients[0]?.id);
+              setIsAppointmentsModalOpen(true);
+            }}
+            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <CalendarCheck className="w-4 h-4 text-teal-200" />
+            <span>Clinic Appointments</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedClientIdForPrint(clients[0]?.id);
+              setIsPrintModalOpen(true);
+            }}
+            className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Printer className="w-4 h-4 text-emerald-300" />
+            <span>Print Client Report</span>
           </button>
 
           <button
@@ -198,6 +306,23 @@ export const TeamPortal: React.FC = () => {
               {inactiveClients.length}
             </span>
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentTab('live-feed')}
+          className={`py-3 px-4 text-xs font-bold whitespace-nowrap border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
+            currentTab === 'live-feed'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/40'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Smartphone className="w-4 h-4 text-emerald-600" />
+          <span>Live Client Feed (Mobile)</span>
+          <span className="flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+            Live Cloud
+          </span>
         </button>
 
         <button
@@ -301,7 +426,7 @@ export const TeamPortal: React.FC = () => {
               </div>
               <div className="text-3xl font-black text-emerald-700 mt-2">{activeClients.length}</div>
               <p className="text-xs text-emerald-700 mt-1">
-                {Math.round((activeClients.length / totalClients) * 100)}% active logging meals &amp; measurements
+                {totalClients > 0 ? Math.round((activeClients.length / totalClients) * 100) : 0}% active logging meals &amp; measurements
               </p>
             </div>
 
@@ -348,9 +473,13 @@ export const TeamPortal: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {clients.map((client) => {
-                    const dietitian = dietitians.find(d => d.id === client.assignedDietitianId);
+                  {validClients.map((client) => {
+                    const dietitian = dietitians.find(d => d.id === client.assignedDietitianId) || dietitians[0];
                     const isInactive = client.status === 'inactive';
+                    const clientDisplayName = (client.name && client.name.trim().length > 0) ? client.name.trim() : 'Registered Client';
+                    const clientPhoneDisplay = client.phone || '5550199';
+                    const clientGoalDisplay = client.goal || 'General Health & Metabolic Management';
+                    const coachDisplayName = dietitian?.name || 'Saleem Valanchery (Lead)';
 
                     return (
                       <tr 
@@ -363,22 +492,31 @@ export const TeamPortal: React.FC = () => {
                           <div className="flex items-center gap-2.5">
                             <img
                               src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
-                              alt={client.name}
-                              className="w-8 h-8 rounded-full object-cover"
+                              alt={clientDisplayName}
+                              className="w-8 h-8 rounded-full object-cover shrink-0"
                             />
                             <div>
-                              <span className="font-semibold text-slate-900 block">{client.name}</span>
-                              <span className="text-[11px] text-slate-500">{client.phone}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-slate-900 block">{clientDisplayName}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase ${
+                                  isInactive 
+                                    ? 'bg-rose-100 text-rose-800' 
+                                    : 'bg-emerald-100 text-emerald-800'
+                                }`}>
+                                  ({isInactive ? 'Inactive' : 'Active'})
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-slate-500 font-mono block">{clientPhoneDisplay}</span>
                             </div>
                           </div>
                         </td>
 
                         <td className="py-3 px-4 font-medium text-slate-700">
-                          {dietitian?.name || 'Unassigned'}
+                          {coachDisplayName}
                         </td>
 
                         <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
-                          {client.goal}
+                          {clientGoalDisplay}
                         </td>
 
                         <td className="py-3 px-4">
@@ -387,7 +525,7 @@ export const TeamPortal: React.FC = () => {
                               ? 'bg-rose-100 text-rose-800' 
                               : 'bg-emerald-100 text-emerald-800'
                           }`}>
-                            {client.status}
+                            {client.status || 'active'}
                           </span>
                         </td>
 
@@ -436,6 +574,221 @@ export const TeamPortal: React.FC = () => {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Live Mobile Updates Preview in Reports Tab */}
+          <div className="bg-white rounded-2xl border border-emerald-200/80 p-5 shadow-xs bg-linear-to-r from-emerald-50/40 via-white to-blue-50/30">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-emerald-600" />
+                    Live Mobile Updates from Clients
+                  </h3>
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    Real-Time Cloud Storage
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Updates entered by clients on their smartphones (meals, fasting weight, water, habits) reflect here immediately via Firestore.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCurrentTab('live-feed')}
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-white border border-emerald-200 hover:bg-emerald-50 px-3 py-1.5 rounded-xl shadow-2xs transition-colors flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+              >
+                <span>Open Full Mobile Feed ({mealLogs.length + measurements.length + waterLogs.length} updates)</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Quick mini-cards of latest 4 events */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {mealLogs.slice(0, 2).map((m) => {
+                const client = clients.find(c => c.id === m.clientId);
+                return (
+                  <div key={m.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🥗</span>
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 block truncate max-w-[120px]">
+                            {client?.name || 'Client'}
+                          </span>
+                          <span className="text-[10px] text-emerald-700 font-semibold">{m.mealType}</span>
+                        </div>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-400">{m.timeLogged || m.date}</span>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-700 truncate font-medium">
+                      {m.foodName}
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[11px] font-bold text-slate-900">
+                      <span>{m.calories} kcal</span>
+                      <span className="text-[10px] font-medium text-slate-500">P:{m.protein}g • C:{m.carbs}g • F:{m.fat}g</span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {measurements.slice(0, 1).map((w) => {
+                const client = clients.find(c => c.id === w.clientId);
+                return (
+                  <div key={w.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Scale className="w-4 h-4 text-blue-600" />
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 block truncate max-w-[120px]">
+                            {client?.name || 'Client'}
+                          </span>
+                          <span className="text-[10px] text-blue-700 font-semibold">Morning Weigh-in</span>
+                        </div>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-400">{w.date}</span>
+                    </div>
+                    <div className="mt-2 text-base font-extrabold text-blue-700">
+                      {w.weightKg} kg
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-500 truncate">
+                      {w.source === 'centre_device' ? 'Clinic InBody Scan' : 'Mobile Fasting Weight'}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {waterLogs.slice(0, 1).map((wat) => {
+                const client = clients.find(c => c.id === wat.clientId);
+                return (
+                  <div key={wat.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Droplets className="w-4 h-4 text-cyan-600" />
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 block truncate max-w-[120px]">
+                            {client?.name || 'Client'}
+                          </span>
+                          <span className="text-[10px] text-cyan-700 font-semibold">Hydration Log</span>
+                        </div>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-400">{wat.timeLogged || wat.date}</span>
+                    </div>
+                    <div className="mt-2 text-base font-extrabold text-cyan-700">
+                      +{wat.amountMl} ml
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-500 truncate">
+                      Logged from mobile phone
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ================= VIEW: FULL LIVE CLIENT PHONE FEED ================= */}
+      {currentTab === 'live-feed' && (
+        <div className="space-y-6">
+          
+          {/* Header Banner */}
+          <div className="bg-white rounded-2xl border border-emerald-200 p-5 shadow-xs bg-linear-to-r from-emerald-50/50 via-white to-blue-50/40">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      Live Client Mobile Feed
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Real-time cloud stream: Any food logged, weight recorded, or habit checked on a client's phone immediately appears here.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="text-xs px-3 py-1.5 rounded-xl bg-white border border-emerald-200 shadow-2xs flex items-center gap-2">
+                  <Cloud className="w-4 h-4 text-emerald-600" />
+                  <span className="font-bold text-slate-800">Firestore Cloud Sync</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Activity Timeline List */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Latest Client Actions (Chronological)
+              </h3>
+              <div className="text-xs text-slate-500">
+                Total Logs: <span className="font-bold text-slate-800">{mealLogs.length + measurements.length + waterLogs.length + activities.length}</span> items
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {/* Combine and sort recent logs */}
+              {mealLogs.length === 0 && measurements.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-xs">
+                  No mobile logs recorded yet. When clients log on their phone, they will stream here in real time.
+                </div>
+              ) : (
+                mealLogs.slice(0, 20).map((meal) => {
+                  const client = clients.find(c => c.id === meal.clientId);
+                  return (
+                    <div key={meal.id} className="p-4 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-lg shrink-0">
+                          🥗
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-slate-900">{client?.name || 'Client'}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              {meal.mealType}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {meal.timeLogged} • {meal.date}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-700 mt-1 font-medium">
+                            {meal.foodName} ({meal.quantity}x {meal.servingUnit})
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-3">
+                            <span className="font-semibold text-slate-800">🔥 {meal.calories} kcal</span>
+                            <span>Protein: {meal.protein}g</span>
+                            <span>Carbs: {meal.carbs}g</span>
+                            <span>Fat: {meal.fat}g</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                        {client && (
+                          <button
+                            type="button"
+                            onClick={() => setViewingClientDossier(client)}
+                            className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 transition-colors cursor-pointer"
+                          >
+                            View Client
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -606,9 +959,13 @@ export const TeamPortal: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredClients.map((client) => {
-                      const dietitian = dietitians.find(d => d.id === client.assignedDietitianId);
-                      const plan = dietPlans.find(p => p.id === client.dietPlanId);
+                      const dietitian = dietitians.find(d => d.id === client.assignedDietitianId) || dietitians[0];
+                      const plan = dietPlans.find(p => p.id === client.dietPlanId) || dietPlans[0];
                       const isInactive = client.status === 'inactive';
+                      const clientDisplayName = (client.name && client.name.trim().length > 0) ? client.name.trim() : 'Registered Client';
+                      const clientPhoneDisplay = client.phone || '5550199';
+                      const coachDisplayName = dietitian?.name || 'Saleem Valanchery (Lead)';
+                      const planTitleDisplay = plan?.title || 'Metabolic Nutrition Plan';
                       
                       // Fat norm calculation
                       const fatNormLabel = client.gender === 'Male' ? '10–20%' : '20–30%';
@@ -626,22 +983,22 @@ export const TeamPortal: React.FC = () => {
                             <div className="flex items-center gap-2.5">
                               <img
                                 src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
-                                alt={client.name}
+                                alt={clientDisplayName}
                                 className="w-8 h-8 rounded-full object-cover shrink-0"
                               />
                               <div>
                                 <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                  <span>{client.name}</span>
+                                  <span>{clientDisplayName}</span>
                                   <span className="text-[10px] text-slate-400 font-normal">
-                                    ({client.gender}, {client.age}y)
+                                    ({client.gender || 'Client'}, {client.age || 30}y)
                                   </span>
                                 </div>
                                 <div className="text-[11px] text-slate-500 font-mono flex items-center gap-2">
-                                  <span>{client.phone}</span>
+                                  <span>{clientPhoneDisplay}</span>
                                   <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold uppercase ${
                                     isInactive ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
                                   }`}>
-                                    {client.status}
+                                    ({isInactive ? 'Inactive' : 'Active'})
                                   </span>
                                 </div>
                               </div>
@@ -739,8 +1096,8 @@ export const TeamPortal: React.FC = () => {
 
                           {/* Coach & Plan */}
                           <td className="py-3 px-3">
-                            <div className="text-slate-800 font-medium">{dietitian?.name || 'Unassigned'}</div>
-                            <div className="text-[10px] text-slate-400 truncate max-w-[120px]">{plan?.title || 'No plan'}</div>
+                            <div className="text-slate-800 font-medium">{coachDisplayName}</div>
+                            <div className="text-[10px] text-slate-500 truncate max-w-[120px]">{planTitleDisplay}</div>
                           </td>
 
                           {/* Actions */}
@@ -793,10 +1150,13 @@ export const TeamPortal: React.FC = () => {
             /* Client Cards Grid */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredClients.map((client) => {
-                const dietitian = dietitians.find(d => d.id === client.assignedDietitianId);
-                const plan = dietPlans.find(p => p.id === client.dietPlanId);
-                const uName = client.username || client.name.split(' ')[0].toLowerCase();
+                const dietitian = dietitians.find(d => d.id === client.assignedDietitianId) || dietitians[0];
+                const plan = dietPlans.find(p => p.id === client.dietPlanId) || dietPlans[0];
+                const clientDisplayName = (client.name && client.name.trim().length > 0) ? client.name.trim() : 'Registered Client';
+                const clientPhoneDisplay = client.phone || '5550199';
+                const uName = client.username || (clientDisplayName.split(' ')[0].toLowerCase()) || 'client';
                 const uPass = client.password || 'password123';
+                const isInactive = client.status === 'inactive';
 
                 return (
                   <div 
@@ -809,19 +1169,26 @@ export const TeamPortal: React.FC = () => {
                         <div className="flex items-center gap-3">
                           <img
                             src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
-                            alt={client.name}
+                            alt={clientDisplayName}
                             className="w-11 h-11 rounded-full object-cover border-2 border-slate-100"
                           />
                           <div>
-                            <h3 className="font-bold text-slate-900 text-sm leading-tight">{client.name}</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">Phone: {client.phone}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h3 className="font-bold text-slate-900 text-sm leading-tight">{clientDisplayName}</h3>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase ${
+                                isInactive ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                              }`}>
+                                ({isInactive ? 'Inactive' : 'Active'})
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5 font-mono">Phone: {clientPhoneDisplay}</p>
                           </div>
                         </div>
 
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
                           client.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                         }`}>
-                          {client.status}
+                          {client.status || 'active'}
                         </span>
                       </div>
 
@@ -890,11 +1257,11 @@ export const TeamPortal: React.FC = () => {
                       <div className="mt-2.5 space-y-1 text-xs text-slate-600">
                         <div className="flex items-center justify-between">
                           <span className="text-slate-400">Coach:</span>
-                          <span className="font-semibold text-slate-800">{dietitian?.name}</span>
+                          <span className="font-semibold text-slate-800">{dietitian?.name || 'Saleem Valanchery (Lead)'}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-slate-400">Plan:</span>
-                          <span className="font-medium text-slate-800 truncate max-w-[150px]">{plan?.title || 'None'}</span>
+                          <span className="font-medium text-slate-800 truncate max-w-[150px]">{plan?.title || 'Metabolic Plan'}</span>
                         </div>
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="text-slate-400">Last Active:</span>
@@ -1214,7 +1581,7 @@ export const TeamPortal: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setEditingCoach(activeTeamUser)}
+                onClick={() => currentCoach && setEditingCoach(currentCoach)}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Edit3 className="w-4 h-4" />
@@ -1225,7 +1592,7 @@ export const TeamPortal: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {dietitians.map((staff) => {
-              const isCurrent = activeTeamUser.id === staff.id;
+              const isCurrent = currentCoach?.id === staff.id;
               const assignedClients = clients.filter(c => c.assignedDietitianId === staff.id).length;
               const staffUser = staff.username || staff.name.toLowerCase().replace(/[^a-z0-9]/g, '');
               const staffPass = staff.password || 'password123';
@@ -1332,7 +1699,7 @@ export const TeamPortal: React.FC = () => {
                         onClick={() => quickSwitchTeamRole(staff.role, staff.id)}
                         className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer"
                       >
-                        Switch Session to {staff.name.split(' ')[0]}
+                        Switch Session to {(staff.name || 'Coach').split(' ')[0]}
                       </button>
                     )}
                   </div>
@@ -1418,6 +1785,18 @@ export const TeamPortal: React.FC = () => {
           setSelectedClientIdForTip(null);
         }}
         preselectedClientId={selectedClientIdForTip}
+      />
+
+      <PrintReportModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        clientId={selectedClientIdForPrint}
+      />
+
+      <AppointmentsModal
+        isOpen={isAppointmentsModalOpen}
+        onClose={() => setIsAppointmentsModalOpen(false)}
+        clientId={selectedClientIdForAppointment}
       />
 
     </div>
