@@ -23,6 +23,17 @@ export const getDaysAgoString = (days: number): string => {
   return formatToLocalIsoDate(d);
 };
 
+export const getDayBeforeDateString = (dateStr: string): string => {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    dateObj.setDate(dateObj.getDate() - 1);
+    return formatToLocalIsoDate(dateObj);
+  } catch {
+    return getYesterdayString();
+  }
+};
+
 export const isFutureDate = (dateStr: string): boolean => {
   return dateStr > getTodayString();
 };

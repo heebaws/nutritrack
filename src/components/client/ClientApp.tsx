@@ -56,6 +56,7 @@ import {
   Footprints,
   Activity,
   Bot,
+  RotateCcw,
   LogOut
 } from 'lucide-react';
 import {
@@ -88,7 +89,8 @@ export const ClientApp: React.FC = () => {
     acceptSuggestedMeal,
     dismissSuggestedMeal,
     activities,
-    appointments
+    appointments,
+    resetClientDayMealsToDayBefore
   } = useApp();
 
   // Active website navigation tab
@@ -115,6 +117,31 @@ export const ClientApp: React.FC = () => {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isAppointmentsModalOpen, setIsAppointmentsModalOpen] = useState(false);
   const [planLoggedNotice, setPlanLoggedNotice] = useState<string | null>(null);
+  const [isResettingMeals, setIsResettingMeals] = useState(false);
+  const [resetFeedbackNotice, setResetFeedbackNotice] = useState<string | null>(null);
+
+  const handleResetMealsToDayBefore = async () => {
+    if (!activeClient) return;
+    const confirmMsg = `Reset foods for ${formatDateDisplay(selectedDate)} to match what you logged the day before?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsResettingMeals(true);
+    try {
+      const res = await resetClientDayMealsToDayBefore(activeClient.id, selectedDate);
+      if (res.count > 0) {
+        setResetFeedbackNotice(`Successfully set ${res.count} food${res.count > 1 ? 's' : ''} from yesterday (${formatDateDisplay(res.dayBefore)}) into today!`);
+      } else {
+        setResetFeedbackNotice(`No food logs were recorded on the day before (${formatDateDisplay(res.dayBefore)}). Today's food log has been cleared.`);
+      }
+    } catch (err) {
+      setResetFeedbackNotice('Reset failed. Please try again.');
+    } finally {
+      setIsResettingMeals(false);
+      setTimeout(() => {
+        setResetFeedbackNotice(null);
+      }, 5000);
+    }
+  };
 
   // Front page sections visibility for customized, non-boring layout with sleek "Show" lines
   interface FrontSections {
@@ -1312,13 +1339,24 @@ export const ClientApp: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                     <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <Utensils className="w-4 h-4 text-emerald-600" />
                       <span>Today's Meals Timeline</span>
                     </h2>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400 hidden sm:inline">Click slot to collapse</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* USER MANDATE: Client reset ONLY resets their food logs as the day before */}
+                      <button
+                        type="button"
+                        onClick={handleResetMealsToDayBefore}
+                        disabled={isResettingMeals}
+                        title="Reset your food log for this date to exactly what you had typed the day before"
+                        className="flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition-all cursor-pointer border border-amber-200 shadow-2xs disabled:opacity-50"
+                      >
+                        <RotateCcw className={`w-3.5 h-3.5 text-amber-600 ${isResettingMeals ? 'animate-spin' : ''}`} />
+                        <span>{isResettingMeals ? 'Resetting...' : "Reset to Yesterday's Foods"}</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => toggleSection('mealsTimeline')}
@@ -1331,6 +1369,13 @@ export const ClientApp: React.FC = () => {
                       </button>
                     </div>
                   </div>
+
+                  {resetFeedbackNotice && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                      <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>{resetFeedbackNotice}</span>
+                    </div>
+                  )}
 
                   {(['Breakfast', 'Morning Snack', 'Lunch', 'Evening Snack', 'Dinner'] as MealType[]).map((slot) => {
                     const itemsInSlot = clientLogsForDay.filter(m => m.mealType === slot);

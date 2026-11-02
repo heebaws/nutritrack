@@ -29,7 +29,7 @@ import {
   INITIAL_HABITS,
   INITIAL_APPOINTMENTS
 } from '../data/mockData';
-import { getTodayString, clampToToday } from '../utils/dateUtils';
+import { getTodayString, clampToToday, getDayBeforeDateString } from '../utils/dateUtils';
 import {
   testFirestoreConnection,
   subscribeToCollection,
@@ -94,6 +94,7 @@ interface AppContextType {
   // Client Operations
   addMealLog: (meal: Omit<MealLogItem, 'id' | 'timeLogged'>) => void;
   deleteMealLog: (id: string) => void;
+  resetClientDayMealsToDayBefore: (clientId: string, targetDate: string) => Promise<{ count: number; dayBefore: string }>;
   addSuggestedMeal: (suggestion: Omit<AISuggestedMeal, 'id' | 'createdAt' | 'status'>) => void;
   acceptSuggestedMeal: (suggestionId: string) => void;
   dismissSuggestedMeal: (suggestionId: string) => void;
@@ -788,6 +789,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deleteDocumentFromFirestore('mealLogs', id).catch(() => {});
   };
 
+  // USER MANDATE: Resetting for a client ONLY resets their food logs to what they typed the day before!
+  const resetClientDayMealsToDayBefore = async (clientId: string, targetDate: string): Promise<{ count: number; dayBefore: string }> => {
+    const dayBefore = getDayBeforeDateString(targetDate);
+
+    // Find yesterday's meals for this specific client ONLY
+    const yesterdayMeals = mealLogs.filter(m => m.clientId === clientId && m.date === dayBefore);
+
+    // Find and delete existing logs for this client on targetDate ONLY
+    const existingLogsOnTargetDate = mealLogs.filter(m => m.clientId === clientId && m.date === targetDate);
+    for (const log of existingLogsOnTargetDate) {
+      deleteDocumentFromFirestore('mealLogs', log.id).catch(() => {});
+    }
+
+    if (yesterdayMeals.length === 0) {
+      // If no logs on the day before, clear targetDate for this client
+      setMealLogs(prev => prev.filter(m => !(m.clientId === clientId && m.date === targetDate)));
+      return { count: 0, dayBefore };
+    }
+
+    // Replicate yesterday's foods with targetDate for this client
+    const clonedMeals: MealLogItem[] = yesterdayMeals.map((m, idx) => ({
+      ...m,
+      id: `m-reset-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+      date: targetDate,
+      timeLogged: m.timeLogged || '12:00 PM'
+    }));
+
+    for (const cloned of clonedMeals) {
+      saveDocumentToFirestore('mealLogs', cloned.id, cloned).catch(() => {});
+    }
+
+    setMealLogs(prev => {
+      const otherLogs = prev.filter(m => !(m.clientId === clientId && m.date === targetDate));
+      return [...clonedMeals, ...otherLogs];
+    });
+
+    return { count: clonedMeals.length, dayBefore };
+  };
+
   // AI Suggested Meals from Chatbot
   const addSuggestedMeal = (suggestion: Omit<AISuggestedMeal, 'id' | 'createdAt' | 'status'>) => {
     const newSuggestion: AISuggestedMeal = {
@@ -1246,6 +1286,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         appointments,
         addMealLog,
         deleteMealLog,
+        resetClientDayMealsToDayBefore,
         addSuggestedMeal,
         acceptSuggestedMeal,
         dismissSuggestedMeal,

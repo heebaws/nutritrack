@@ -1215,10 +1215,10 @@ export const TeamPortal: React.FC = () => {
                       <div className="mt-2.5 px-2.5 py-1.5 bg-emerald-50/80 rounded-xl border border-emerald-100 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1 text-emerald-900 font-medium truncate">
                           <KeyRound className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="truncate">User: <b className="font-mono text-emerald-800">{uName}</b></span>
+                          <span className="truncate">Username: <b className="font-mono text-emerald-800">{uName}</b></span>
                         </div>
-                        <div className="text-[11px] font-mono text-slate-600 shrink-0">
-                          Pass: <b className="text-slate-800">{uPass}</b>
+                        <div className="text-[11px] font-mono text-slate-400 shrink-0">
+                          Password: <span className="text-slate-500 font-sans tracking-widest">••••••••</span>
                         </div>
                       </div>
 
@@ -1678,7 +1678,7 @@ export const TeamPortal: React.FC = () => {
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-slate-500">Password:</span>
-                        <span className="font-mono text-slate-700">{staffPass}</span>
+                        <span className="font-mono text-slate-400 tracking-wider">••••••••</span>
                       </div>
                     </div>
 
