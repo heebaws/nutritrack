@@ -51,7 +51,7 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
       isSuperAdmin: role === 'super_admin' || coach.isSuperAdmin,
       title: title.trim() || 'Wellness Coach',
       specialization: specialization.trim() || 'Holistic Wellness & Nutrition',
-      email: email.trim() || 'coach@wellnessclinic.com',
+      email: email.trim() || 'coach@wellnesscentre.com',
       phone: phone.trim() || '+91 98470 00000',
       bio: bio.trim(),
       username: username.trim() || 'admin',
@@ -73,7 +73,7 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">Edit Coach / Admin Profile</h2>
-              <p className="text-xs text-slate-500">Update clinic details, credentials, and coaching profile</p>
+              <p className="text-xs text-slate-500">Update centre details, credentials, and coaching profile</p>
             </div>
           </div>
           <button
@@ -111,8 +111,8 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
                 onChange={(e) => setRole(e.target.value as any)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-hidden"
               >
-                <option value="super_admin">👑 Super Admin (Full Clinic &amp; Food Library Authority)</option>
-                <option value="admin">Clinic Administrator &amp; Wellness Coach</option>
+                <option value="super_admin">👑 Super Admin (Full Centre &amp; Food Library Authority)</option>
+                <option value="admin">Centre Administrator &amp; Wellness Coach</option>
                 <option value="dietitian">Wellness Coach / Dietitian</option>
               </select>
             </div>
@@ -127,7 +127,7 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Wellness Coach & Lead Clinic Admin"
+                placeholder="e.g. Wellness Coach & Lead Centre Admin"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-hidden"
               />
             </div>
@@ -168,7 +168,7 @@ export const EditCoachModal: React.FC<EditCoachModalProps> = ({ isOpen, onClose,
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="saleem@wellnessclinic.com"
+                placeholder="saleem@wellnesscentre.com"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900"
               />
             </div>

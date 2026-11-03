@@ -1,4 +1,5 @@
 import { FoodCategory, MealType } from '../types';
+import { INITIAL_FOODS } from '../data/mockData';
 
 export interface EstimatedFood {
   name: string;
@@ -933,6 +934,539 @@ const COMPREHENSIVE_FOOD_DATABASE: Record<string, EstimatedFood> = {
     glycemicIndex: 'Low',
     verdict: 'Nature\'s isotonic hydration drink packed with bioavailable potassium and magnesium.',
     recommendation: 'Superior natural alternative to artificial sports electrolyte drinks.'
+  },
+  'karikku': {
+    name: 'Karikku (Fresh Tender Coconut Water)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 whole (250ml)',
+    calories: 48,
+    protein: 1.8,
+    carbs: 9.0,
+    fat: 0.5,
+    fiber: 2.6,
+    glycemicIndex: 'Low',
+    verdict: 'Pure natural electrolyte water rich in potassium and active enzymes.',
+    recommendation: 'Outstanding natural hydration for recovery and hydration.'
+  },
+  'chukku kaapi': {
+    name: 'Chukku Kaapi (Dry Ginger Herbal Coffee)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 cup (150ml)',
+    calories: 45,
+    protein: 0.5,
+    carbs: 10.5,
+    fat: 0.1,
+    fiber: 0.3,
+    glycemicIndex: 'Low',
+    verdict: 'Traditional Kerala dry ginger coffee infused with black pepper and palm jaggery.',
+    recommendation: 'Soothing for throat and improves digestion.'
+  },
+  'chukku kappi': {
+    name: 'Chukku Kaapi (Dry Ginger Herbal Coffee)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 cup (150ml)',
+    calories: 45,
+    protein: 0.5,
+    carbs: 10.5,
+    fat: 0.1,
+    fiber: 0.3,
+    glycemicIndex: 'Low',
+    verdict: 'Traditional Kerala dry ginger coffee with pepper and palm jaggery.',
+    recommendation: 'Natural immunity and respiratory comfort.'
+  },
+  'sambharam': {
+    name: 'Morum Vellam / Sambharam (Kerala Spiced Buttermilk)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (240ml)',
+    calories: 38,
+    protein: 3.2,
+    carbs: 3.8,
+    fat: 1.2,
+    fiber: 0.2,
+    glycemicIndex: 'Low',
+    verdict: 'Chilled churned curd spiced with crushed ginger, green chili, and curry leaves.',
+    recommendation: 'Probiotic powerhouse that hydrates and calms digestive heat.'
+  },
+  'morum vellam': {
+    name: 'Morum Vellam / Sambharam (Kerala Spiced Buttermilk)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (240ml)',
+    calories: 38,
+    protein: 3.2,
+    carbs: 3.8,
+    fat: 1.2,
+    fiber: 0.2,
+    glycemicIndex: 'Low',
+    verdict: 'Traditional Kerala tempered spiced buttermilk.',
+    recommendation: 'Superb thirst quencher with gut-friendly probiotics.'
+  },
+  'kulukki sarbath': {
+    name: 'Kulukki Sarbath (Shaken Lemon & Sabja)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (250ml)',
+    calories: 85,
+    protein: 1.2,
+    carbs: 20.0,
+    fat: 0.2,
+    fiber: 1.5,
+    glycemicIndex: 'Medium',
+    verdict: 'Shaken Kerala street cooler made with lemon, green chili slice, and basil seeds.',
+    recommendation: 'Request less sugar syrup for optimal weight control.'
+  },
+  'kulukki': {
+    name: 'Kulukki Sarbath (Shaken Lemon & Sabja)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (250ml)',
+    calories: 85,
+    protein: 1.2,
+    carbs: 20.0,
+    fat: 0.2,
+    fiber: 1.5,
+    glycemicIndex: 'Medium',
+    verdict: 'Shaken Kerala street cooler with basil seeds and lemon.',
+    recommendation: 'Great refreshing afternoon drink.'
+  },
+  'nannari sarbath': {
+    name: 'Nannari Sarbath (Roots Sarbath with Lemon)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (250ml)',
+    calories: 105,
+    protein: 0.4,
+    carbs: 26.0,
+    fat: 0.1,
+    fiber: 1.0,
+    glycemicIndex: 'Medium-High',
+    verdict: 'Traditional cooling beverage made from Indian sarsaparilla root syrup and lemon.',
+    recommendation: 'Natural coolant; enjoy in moderation due to sugar content.'
+  },
+  'nannari': {
+    name: 'Nannari Sarbath (Roots Sarbath with Lemon)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (250ml)',
+    calories: 105,
+    protein: 0.4,
+    carbs: 26.0,
+    fat: 0.1,
+    fiber: 1.0,
+    glycemicIndex: 'Medium-High',
+    verdict: 'Herbal cooling root beverage.',
+    recommendation: 'Naturally cooling for summer heat.'
+  },
+  'panakam': {
+    name: 'Panakam (Traditional Jaggery & Pepper Drink)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (200ml)',
+    calories: 88,
+    protein: 0.3,
+    carbs: 21.5,
+    fat: 0.1,
+    fiber: 0.4,
+    glycemicIndex: 'Medium',
+    verdict: 'Heritage electrolyte drink with jaggery, dried ginger, cardamom, and black pepper.',
+    recommendation: 'Electrolyte restoring summer cooler.'
+  },
+  'jeeraka vellam': {
+    name: 'Jeeraka Vellam (Warm Cumin Water)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (250ml)',
+    calories: 2,
+    protein: 0.1,
+    carbs: 0.4,
+    fat: 0,
+    fiber: 0.1,
+    glycemicIndex: 'Low',
+    verdict: 'Boiled cumin seed water, the ubiquitous Kerala dining table digestive.',
+    recommendation: 'Drink warm throughout the day for gentle digestive stimulation.'
+  },
+  'pathimugam vellam': {
+    name: 'Pathimugam Vellam (Pink Herbal Water)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (250ml)',
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiber: 0,
+    glycemicIndex: 'Zero',
+    verdict: 'Traditional Kerala pink drinking water boiled with Caesalpinia sappan wood.',
+    recommendation: '100% calorie-free, antimicrobial, and soothing for digestive tract.'
+  },
+  'sharjah shake': {
+    name: 'Sharjah Shake (Calicut Bakery Shake)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (300ml)',
+    calories: 280,
+    protein: 6.5,
+    carbs: 48.0,
+    fat: 7.2,
+    fiber: 2.2,
+    glycemicIndex: 'High',
+    verdict: 'Classic Malabar bakery smoothie blended with frozen Nendran banana, milk, Horlicks, and roasted nuts.',
+    recommendation: 'Calorie dense sweet shake. Treat as an occasional fitness cheat treat.'
+  },
+  'chaya': {
+    name: 'Kerala Naadan Chaya (Milk Tea)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 glass (150ml with milk & sugar)',
+    calories: 75,
+    protein: 2.8,
+    carbs: 9.5,
+    fat: 2.6,
+    fiber: 0,
+    glycemicIndex: 'Medium',
+    verdict: 'Poured tea-stall style strong milk tea.',
+    recommendation: 'Limit added sugar to 1 teaspoon or switch to Sulaimani for fewer calories.'
+  },
+  'kallappam': {
+    name: 'Kallappam / Vellayappam (Soft Rice Pancake)',
+    category: 'Grains & Breads',
+    servingUnit: '1 piece (50g)',
+    calories: 92,
+    protein: 1.8,
+    carbs: 18.5,
+    fat: 1.2,
+    fiber: 0.8,
+    glycemicIndex: 'Medium',
+    verdict: 'Fermented ground rice pancake with hints of cumin, shallots, and fresh coconut.',
+    recommendation: 'Soft and easily digested. Pairs well with chicken roast or vegetable stew.'
+  },
+  'vellayappam': {
+    name: 'Kallappam / Vellayappam (Soft Rice Pancake)',
+    category: 'Grains & Breads',
+    servingUnit: '1 piece (50g)',
+    calories: 92,
+    protein: 1.8,
+    carbs: 18.5,
+    fat: 1.2,
+    fiber: 0.8,
+    glycemicIndex: 'Medium',
+    verdict: 'Traditional fermented rice flatbread.',
+    recommendation: 'Wholesome breakfast staple.'
+  },
+  'thattu dosa': {
+    name: 'Kerala Thattu Dosa',
+    category: 'Grains & Breads',
+    servingUnit: '1 small thattu dosa (45g)',
+    calories: 78,
+    protein: 2.1,
+    carbs: 14.5,
+    fat: 1.2,
+    fiber: 0.7,
+    glycemicIndex: 'Medium',
+    verdict: 'Thick, spongy small street-style fermented rice and urad dal dosa.',
+    recommendation: 'Pair with spicy tomato chammanthi or sambar.'
+  },
+  'uppumavu': {
+    name: 'Uppumavu / Rava Upma',
+    category: 'Grains & Breads',
+    servingUnit: '1 bowl (150g)',
+    calories: 168,
+    protein: 4.5,
+    carbs: 28.0,
+    fat: 4.2,
+    fiber: 2.1,
+    glycemicIndex: 'Medium',
+    verdict: 'Roasted semolina cooked with mustard seeds, curry leaves, ginger, and shallots.',
+    recommendation: 'Pair with a small banana or boiled egg for balanced protein.'
+  },
+  'upma': {
+    name: 'Uppumavu / Rava Upma',
+    category: 'Grains & Breads',
+    servingUnit: '1 bowl (150g)',
+    calories: 168,
+    protein: 4.5,
+    carbs: 28.0,
+    fat: 4.2,
+    fiber: 2.1,
+    glycemicIndex: 'Medium',
+    verdict: 'Roasted semolina breakfast cooked with traditional spices.',
+    recommendation: 'Add chopped vegetables to increase fiber.'
+  },
+  'aval nanachathu': {
+    name: 'Aval Nanachathu (Beaten Rice & Jaggery)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 bowl (100g)',
+    calories: 175,
+    protein: 2.6,
+    carbs: 34.0,
+    fat: 3.5,
+    fiber: 2.8,
+    glycemicIndex: 'Medium',
+    verdict: 'Flattened rice tossed with freshly grated coconut, melted dark jaggery, and cardamom.',
+    recommendation: 'Quick natural energy snack with bioavailable iron from jaggery.'
+  },
+  'parippu curry': {
+    name: 'Parippu Curry with Ghee (Kerala Sadhya Dal)',
+    category: 'Proteins',
+    servingUnit: '1 bowl (120g)',
+    calories: 142,
+    protein: 7.8,
+    carbs: 18.5,
+    fat: 4.2,
+    fiber: 3.8,
+    glycemicIndex: 'Low',
+    verdict: 'Moong dal cooked with coconut-cumin paste and finished with a spoonful of aromatic ghee.',
+    recommendation: 'Staple first course of Kerala Sadhya. Rich in plant protein.'
+  },
+  'kalan': {
+    name: 'Kalan (Sadhya Yam & Curd Curry)',
+    category: 'Vegetables',
+    servingUnit: '1 bowl (120g)',
+    calories: 148,
+    protein: 3.2,
+    carbs: 16.5,
+    fat: 7.5,
+    fiber: 2.4,
+    glycemicIndex: 'Low-Medium',
+    verdict: 'Thick sour yogurt and coconut curry simmered with yam or raw plantain, flavored with black pepper.',
+    recommendation: 'Probiotic and warming from black pepper.'
+  },
+  'olan': {
+    name: 'Olan (Ash Gourd & Cowpeas in Coconut Milk)',
+    category: 'Vegetables',
+    servingUnit: '1 bowl (120g)',
+    calories: 118,
+    protein: 3.8,
+    carbs: 12.0,
+    fat: 6.2,
+    fiber: 2.8,
+    glycemicIndex: 'Low',
+    verdict: 'Gentle dish made of white pumpkin (ash gourd) and vanpayar simmered in fresh coconut milk.',
+    recommendation: 'Very light on the stomach, alkaline, and nourishing.'
+  },
+  'erissery': {
+    name: 'Erissery (Pumpkin & Roasted Coconut)',
+    category: 'Vegetables',
+    servingUnit: '1 bowl (130g)',
+    calories: 145,
+    protein: 4.8,
+    carbs: 18.0,
+    fat: 6.5,
+    fiber: 4.2,
+    glycemicIndex: 'Low-Medium',
+    verdict: 'Sweet yellow pumpkin and red vanpayar topped with golden browned roasted coconut bits.',
+    recommendation: 'Packed with beta-carotene, vitamin A, and healthy fiber.'
+  },
+  'chemmeen roast': {
+    name: 'Chemmeen Roast (Kerala Prawn Roast)',
+    category: 'Proteins',
+    servingUnit: '1 bowl (120g)',
+    calories: 185,
+    protein: 23.0,
+    carbs: 4.5,
+    fat: 8.2,
+    fiber: 1.2,
+    glycemicIndex: 'Low',
+    verdict: 'Tiger prawns slow roasted in shallots, ginger, garlic, kudampuli, and freshly crushed pepper.',
+    recommendation: 'Superb lean seafood protein with zinc and selenium.'
+  },
+  'chemmeen': {
+    name: 'Chemmeen Roast (Kerala Prawn Roast)',
+    category: 'Proteins',
+    servingUnit: '1 bowl (120g)',
+    calories: 185,
+    protein: 23.0,
+    carbs: 4.5,
+    fat: 8.2,
+    fiber: 1.2,
+    glycemicIndex: 'Low',
+    verdict: 'High-protein marine prawn dish with authentic spices.',
+    recommendation: 'Pairs well with matta rice or pathiri.'
+  },
+  'karimeen': {
+    name: 'Karimeen Pollichathu (Pearl Spot in Banana Leaf)',
+    category: 'Proteins',
+    servingUnit: '1 fish (150g)',
+    calories: 240,
+    protein: 26.0,
+    carbs: 4.0,
+    fat: 13.0,
+    fiber: 1.5,
+    glycemicIndex: 'Low',
+    verdict: 'Fresh backwater pearl spot marinated in spiced shallot gravy and charred in banana leaf.',
+    recommendation: 'Signature Kerala delicacy rich in marine proteins and omega fatty acids.'
+  },
+  'ayala fry': {
+    name: 'Ayala Fry (Tawa Seared Mackerel)',
+    category: 'Proteins',
+    servingUnit: '1 piece (100g)',
+    calories: 215,
+    protein: 22.5,
+    carbs: 2.0,
+    fat: 13.5,
+    fiber: 0.5,
+    glycemicIndex: 'Low',
+    verdict: 'Spiced Indian mackerel tawa-seared with chili and lemon. Outstanding source of EPA and DHA omega-3.',
+    recommendation: 'Excellent for cardiovascular health and lowering triglycerides.'
+  },
+  'ayala': {
+    name: 'Ayala Fry (Tawa Seared Mackerel)',
+    category: 'Proteins',
+    servingUnit: '1 piece (100g)',
+    calories: 215,
+    protein: 22.5,
+    carbs: 2.0,
+    fat: 13.5,
+    fiber: 0.5,
+    glycemicIndex: 'Low',
+    verdict: 'Omega-3 rich sea fish with authentic Malabar spice rub.',
+    recommendation: 'Superb heart-healthy protein.'
+  },
+  'mathi fry': {
+    name: 'Mathi Fry (Crispy Sardines Fry)',
+    category: 'Proteins',
+    servingUnit: '2 small sardines (80g)',
+    calories: 180,
+    protein: 19.0,
+    carbs: 1.5,
+    fat: 11.2,
+    fiber: 0.4,
+    glycemicIndex: 'Low',
+    verdict: 'Sardines pan-fried with chili, turmeric, and black pepper. Unmatched natural calcium and vitamin D.',
+    recommendation: 'Eat with small bones to absorb bioavailable natural calcium.'
+  },
+  'mathi': {
+    name: 'Mathi Fry (Crispy Sardines Fry)',
+    category: 'Proteins',
+    servingUnit: '2 small sardines (80g)',
+    calories: 180,
+    protein: 19.0,
+    carbs: 1.5,
+    fat: 11.2,
+    fiber: 0.4,
+    glycemicIndex: 'Low',
+    verdict: 'Fresh sardines rich in vitamin D, calcium, and omega-3.',
+    recommendation: 'Ideal affordable superfood for metabolic recovery.'
+  },
+  'meen peera': {
+    name: 'Meen Peera (Small Fish with Coconut)',
+    category: 'Proteins',
+    servingUnit: '1 bowl (100g)',
+    calories: 155,
+    protein: 18.0,
+    carbs: 3.0,
+    fat: 8.0,
+    fiber: 1.5,
+    glycemicIndex: 'Low',
+    verdict: 'Anchovies (netholi) steamed in a manchatti with coarsely ground coconut, green chillies, and kudampuli.',
+    recommendation: 'Virtually oil-free steamed fish with delicate Malabar flavor.'
+  },
+  'duck roast': {
+    name: 'Kerala Duck Roast / Tharavu Roast',
+    category: 'Proteins',
+    servingUnit: '1 bowl (150g)',
+    calories: 285,
+    protein: 27.0,
+    carbs: 5.0,
+    fat: 17.5,
+    fiber: 1.2,
+    glycemicIndex: 'Low',
+    verdict: 'Kuttanad-style country duck slow-cooked in a dark pepper, shallot, and vinegar gravy.',
+    recommendation: 'Rich poultry protein. Pair with appam or pathiri.'
+  },
+  'kappa biryani': {
+    name: 'Kappa Biryani / Erachi Kappa (Tapioca & Beef)',
+    category: 'Grains & Breads',
+    servingUnit: '1 plate (250g)',
+    calories: 395,
+    protein: 24.0,
+    carbs: 46.0,
+    fat: 14.0,
+    fiber: 3.8,
+    glycemicIndex: 'Medium-High',
+    verdict: 'Boiled cassava/tapioca mashed together with spiced tender beef chunks and roasted coconut.',
+    recommendation: 'High energy active meal. Great after heavy workouts.'
+  },
+  'erachi kappa': {
+    name: 'Kappa Biryani / Erachi Kappa (Tapioca & Beef)',
+    category: 'Grains & Breads',
+    servingUnit: '1 plate (250g)',
+    calories: 395,
+    protein: 24.0,
+    carbs: 46.0,
+    fat: 14.0,
+    fiber: 3.8,
+    glycemicIndex: 'Medium-High',
+    verdict: 'Iconic Kerala combination of mashed tapioca and beef roast.',
+    recommendation: 'Satiating and dense in both clean carbs and protein.'
+  },
+  'wheat porotta': {
+    name: 'Wheat Porotta (Whole Wheat Flatbread)',
+    category: 'Grains & Breads',
+    servingUnit: '1 porotta (75g)',
+    calories: 220,
+    protein: 5.8,
+    carbs: 34.0,
+    fat: 7.2,
+    fiber: 4.1,
+    glycemicIndex: 'Medium',
+    verdict: 'Layered flaky flatbread made using whole wheat flour instead of refined maida.',
+    recommendation: 'A much better choice than standard white porotta; provides double the fiber.'
+  },
+  'chatti pathiri': {
+    name: 'Chatti Pathiri (Malabar Layered Pastry)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 slice (75g)',
+    calories: 235,
+    protein: 6.2,
+    carbs: 31.0,
+    fat: 9.8,
+    fiber: 1.2,
+    glycemicIndex: 'Medium-High',
+    verdict: 'Beloved Malabar multi-layered crepe cake baked with spiced eggs, nuts, and cardamom.',
+    recommendation: 'Rich festive snack. Mindful single portion recommended.'
+  },
+  'erachi pathiri': {
+    name: 'Erachi Pathiri (Meat Stuffed Rice Bread)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 piece (70g)',
+    calories: 195,
+    protein: 8.5,
+    carbs: 22.0,
+    fat: 8.0,
+    fiber: 1.5,
+    glycemicIndex: 'Medium',
+    verdict: 'Rice dough disc stuffed with spiced minced meat and steamed or lightly pan-seared.',
+    recommendation: 'Good protein delivery inside traditional rice dough.'
+  },
+  'cutlet': {
+    name: 'Kerala Bakery Cutlet (Chicken / Beef)',
+    category: 'Beverages & Snacks',
+    servingUnit: '1 piece (60g)',
+    calories: 160,
+    protein: 7.8,
+    carbs: 13.8,
+    fat: 8.0,
+    fiber: 1.2,
+    glycemicIndex: 'Medium',
+    verdict: 'Mashed potatoes and spiced minced meat coated in breadcrumbs and crisped.',
+    recommendation: 'Enjoy with hot black tea or green tea.'
+  },
+  'cherupayar': {
+    name: 'Cherupayar Puzhukku (Boiled Green Gram & Coconut)',
+    category: 'Proteins',
+    servingUnit: '1 bowl (150g)',
+    calories: 165,
+    protein: 9.2,
+    carbs: 24.0,
+    fat: 3.8,
+    fiber: 5.5,
+    glycemicIndex: 'Low',
+    verdict: 'Whole green moong beans steamed with crushed coconut, green chilies, and turmeric.',
+    recommendation: 'Gold standard plant protein and gut-healthy fiber.'
+  },
+  'kozhi milagu roast': {
+    name: 'Kozhi Milagu Roast (Kerala Pepper Chicken)',
+    category: 'Proteins',
+    servingUnit: '1 bowl (150g)',
+    calories: 225,
+    protein: 26.0,
+    carbs: 3.5,
+    fat: 11.8,
+    fiber: 1.2,
+    glycemicIndex: 'Low',
+    verdict: 'Tender chicken tossed with freshly ground Tellicherry black pepper, shallots, and curry leaves.',
+    recommendation: 'Thermogenic black pepper boosts metabolic absorption. High protein!'
   }
 };
 
@@ -956,18 +1490,59 @@ export function estimateNutrition(rawQuery: string): EstimatedFood {
   const clean = cleanSearchQuery(rawQuery);
   const words = clean.split(' ').filter(Boolean);
 
-  // 1. Direct exact or substring match in catalog
+  // 1. Direct exact or substring match in comprehensive catalog
   for (const [key, item] of Object.entries(COMPREHENSIVE_FOOD_DATABASE)) {
     if (clean === key || clean.includes(key) || key.includes(clean)) {
       return { ...item };
     }
   }
 
-  // 2. Multi-word fuzzy match
+  // 1b. Direct match against canonical INITIAL_FOODS library
+  for (const food of INITIAL_FOODS) {
+    const rawName = food.name.toLowerCase();
+    const cleanName = rawName.replace(/\(.*?\)/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (clean === cleanName || clean.includes(cleanName) || cleanName.includes(clean)) {
+      return {
+        name: food.name,
+        category: food.category,
+        servingUnit: food.servingUnit,
+        calories: food.calories,
+        protein: food.protein,
+        carbs: food.carbs,
+        fat: food.fat,
+        fiber: food.fiber ?? 0,
+        glycemicIndex: (food.glycemicIndex as string) || 'Medium',
+        verdict: `${food.name} is a verified clinic item (${food.calories} kcal, ${food.protein}g protein).`,
+        recommendation: food.calorieQuality === 'bad' ? 'Consume mindfully in moderation due to cooking style or sugar/fat density.' : 'Wholesome, nutrient-dense choice recommended in healthy meal plans.'
+      };
+    }
+  }
+
+  // 2. Multi-word fuzzy match in comprehensive catalog
   for (const [key, item] of Object.entries(COMPREHENSIVE_FOOD_DATABASE)) {
     const keyWords = key.split(' ');
     if (words.some(w => keyWords.includes(w) && w.length > 2)) {
       return { ...item };
+    }
+  }
+
+  // 2b. Multi-word fuzzy match in INITIAL_FOODS library
+  for (const food of INITIAL_FOODS) {
+    const foodWords = food.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(' ').filter(w => w.length > 2);
+    if (words.some(w => foodWords.includes(w) && w.length > 2)) {
+      return {
+        name: food.name,
+        category: food.category,
+        servingUnit: food.servingUnit,
+        calories: food.calories,
+        protein: food.protein,
+        carbs: food.carbs,
+        fat: food.fat,
+        fiber: food.fiber ?? 0,
+        glycemicIndex: (food.glycemicIndex as string) || 'Medium',
+        verdict: `${food.name} provides ${food.calories} kcal, ${food.protein}g protein, and ${food.carbs}g carbs.`,
+        recommendation: food.calorieQuality === 'bad' ? 'Moderate portion size or pair with fresh vegetables.' : 'Healthy wholesome choice suitable for clinical tracking.'
+      };
     }
   }
 
@@ -1086,9 +1661,276 @@ export function estimateNutrition(rawQuery: string): EstimatedFood {
 }
 
 /**
- * Generate formatted bold markdown with calories stated first
+ * Detect if text is written in Malayalam or Manglish or asks for Malayalam
  */
-export function formatFoodMarkdown(food: EstimatedFood, oilOption: 'steamed' | 'medium' | 'fried' = 'steamed', portion: number = 1): string {
+export function detectMalayalamOrManglish(text: string): boolean {
+  if (!text) return false;
+  // Malayalam Unicode block: \u0D00 to \u0D7F
+  if (/[\u0D00-\u0D7F]/.test(text)) return true;
+
+  const lower = text.toLowerCase();
+  const manglishKeywords = [
+    'malayalam', 'malayalathil', 'ethra', 'calorie', 'und', 'undo', 'choyikkan',
+    'parayumo', 'kazhicho', 'kazhichu', 'kudicho', 'kudichu', 'njan', 'ente', 'ippol',
+    'innu', 'chaya', 'chaaya', 'appam', 'puttu', 'vellam', 'bhakshanam',
+    'entha', 'engane', 'thinnu', 'oottu', 'nalla', 'kurakkan', 'kootan',
+    'kudikkanam', 'parippu', 'curry', 'erachi', 'meen', 'cherthu', 'undakki',
+    'kure', 'theetta', 'tharaam', 'kayicho', 'enthokke'
+  ];
+  return manglishKeywords.some(kw => lower.includes(kw));
+}
+
+export interface RecipeIngredient {
+  rawText: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  category: FoodCategory;
+}
+
+export interface RecipeAnalysis {
+  isRecipe: boolean;
+  recipeTitle: string;
+  ingredients: RecipeIngredient[];
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  totalFiber: number;
+  oilOption: 'steamed' | 'medium' | 'fried';
+  isMalayalam: boolean;
+  answer: string;
+}
+
+/**
+ * Multi-Ingredient & Recipe Parser
+ * Allows client to type dish ingredients and automatically calculates overall nutrition with itemized breakdown
+ */
+export function parseRecipeIngredients(input: string): RecipeAnalysis | null {
+  if (!input || input.trim().length < 4) return null;
+
+  const raw = input.trim();
+  const lower = raw.toLowerCase();
+  const isMalayalam = detectMalayalamOrManglish(raw);
+
+  // Check for recipe indicators
+  const recipeIndicators = [
+    'recipe', 'ingredient', 'ingredients', 'incredient', 'incredients',
+    'made with', 'cooked with', 'contains', 'items:', 'prepared with',
+    'undakkiya', 'cherthathu', 'cherthu', 'koottu', 'mixed with'
+  ];
+  const hasExplicitIndicator = recipeIndicators.some(ind => lower.includes(ind));
+
+  // Clean title if specified e.g. "Chicken Curry: 200g chicken, 1 onion..."
+  let title = 'Custom Meal / Recipe';
+  let body = raw;
+
+  if (raw.includes(':')) {
+    const parts = raw.split(':');
+    if (parts[0].trim().length < 50 && parts[1].trim().length > 3) {
+      title = parts[0].replace(/recipe|ingredients|incredients/gi, '').trim() || 'Custom Recipe';
+      body = parts.slice(1).join(':');
+    }
+  }
+
+  // Split ingredients by newline, comma, or "+"
+  const lines = body
+    .replace(/recipe|ingredients|incredients|made with|cooked with|undakkiya|cherthathu/gi, '')
+    .split(/[\n,;+]+/)
+    .map(l => l.trim())
+    .filter(l => l.length > 1);
+
+  if (lines.length < 2 && !hasExplicitIndicator) {
+    return null;
+  }
+
+  const parsedIngredients: RecipeIngredient[] = [];
+  let totalCalories = 0;
+  let totalProtein = 0;
+  let totalCarbs = 0;
+  let totalFat = 0;
+  let totalFiber = 0;
+
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase();
+
+    // Check for quantity & unit patterns e.g. "200g chicken", "1 tbsp oil", "2 eggs", "1 cup rice"
+    const qtyRegex = /^(\d+(?:\.\d+)?|\d+\/\d+|half|one|two|three|four)\s*(g|grams?|gm|kg|ml|l|cups?|tbsp|tsp|spoons?|tablespoons?|teaspoons?|pieces?|slices?|bowls?|glasses?|scoops?|handfuls?)?\b/i;
+    const match = lowerLine.match(qtyRegex);
+
+    let qty = 1;
+    let unit = 'serving';
+    let foodText = line;
+
+    if (match) {
+      const numStr = match[1];
+      if (numStr === 'half' || numStr === '1/2') qty = 0.5;
+      else if (numStr === 'one') qty = 1;
+      else if (numStr === 'two') qty = 2;
+      else if (numStr === 'three') qty = 3;
+      else if (numStr === 'four') qty = 4;
+      else qty = parseFloat(numStr) || 1;
+
+      if (match[2]) {
+        unit = match[2].toLowerCase();
+      }
+      foodText = line.replace(match[0], '').replace(/^of\s+/i, '').trim();
+    }
+
+    if (!foodText || foodText.length < 2) continue;
+
+    const est = estimateNutrition(foodText);
+
+    // Calibrate factor based on unit
+    let factor = qty;
+    if (unit === 'g' || unit === 'grams' || unit === 'gm') {
+      factor = qty / 100;
+      unit = `${qty}g`;
+    } else if (unit === 'kg') {
+      factor = (qty * 1000) / 100;
+      unit = `${qty}kg`;
+    } else if (unit === 'ml') {
+      factor = qty / 150;
+      unit = `${qty}ml`;
+    } else if (unit.startsWith('tbsp') || unit.startsWith('tablespoon')) {
+      factor = est.category === 'Nuts & Healthy Fats' ? qty * 2.5 : qty * 0.3;
+      unit = `${qty} tbsp`;
+    } else if (unit.startsWith('tsp') || unit.startsWith('teaspoon') || unit.startsWith('spoon')) {
+      factor = est.category === 'Nuts & Healthy Fats' ? qty * 1.0 : qty * 0.15;
+      unit = `${qty} tsp`;
+    } else if (unit.startsWith('cup')) {
+      factor = qty * 1.25;
+      unit = `${qty} cup`;
+    } else if (unit.startsWith('bowl')) {
+      factor = qty * 1.5;
+      unit = `${qty} bowl`;
+    } else if (unit.startsWith('piece') || unit.startsWith('slice')) {
+      factor = qty * 1.0;
+      unit = `${qty} piece`;
+    }
+
+    const itemCal = Math.max(1, Math.round(est.calories * factor));
+    const itemProt = Number((est.protein * factor).toFixed(1));
+    const itemCarb = Number((est.carbs * factor).toFixed(1));
+    const itemFat = Number((est.fat * factor).toFixed(1));
+    const itemFib = Number((est.fiber * factor).toFixed(1));
+
+    totalCalories += itemCal;
+    totalProtein += itemProt;
+    totalCarbs += itemCarb;
+    totalFat += itemFat;
+    totalFiber += itemFib;
+
+    parsedIngredients.push({
+      rawText: line,
+      name: est.name,
+      quantity: qty,
+      unit,
+      calories: itemCal,
+      protein: itemProt,
+      carbs: itemCarb,
+      fat: itemFat,
+      fiber: itemFib,
+      category: est.category
+    });
+  }
+
+  if (parsedIngredients.length === 0) return null;
+
+  totalProtein = Number(totalProtein.toFixed(1));
+  totalCarbs = Number(totalCarbs.toFixed(1));
+  totalFat = Number(totalFat.toFixed(1));
+  totalFiber = Number(totalFiber.toFixed(1));
+
+  // Determine oil option
+  let oilOption: 'steamed' | 'medium' | 'fried' = 'steamed';
+  if (lower.includes('deep fried') || lower.includes('porichathu') || lower.includes('varuthathu')) {
+    oilOption = 'fried';
+  } else if (lower.includes('oil') || lower.includes('ghee') || lower.includes('sauté') || lower.includes('vazhittiyathu')) {
+    oilOption = 'medium';
+  }
+
+  let answer = '';
+  if (isMalayalam) {
+    const listMarkdown = parsedIngredients
+      .map(i => `- **${i.name} (${i.unit}):** **${i.calories} kcal** (P: ${i.protein}g, C: ${i.carbs}g, F: ${i.fat}g)`)
+      .join('\n');
+
+    answer = `🔥 **ആകെ കാലറി (Total Calories):** **${totalCalories} kcal**
+(വിഭവം: **${title}**)
+
+### **ചേരുവകളുടെ കൃത്യമായ കാലറി (Each Ingredient Calories)**
+${listMarkdown}
+
+### **ആകെ പോഷക വിവരങ്ങൾ (Overall Nutrition)**
+- **ആകെ പ്രോട്ടീൻ (Protein):** **${totalProtein} g**
+- **ആകെ കാർബോഹൈഡ്രേറ്റ് (Carbs):** **${totalCarbs} g**
+- **ആകെ ഫാറ്റ് (Healthy Fats):** **${totalFat} g**
+- **ആകെ നാരുകൾ (Fiber):** **${totalFiber} g**
+
+### **ഓയിൽ ഓപ്ഷനുകൾ (Was it oily? - 3 Options)**
+- 🟢 **എണ്ണയില്ലാതെ / ആവിയിൽ വേവിച്ചത്:** **${totalCalories} kcal** (0g അധിക എണ്ണ)
+- 🟡 **കുറഞ്ഞ എണ്ണയിൽ / വീട്ടിൽ വഴറ്റിയത്:** **${totalCalories + 45} kcal** (+45 kcal, +5g ഫാറ്റ്)
+- 🔴 **നല്ലെണ്ണയിൽ വറുത്തത് (Deep Fried):** **${totalCalories + 120} kcal** (+120 kcal, +13g ഫാറ്റ്)
+
+### **സലീം വളാഞ്ചേരി വെൽനസ്സ് സെന്റർ കോച്ച് നിർദ്ദേശം**
+നിങ്ങൾ ചേർത്ത ചേരുവകൾ പരിശോധിച്ച് കാലറിയും പ്രോട്ടീനും കൃത്യമായി കണക്കുകൂട്ടിയിട്ടുണ്ട്. താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്ത് ഈ വിഭവം നിങ്ങളുടെ മീൽ ഡയറിയിലേക്ക് നേരിട്ട് രേഖപ്പെടുത്താം!`;
+  } else {
+    const listMarkdown = parsedIngredients
+      .map(i => `- **${i.name} (${i.unit}):** **${i.calories} kcal** (P: ${i.protein}g, C: ${i.carbs}g, F: ${i.fat}g)`)
+      .join('\n');
+
+    answer = `🔥 **Total Recipe Calories:** **${totalCalories} kcal**
+(Dish: **${title}**)
+
+### **Each Ingredient's Calories (Stated First)**
+${listMarkdown}
+
+### **Total Nutritional Details**
+- **Total Protein:** **${totalProtein} g**
+- **Total Carbohydrates:** **${totalCarbs} g**
+- **Total Healthy Fats:** **${totalFat} g**
+- **Total Dietary Fiber:** **${totalFiber} g**
+
+### **Was it oily? (3 Cooking Options Calculation)**
+- 🟢 **No Oil / Steamed:** **${totalCalories} kcal** (Base preparation, 0g added frying oil)
+- 🟡 **Medium / Home Sauté:** **${totalCalories + 45} kcal** (+45 kcal, +5g cooking fat)
+- 🔴 **Deep Fried / Very Oily:** **${totalCalories + 120} kcal** (+120 kcal, +13g oil absorption)
+
+### **Clinical Verdict & Coach Recommendations**
+Every ingredient has been weighed and calibrated. Click the button below to log this recipe directly to your daily meal tracker!`;
+  }
+
+  return {
+    isRecipe: true,
+    recipeTitle: title,
+    ingredients: parsedIngredients,
+    totalCalories,
+    totalProtein,
+    totalCarbs,
+    totalFat,
+    totalFiber,
+    oilOption,
+    isMalayalam,
+    answer
+  };
+}
+
+/**
+ * Generate formatted bold markdown with calories stated first
+ * Supports simple client-friendly language and Malayalam translation when requested
+ */
+export function formatFoodMarkdown(
+  food: EstimatedFood, 
+  oilOption: 'steamed' | 'medium' | 'fried' = 'steamed', 
+  portion: number = 1,
+  forceMalayalam?: boolean
+): string {
   const oilCal = oilOption === 'fried' ? 120 : oilOption === 'medium' ? 45 : 0;
   const oilFat = oilOption === 'fried' ? 13 : oilOption === 'medium' ? 5 : 0;
 
@@ -1097,6 +1939,29 @@ export function formatFoodMarkdown(food: EstimatedFood, oilOption: 'steamed' | '
   const totalCarb = Number((food.carbs * portion).toFixed(1));
   const totalFat = Number(((food.fat + oilFat) * portion).toFixed(1));
   const totalFiber = Number((food.fiber * portion).toFixed(1));
+
+  if (forceMalayalam || detectMalayalamOrManglish(food.name)) {
+    return `🔥 **കാലറി (Calories):** **${totalCal} kcal** (${portion}x ${food.servingUnit})
+
+### **ഭക്ഷണ വിവരങ്ങൾ (Nutritional Details)**
+- **ഭക്ഷണ വിഭാഗം (Category):** **${food.category}**
+- **സാധാരണ അളവ് (Serving Unit):** **${food.servingUnit}**
+- **പ്രോട്ടീൻ (Protein):** **${totalProt} g**
+- **കാർബോഹൈഡ്രേറ്റ് (Carbohydrates):** **${totalCarb} g**
+- **ഫാറ്റ് (Healthy Fats):** **${totalFat} g**
+- **നാരുകൾ (Dietary Fiber):** **${totalFiber} g**
+- **ഗ്ലൈസെമിക് ഇൻഡക്സ് (Glycemic Index):** **${food.glycemicIndex}**
+
+### **ഓയിൽ ഓപ്ഷനുകൾ (Was it oily? - 3 Options)**
+- 🟢 **എണ്ണയില്ലാതെ / ആവിയിൽ വേവിച്ചത്:** **${Math.round(food.calories * portion)} kcal** (0g അധിക എണ്ണ)
+- 🟡 **കുറഞ്ഞ എണ്ണയിൽ / വീട്ടിൽ വഴറ്റിയത്:** **${Math.round((food.calories + 45) * portion)} kcal** (+45 kcal, +5g ഫാറ്റ്)
+- 🔴 **നല്ലെണ്ണയിൽ വറുത്തത് (Deep Fried):** **${Math.round((food.calories + 120) * portion)} kcal** (+120 kcal, +13g ഫാറ്റ്)
+
+### **സലീം വളാഞ്ചേരി വെൽനസ്സ് സെന്റർ കോച്ച് നിർദ്ദേശം**
+${food.verdict}
+
+✨ **ഡയറിയിലേക്ക് ചേർക്കാം:** ഈ ഭക്ഷണം നിങ്ങളുടെ സെന്റർ ലൈബ്രറിയിലേക്ക് ചേർത്തിട്ടുണ്ട്. താഴെയുള്ള ബട്ടൺ ഉപയോഗിച്ച് നിങ്ങളുടെ ഇന്നത്തെ മീൽ ഡയറിയിലേക്ക് എളുപ്പത്തിൽ രേഖപ്പെടുത്താം!`;
+  }
 
   return `🔥 **Calories:** **${totalCal} kcal** (per **${portion}x ${food.servingUnit}**)
 
@@ -1120,11 +1985,12 @@ ${food.verdict}
 ### **Coach Recommendations**
 ${food.recommendation}
 
-✨ *This food is automatically synchronized to your Clinic Food Library and ready for 1-click logging to your daily diary!*`;
+✨ *This food is automatically synchronized to your Centre Food Library and ready for 1-click logging to your daily diary!*`;
 }
 
 /**
  * Detect if user message is reporting an eaten meal with a specific time
+ * Supports Malayalam words like kazhichu, kudichu, ravile, uchakku, rathri
  */
 export function detectEatenMealWithTime(message: string): {
   isMealLog: boolean;
@@ -1142,7 +2008,10 @@ export function detectEatenMealWithTime(message: string): {
   const timeRegex = /\b(\d{1,2}(?::|\.)\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\b/i;
   const match = lower.match(timeRegex);
 
-  const eatVerbs = ['ate', 'had', 'eaten', 'consumed', 'drinking', 'drank', 'having', 'took', 'finished'];
+  const eatVerbs = [
+    'ate', 'had', 'eaten', 'consumed', 'drinking', 'drank', 'having', 'took', 'finished',
+    'kazhichu', 'kudichu', 'thinnu', 'kayicho', 'kazhicho'
+  ];
   const hasEatVerb = eatVerbs.some(v => lower.includes(v));
 
   if (!match && !hasEatVerb) {
@@ -1151,34 +2020,43 @@ export function detectEatenMealWithTime(message: string): {
 
   const timeStr = match ? match[1].toUpperCase() : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // Infer meal slot from time string
+  // Infer meal slot from time string or Malayalam words
   let mealSlot: MealType = 'Evening Snack';
-  const hourMatch = timeStr.match(/(\d{1,2})/);
-  const hour = hourMatch ? parseInt(hourMatch[1], 10) : 16;
-  const isPM = timeStr.toLowerCase().includes('pm');
-  const normalizedHour = (isPM && hour < 12) ? hour + 12 : (!isPM && hour === 12) ? 0 : hour;
-
-  if (normalizedHour >= 5 && normalizedHour <= 10) {
+  if (lower.includes('breakfast') || lower.includes('ravile') || lower.includes('morning')) {
     mealSlot = 'Breakfast';
-  } else if (normalizedHour > 10 && normalizedHour < 12) {
-    mealSlot = 'Morning Snack';
-  } else if (normalizedHour >= 12 && normalizedHour <= 15) {
+  } else if (lower.includes('lunch') || lower.includes('uchakku')) {
     mealSlot = 'Lunch';
-  } else if (normalizedHour > 15 && normalizedHour <= 18) {
+  } else if (lower.includes('dinner') || lower.includes('rathri') || lower.includes('night')) {
+    mealSlot = 'Dinner';
+  } else if (lower.includes('snack') || lower.includes('vaikitt')) {
     mealSlot = 'Evening Snack';
   } else {
-    mealSlot = 'Dinner';
+    const hourMatch = timeStr.match(/(\d{1,2})/);
+    const hour = hourMatch ? parseInt(hourMatch[1], 10) : 16;
+    const isPM = timeStr.toLowerCase().includes('pm');
+    const normalizedHour = (isPM && hour < 12) ? hour + 12 : (!isPM && hour === 12) ? 0 : hour;
+
+    if (normalizedHour >= 5 && normalizedHour <= 10) {
+      mealSlot = 'Breakfast';
+    } else if (normalizedHour > 10 && normalizedHour < 12) {
+      mealSlot = 'Morning Snack';
+    } else if (normalizedHour >= 12 && normalizedHour <= 15) {
+      mealSlot = 'Lunch';
+    } else if (normalizedHour > 15 && normalizedHour <= 18) {
+      mealSlot = 'Evening Snack';
+    } else {
+      mealSlot = 'Dinner';
+    }
   }
 
   // Parse food items mentioned in sentence
-  // Strip time and eat verbs
   let stripped = lower
     .replace(timeRegex, '')
-    .replace(/i ate|i had|had|ate|at|in the morning|for breakfast|for lunch|for dinner|today/gi, '')
+    .replace(/i ate|i had|had|ate|at|in the morning|for breakfast|for lunch|for dinner|today|njan kazhichu|njan kudichu|kazhichu|kudichu|ravile|uchakku|rathri/gi, '')
     .trim();
 
-  // Split on "and", ",", "+"
-  const parts = stripped.split(/,| and |\+/).map(p => p.trim()).filter(Boolean);
+  // Split on "and", ",", "+", "pinne"
+  const parts = stripped.split(/,| and |\+| pinne /).map(p => p.trim()).filter(Boolean);
   
   if (parts.length === 0) {
     parts.push('Healthy Meal');
@@ -1191,7 +2069,6 @@ export function detectEatenMealWithTime(message: string): {
   let totalFat = 0;
 
   for (const part of parts) {
-    // Check for quantity prefix: e.g. "2 boiled eggs", "1 apple", "half plate rice"
     const qtyMatch = part.match(/^(\d+(?:\.\d+)?|half|one|two|three)\s+/i);
     let qty = 1;
     let foodPart = part;

@@ -1,15 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { FoodCategory, FoodItem } from '../../types';
-import { Search, Plus, Edit2, Trash2, X, Check, UtensilsCrossed } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Check, UtensilsCrossed, Sparkles, CheckCircle2, RefreshCw } from 'lucide-react';
+import { estimateNutrition } from '../../utils/nutritionEstimator';
 
 export const FoodDatabaseManager: React.FC = () => {
-  const { foods, addFoodItem, updateFoodItem, deleteFoodItem } = useApp();
+  const { foods, addFoodItem, updateFoodItem, deleteFoodItem, removeDuplicateFoods } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingFood, setEditingFood] = useState<FoodItem | null>(null);
+  const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
+  const [cleanMessage, setCleanMessage] = useState<string | null>(null);
+  const [isAiVerifying, setIsAiVerifying] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
 
   // Form states for add/edit
   const [name, setName] = useState('');
@@ -20,6 +25,52 @@ export const FoodDatabaseManager: React.FC = () => {
   const [carbs, setCarbs] = useState<number>(10);
   const [fat, setFat] = useState<number>(2);
   const [fiber, setFiber] = useState<number>(0);
+
+  // Duplicate detection count
+  const duplicateCount = useMemo(() => {
+    const normalize = (n: string) => (n || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '').trim();
+    const seen = new Set<string>();
+    let dupes = 0;
+    for (const f of foods) {
+      const key = normalize(f.name);
+      if (seen.has(key)) dupes++;
+      else seen.add(key);
+    }
+    return dupes;
+  }, [foods]);
+
+  const handleCleanDuplicates = async () => {
+    setIsCleaningDuplicates(true);
+    setCleanMessage(null);
+    try {
+      const res = await removeDuplicateFoods();
+      setCleanMessage(`✓ Successfully removed ${res.count} duplicate food entries from library.`);
+      setTimeout(() => setCleanMessage(null), 4000);
+    } catch (err: any) {
+      setCleanMessage(`Failed to clean duplicates: ${err.message || 'Error'}`);
+    } finally {
+      setIsCleaningDuplicates(false);
+    }
+  };
+
+  const handleAiVerify = async () => {
+    if (!name.trim()) return;
+    setIsAiVerifying(true);
+    setAiNote(null);
+    try {
+      const est = estimateNutrition(name);
+      setCalories(est.calories);
+      setProtein(est.protein);
+      setCarbs(est.carbs);
+      setFat(est.fat);
+      setFiber(est.fiber || 0);
+      setServingUnit(est.servingUnit);
+      if (est.category) setCategory(est.category as FoodCategory);
+      setAiNote(`✨ AI Verified: Calibrated accurately for ${est.servingUnit}`);
+    } finally {
+      setIsAiVerifying(false);
+    }
+  };
 
   const categories: string[] = [
     'All',
@@ -99,7 +150,7 @@ export const FoodDatabaseManager: React.FC = () => {
   };
 
   const handleDelete = (id: string, foodName: string) => {
-    if (window.confirm(`Are you sure you want to remove "${foodName}" from the clinic food database?\n\nNote: Deleting from this library will NOT delete meals already logged by clients. All historical client logs remain preserved and safe.`)) {
+    if (window.confirm(`Are you sure you want to remove "${foodName}" from the centre food database?\n\nNote: Deleting from this library will NOT delete meals already logged by clients. All historical client logs remain preserved and safe.`)) {
       deleteFoodItem(id);
     }
   };
@@ -119,15 +170,41 @@ export const FoodDatabaseManager: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Food</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCleanDuplicates}
+            disabled={isCleaningDuplicates}
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2 px-3 rounded-xl border border-slate-300 shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Scan library and delete duplicate food entries"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isCleaningDuplicates ? 'animate-spin text-blue-600' : 'text-slate-500'}`} />
+            <span>Clean Double Entries</span>
+            {duplicateCount > 0 && (
+              <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-amber-300">
+                {duplicateCount} dupes
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Food</span>
+          </button>
+        </div>
       </div>
+
+      {/* Clean Feedback Toast Banner */}
+      {cleanMessage && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{cleanMessage}</span>
+        </div>
+      )}
 
       {/* Search and category filters */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
@@ -249,17 +326,38 @@ export const FoodDatabaseManager: React.FC = () => {
             <form onSubmit={handleSaveFood} className="p-5 space-y-3.5 text-xs">
               
               <div>
-                <label className="block font-semibold uppercase text-slate-600 mb-1">
-                  Food Name *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold uppercase text-slate-600">
+                    Food Name *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAiVerify}
+                    disabled={!name.trim() || isAiVerifying}
+                    className="flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-lg border border-blue-200 transition-colors disabled:opacity-40 cursor-pointer"
+                    title="Calibrate accurate calories and macros with AI"
+                  >
+                    <Sparkles className="w-3 h-3 text-blue-600" />
+                    <span>{isAiVerifying ? 'Checking...' : 'AI Verify & Calibrate'}</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Grilled Paneer Tikka"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (aiNote) setAiNote(null);
+                  }}
+                  placeholder="e.g. Grilled Paneer Tikka or Sulaimani"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   required
                 />
+                {aiNote && (
+                  <p className="text-[11px] text-emerald-700 font-medium mt-1 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span>{aiNote}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

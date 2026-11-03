@@ -347,7 +347,7 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
           <div className="border border-slate-200 rounded-xl p-4 bg-white space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 text-xs">Configure Meal Slots</h3>
-              <span className="text-[11px] text-slate-500">Pick foods from clinic database</span>
+              <span className="text-[11px] text-slate-500">Pick foods from centre database</span>
             </div>
 
             {/* Meal Slot Tabs */}

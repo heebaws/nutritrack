@@ -67,7 +67,7 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
       role,
       title: title.trim() || 'Wellness Coach',
       specialization: specialization.trim() || 'Clinical Nutrition & Dietetics',
-      email: email.trim() || `${finalUsername}@wellnessclinic.com`,
+      email: email.trim() || `${finalUsername}@wellnesscentre.com`,
       phone: phone.trim() || '+91 98470 00000',
       bio: bio.trim() || 'Dedicated wellness professional focused on personalized client nutrition and sustainable metabolic health.',
       username: finalUsername,
@@ -190,7 +190,7 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
               >
                 <option value="dietitian">Wellness Coach / Dietitian</option>
-                <option value="admin">Clinic Administrator</option>
+                <option value="admin">Centre Administrator</option>
               </select>
             </div>
           </div>
@@ -247,7 +247,7 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ayesha@wellnessclinic.com"
+                placeholder="ayesha@wellnesscentre.com"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               />
             </div>

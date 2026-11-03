@@ -43,7 +43,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
   });
   const [time, setTime] = useState<string>('10:30 AM');
   const [type, setType] = useState<ClinicAppointment['type']>('inbody_scan');
-  const [location, setLocation] = useState<string>('NutriTrack Clinic Valanchery - Diagnostic Room');
+  const [location, setLocation] = useState<string>('NutriTrack Centre Valanchery - Diagnostic Room');
   const [selectedDietitianId, setSelectedDietitianId] = useState<string>(dietitians[0]?.id || 'admin-1');
   const [notes, setNotes] = useState<string>('Periodic InBody 270 scan, body fat % review, and diet adjustment.');
 
@@ -89,7 +89,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
               <CalendarCheck className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold tracking-tight">Clinic Consultations &amp; Checkups</h2>
+              <h2 className="text-base font-extrabold tracking-tight">Centre Consultations &amp; Checkups</h2>
               <p className="text-xs text-teal-100 font-medium">
                 Patient: <span className="text-white font-bold">{targetClient.name}</span>
               </p>

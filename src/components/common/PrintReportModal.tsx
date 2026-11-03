@@ -99,13 +99,13 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
               </div>
               <div>
                 <h1 className="text-xl font-black text-slate-900 tracking-tight">
-                  NutriTrack Wellness Clinic
+                  NutriTrack Wellness Centre
                 </h1>
                 <p className="text-xs font-semibold text-emerald-800">
                   Center for Metabolic Health, Lifestyle Transformation &amp; Clinical Nutrition
                 </p>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Valanchery, Malappuram, Kerala • Phone: +91 98470 12345 • info@wellnessclinic.com
+                  Valanchery, Malappuram, Kerala • Phone: +91 98470 12345 • info@wellnesscentre.com
                 </p>
               </div>
             </div>
@@ -302,7 +302,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 Certified Wellness Coach Signature
               </span>
               <span className="text-[10px] text-emerald-700 font-semibold block">
-                NutriTrack Clinic &amp; Diagnostic Centre
+                NutriTrack Wellness &amp; Diagnostic Centre
               </span>
             </div>
           </div>

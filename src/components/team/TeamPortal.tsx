@@ -77,7 +77,7 @@ export const TeamPortal: React.FC = () => {
   const [isResetting, setIsResetting] = useState(false);
 
   const handleResetData = async () => {
-    if (window.confirm('Reset all clinic records (clients, meal logs, weights, diet plans, food database) back to default pristine setup?')) {
+    if (window.confirm('Reset all centre records (clients, meal logs, weights, diet plans, food database) back to default pristine setup?')) {
       setIsResetting(true);
       await resetAllData();
       setTimeout(() => setIsResetting(false), 1000);
@@ -168,7 +168,7 @@ export const TeamPortal: React.FC = () => {
         <div className="flex items-center gap-3.5">
           <img
             src={currentCoach?.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250'}
-            alt={currentCoach?.name || 'Clinic Coach'}
+            alt={currentCoach?.name || 'Centre Coach'}
             className="w-13 h-13 rounded-2xl object-cover border-2 border-blue-500 shadow-xs"
           />
           <div>
@@ -180,27 +180,27 @@ export const TeamPortal: React.FC = () => {
                   : 'bg-blue-100 text-blue-800 border border-blue-200'
               }`}>
                 <ShieldCheck className="w-3 h-3" />
-                {currentCoach?.role === 'admin' ? 'Clinic Administrator' : 'Clinical Dietitian'}
+                {currentCoach?.role === 'admin' ? 'Centre Administrator' : 'Clinical Dietitian'}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              {currentCoach?.title || 'Wellness Coach & Lead Clinic Admin'} • {currentCoach?.specialization || 'Holistic Wellness & Lifestyle Coaching'}
+              {currentCoach?.title || 'Wellness Coach & Lead Centre Admin'} • {currentCoach?.specialization || 'Holistic Wellness & Lifestyle Coaching'}
             </p>
           </div>
         </div>
 
         {/* Quick Actions */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* 1-Click Reset Clinic Data Button */}
+          {/* 1-Click Reset Centre Data Button */}
           <button
             type="button"
             onClick={handleResetData}
             disabled={isResetting}
-            title="Reset all clinic records, client logs, weights, and staff to original default setup"
+            title="Reset all centre records, client logs, weights, and staff to original default setup"
             className="bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 text-xs font-semibold px-3 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             <RotateCcw className={`w-4 h-4 text-amber-700 ${isResetting ? 'animate-spin' : ''}`} />
-            <span>{isResetting ? 'Restoring Clinic...' : 'Reset Clinic Data'}</span>
+            <span>{isResetting ? 'Restoring Centre...' : 'Reset Centre Data'}</span>
           </button>
 
           <button
@@ -212,14 +212,14 @@ export const TeamPortal: React.FC = () => {
             <span>Edit Admin Profile</span>
           </button>
 
-          {/* Clinic Administrator has options to add either a Coach or a Client */}
+          {/* Centre Administrator has options to add either a Coach or a Client */}
           {currentCoach?.role === 'admin' ? (
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsAddDietitianOpen(true)}
                 className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                title="Clinic Administrator: Add New Coach or Dietitian"
+                title="Centre Administrator: Add New Coach or Dietitian"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>+ Add Coach / Dietitian</span>
@@ -268,7 +268,7 @@ export const TeamPortal: React.FC = () => {
             className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <CalendarCheck className="w-4 h-4 text-teal-200" />
-            <span>Clinic Appointments</span>
+            <span>Centre Appointments</span>
           </button>
 
           <button
@@ -425,7 +425,7 @@ export const TeamPortal: React.FC = () => {
                 <Users className="w-4 h-4 text-blue-600" />
               </div>
               <div className="text-3xl font-black text-slate-900 mt-2">{totalClients}</div>
-              <p className="text-xs text-slate-500 mt-1">Across all assigned clinic dietitians</p>
+              <p className="text-xs text-slate-500 mt-1">Across all assigned centre dietitians</p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-linear-to-b from-emerald-50/30 to-white shadow-xs">
@@ -664,7 +664,7 @@ export const TeamPortal: React.FC = () => {
                       {w.weightKg} kg
                     </div>
                     <div className="mt-1 text-[10px] text-slate-500 truncate">
-                      {w.source === 'centre_device' ? 'Clinic InBody Scan' : 'Mobile Fasting Weight'}
+                      {w.source === 'centre_device' ? 'Centre InBody Scan' : 'Mobile Fasting Weight'}
                     </div>
                   </div>
                 );
@@ -1307,7 +1307,7 @@ export const TeamPortal: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            if (window.confirm(`Are you sure you want to remove ${client.name} from the clinic system?`)) {
+                            if (window.confirm(`Are you sure you want to remove ${client.name} from the centre system?`)) {
                               deleteClient(client.id);
                             }
                           }}
@@ -1456,7 +1456,7 @@ export const TeamPortal: React.FC = () => {
                 Centre Device Readings (Entered by Hand)
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Official clinical assessments from InBody 270, Tanita, or clinic stadiometers
+                Official clinical assessments from InBody 270, Tanita, or centre stadiometers
               </p>
             </div>
 

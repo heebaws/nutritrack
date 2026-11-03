@@ -128,6 +128,7 @@ interface AppContextType {
   addFoodItem: (food: Omit<FoodItem, 'id'>) => FoodItem;
   updateFoodItem: (food: FoodItem) => void;
   deleteFoodItem: (id: string) => void;
+  removeDuplicateFoods: () => Promise<{ count: number }>;
   createDietPlan: (plan: Omit<DietPlan, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateDietPlan: (plan: DietPlan) => void;
   addCentreDeviceReading: (data: Omit<BodyMeasurement, 'id' | 'source'> & { deviceModel: string }) => void;
@@ -202,7 +203,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_DIETITIANS;
   });
 
-  const [foods, setFoods] = useState<FoodItem[]>(() => loadStored('foods', INITIAL_FOODS));
+  // Helper to deduplicate foods by normalized name to guarantee no double-entries
+  const deduplicateFoodList = (list: FoodItem[]): { unique: FoodItem[]; duplicates: FoodItem[] } => {
+    const normalize = (n: string) => (n || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '').trim();
+    const map = new Map<string, FoodItem>();
+    const dupes: FoodItem[] = [];
+
+    const isOfficial = (item: FoodItem) => 
+      !item.isCustom || 
+      item.id.startsWith('kl-') || 
+      item.id.startsWith('dr-') || 
+      item.id.startsWith('f-') || 
+      item.id.startsWith('in-') || 
+      item.id.startsWith('intl-');
+
+    for (const item of list) {
+      if (!item || !item.name) continue;
+      const key = normalize(item.name);
+      if (!key) continue;
+      if (!map.has(key)) {
+        map.set(key, item);
+      } else {
+        const existing = map.get(key)!;
+        const existingIsOfficial = isOfficial(existing);
+        const itemIsOfficial = isOfficial(item);
+        if (!existingIsOfficial && itemIsOfficial) {
+          dupes.push(existing);
+          map.set(key, item);
+        } else {
+          dupes.push(item);
+        }
+      }
+    }
+    return { unique: Array.from(map.values()), duplicates: dupes };
+  };
+
+  const [foods, setFoods] = useState<FoodItem[]>(() => {
+    const stored = loadStored<FoodItem[]>('foods', INITIAL_FOODS);
+    const map = new Map<string, FoodItem>();
+    // Ensure all canonical foods are present
+    INITIAL_FOODS.forEach(f => map.set(f.id, f));
+    if (Array.isArray(stored)) {
+      stored.forEach(f => {
+        if (f && f.id) {
+          if (!map.has(f.id)) {
+            map.set(f.id, f);
+          } else {
+            // Keep updated values
+            map.set(f.id, { ...map.get(f.id)!, ...f });
+          }
+        }
+      });
+    }
+    return deduplicateFoodList(Array.from(map.values())).unique;
+  });
   const [dietPlans, setDietPlans] = useState<DietPlan[]>(() => loadStored('dietPlans', INITIAL_DIET_PLANS));
   const [mealLogs, setMealLogs] = useState<MealLogItem[]>(() => loadStored('mealLogs', INITIAL_MEAL_LOGS));
   const [suggestedMeals, setSuggestedMeals] = useState<AISuggestedMeal[]>(() => loadStored('suggestedMeals', []));
@@ -335,7 +389,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               INITIAL_FOODS.forEach(f => map.set(f.id, f));
               prev.forEach(f => { if (f?.id) map.set(f.id, f); });
               items.forEach(f => { if (f?.id) map.set(f.id, { ...map.get(f.id), ...f }); });
-              return Array.from(map.values());
+              
+              const { unique, duplicates } = deduplicateFoodList(Array.from(map.values()));
+              if (duplicates.length > 0) {
+                duplicates.forEach(d => {
+                  deleteDocumentFromFirestore('foods', d.id).catch(() => {});
+                });
+              }
+              return unique;
             });
           }
         });
@@ -644,7 +705,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!found) {
-      return { success: false, message: 'No coach or clinic staff account found with this username. Please verify the credentials set during coach registration.' };
+      return { success: false, message: 'No coach or centre staff account found with this username. Please verify the credentials set during coach registration.' };
     }
 
     const expectedPassword = found.password || 'password123';
@@ -1105,6 +1166,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Team: Food items
   const addFoodItem = (foodData: Omit<FoodItem, 'id'>): FoodItem => {
+    // Normalization check to prevent double-entry of existing foods
+    const normalize = (n: string) => (n || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '').trim();
+    const targetKey = normalize(foodData.name);
+    const existing = foods.find(f => normalize(f.name) === targetKey);
+    if (existing) {
+      return existing;
+    }
+
     const newFood: FoodItem = {
       ...foodData,
       id: `f-${Date.now()}`,
@@ -1113,6 +1182,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFoods(prev => [newFood, ...prev]);
     saveDocumentToFirestore('foods', newFood.id, newFood).catch(() => {});
     return newFood;
+  };
+
+  const removeDuplicateFoods = async (): Promise<{ count: number }> => {
+    const { unique, duplicates } = deduplicateFoodList(foods);
+    if (duplicates.length > 0) {
+      for (const dupe of duplicates) {
+        deleteDocumentFromFirestore('foods', dupe.id).catch(() => {});
+      }
+      setFoods(unique);
+    }
+    return { count: duplicates.length };
   };
 
   const updateFoodItem = (food: FoodItem) => {
@@ -1310,6 +1390,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addFoodItem,
         updateFoodItem,
         deleteFoodItem,
+        removeDuplicateFoods,
         createDietPlan,
         updateDietPlan,
         addCentreDeviceReading,

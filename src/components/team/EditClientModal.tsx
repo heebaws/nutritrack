@@ -247,7 +247,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClos
 
                 {/* Preset Avatars */}
                 <div>
-                  <span className="text-[10px] text-slate-500 block mb-1">Quick Select Clinic Avatars:</span>
+                  <span className="text-[10px] text-slate-500 block mb-1">Quick Select Centre Avatars:</span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {PRESET_AVATARS.map((url, i) => (
                       <button

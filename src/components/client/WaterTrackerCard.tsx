@@ -114,7 +114,7 @@ export const WaterTrackerCard: React.FC = () => {
 
     if (permission === 'granted') {
       new Notification('💧 Hydration Reminders Active', {
-        body: `Saleem Valanchery Clinic: We will alert you whenever 3 hours pass without drinking water.`,
+        body: `Saleem Valanchery Centre: We will alert you whenever 3 hours pass without drinking water.`,
         icon: '/favicon.ico'
       });
       if (clientWaterReminder && !clientWaterReminder.enabled) {
@@ -287,7 +287,7 @@ export const WaterTrackerCard: React.FC = () => {
               onClick={() => toggleReminder(clientWaterReminder.id)}
               className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 underline cursor-pointer"
             >
-              {clientWaterReminder.enabled ? 'Mute' : 'Enable'} Clinic Reminder
+              {clientWaterReminder.enabled ? 'Mute' : 'Enable'} Centre Reminder
             </button>
           )}
         </div>
@@ -464,7 +464,7 @@ export const WaterTrackerCard: React.FC = () => {
       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-[11px] text-slate-500 font-medium">
         <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
         <span>
-          <b>Clinic Protocol:</b> Drink 500ml upon waking with a pinch of pink salt or lemon, and avoid drinking large volumes during meals to maintain stomach acid potency.
+          <b>Centre Protocol:</b> Drink 500ml upon waking with a pinch of pink salt or lemon, and avoid drinking large volumes during meals to maintain stomach acid potency.
         </span>
       </div>
     </div>

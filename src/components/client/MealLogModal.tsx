@@ -55,11 +55,13 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
   const [aiEstimateNote, setAiEstimateNote] = useState<string | null>(null);
   // CRITICAL MANDATE: "Was it oily? 3 options"
   const [oilOption, setOilOption] = useState<'steamed' | 'medium' | 'fried'>('steamed');
-  // USER MANDATE: Good Calories vs Bad Calories toggle
+  // USER MANDATE: Good Calories vs Bad Calories toggle (flexible per meal log, not fixed permanently to food)
+  const [mealCalorieQuality, setMealCalorieQuality] = useState<CalorieQuality>('good');
   const [customQuality, setCustomQuality] = useState<CalorieQuality>('good');
 
   // NutriBot Live Search Extension states
   const [searchExtensionOil, setSearchExtensionOil] = useState<'steamed' | 'medium' | 'fried'>('steamed');
+  const [searchExtensionQuality, setSearchExtensionQuality] = useState<CalorieQuality>('good');
   const [searchExtensionQty, setSearchExtensionQty] = useState<number>(1);
   const [extensionAddedNotice, setExtensionAddedNotice] = useState<string | null>(null);
 
@@ -125,7 +127,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       calorieQuality: quality
     });
 
-    // 2. Add to client's daily meal log
+    // 2. Add to client's daily meal log with per-meal flexible calorie quality
     addMealLog({
       clientId: activeClientId,
       date: selectedDate,
@@ -138,7 +140,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       protein: totalProt,
       carbs: totalCarb,
       fat: totalFat,
-      calorieQuality: quality
+      calorieQuality: searchExtensionQuality
     });
 
     setExtensionAddedNotice(`✓ Logged ${qty}x ${searchExtensionFood.name} (${totalCal} kcal) to ${mealType}!`);
@@ -318,6 +320,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
 
   const handleSelectFood = (food: FoodItem) => {
     setSelectedFood(food);
+    setOilOption('steamed');
+    const initialQual = food.calorieQuality || determineCalorieQuality(food.name, food.category, 'steamed');
+    setMealCalorieQuality(initialQual);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -328,12 +333,6 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
 
     if (activeTab === 'library') {
       if (!selectedFood || !calculatedNutrition) return;
-
-      const quality = selectedFood.calorieQuality || determineCalorieQuality(
-        selectedFood.name,
-        selectedFood.category,
-        oilOption
-      );
 
       addMealLog({
         clientId: activeClientId,
@@ -347,7 +346,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         protein: calculatedNutrition.protein,
         carbs: calculatedNutrition.carbs,
         fat: calculatedNutrition.fat,
-        calorieQuality: quality
+        calorieQuality: mealCalorieQuality
       });
     } else {
       // Custom food entry
@@ -450,7 +449,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Clinic Food Library ({foods.length})</span>
+            <span>Centre Food Library ({foods.length})</span>
           </button>
           <button
             type="button"
@@ -659,6 +658,38 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Good vs Bad Calorie Toggle (Flexible per log, not permanently fixed) */}
+                  <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block">Calorie Quality:</span>
+                      <span className="text-[10px] text-slate-500">Flexible each time (not permanently fixed)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setMealCalorieQuality('good')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          mealCalorieQuality === 'good'
+                            ? 'bg-emerald-600 text-white shadow-2xs'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        🟢 Good Calories
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMealCalorieQuality('bad')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          mealCalorieQuality === 'bad'
+                            ? 'bg-rose-600 text-white shadow-2xs'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        🔴 Bad / Treat
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Calculated Calorie & Macro breakdown */}
                   {calculatedNutrition && (
                     <div className="bg-white p-3 rounded-lg border border-emerald-200 space-y-1.5">
@@ -804,6 +835,35 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                               {p}x
                             </button>
                           ))}
+                        </div>
+                      </div>
+
+                      {/* Calorie Quality Option (Flexible each time) */}
+                      <div className="flex items-center justify-between p-1.5 bg-white rounded-xl border border-emerald-200">
+                        <span className="text-[10px] font-bold text-slate-700">Calorie Quality:</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setSearchExtensionQuality('good')}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-colors cursor-pointer ${
+                              searchExtensionQuality === 'good'
+                                ? 'bg-emerald-600 text-white shadow-2xs'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            🟢 Good
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSearchExtensionQuality('bad')}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-colors cursor-pointer ${
+                              searchExtensionQuality === 'bad'
+                                ? 'bg-rose-600 text-white shadow-2xs'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            🔴 Bad / Treat
+                          </button>
                         </div>
                       </div>
 

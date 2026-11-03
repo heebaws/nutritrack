@@ -116,7 +116,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 px-4 py-1.5 rounded-full text-xs font-bold border border-emerald-200 mb-3 shadow-2xs">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Saleem Valanchery Wellness Clinic</span>
+          <span>Saleem Valanchery Wellness Centre</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
           Account Login Portal
@@ -314,7 +314,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Secure Cloud Connection</span>
           </span>
-          <span>Saleem Valanchery Clinic</span>
+          <span>Saleem Valanchery Wellness Centre</span>
         </div>
       </div>
     </div>

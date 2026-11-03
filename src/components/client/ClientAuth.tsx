@@ -59,13 +59,13 @@ export const ClientAuth: React.FC = () => {
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 px-3.5 py-1.5 rounded-full text-xs font-bold border border-emerald-200 mb-3 shadow-2xs">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Saleem Valanchery Wellness Clinic • Client Nutrition &amp; Diet Portal</span>
+          <span>Saleem Valanchery Wellness Centre • Client Nutrition &amp; Diet Portal</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           Client Portal Sign In
         </h1>
         <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-xl mx-auto">
-          Log your daily Kerala &amp; clinic meals, review your assigned diet plan, and check real-time calories &amp; macros.
+          Log your daily Kerala &amp; centre meals, review your assigned diet plan, and check real-time calories &amp; macros.
         </p>
       </div>
 
@@ -174,7 +174,7 @@ export const ClientAuth: React.FC = () => {
           <div className="mt-6 pt-5 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Encrypted Clinic Portal</span>
+              <span>Encrypted Centre Portal</span>
             </span>
             <span>Coach Saleem Valanchery &amp; Team</span>
           </div>
@@ -261,7 +261,7 @@ export const ClientAuth: React.FC = () => {
             <div className="mt-4 p-3 bg-blue-50/70 border border-blue-200 rounded-2xl flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <Stethoscope className="w-4 h-4 text-blue-600" />
-                <span className="font-semibold text-blue-950">Are you a Clinic Coach or Staff?</span>
+                <span className="font-semibold text-blue-950">Are you a Centre Coach or Staff?</span>
               </div>
               <button
                 type="button"
@@ -274,7 +274,7 @@ export const ClientAuth: React.FC = () => {
           </div>
 
           <div className="mt-6 pt-5 border-t border-slate-100 text-xs text-slate-400 text-center">
-            Need an account? Contact Wellness Coach Saleem Valanchery at the clinic.
+            Need an account? Contact Wellness Coach Saleem Valanchery at the centre.
           </div>
         </div>
 

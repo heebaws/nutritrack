@@ -1,7 +1,13 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { MealType, FoodCategory, AISuggestedMealFood, FoodItem } from '../../types';
-import { estimateNutrition, formatFoodMarkdown, detectEatenMealWithTime } from '../../utils/nutritionEstimator';
+import { 
+  estimateNutrition, 
+  formatFoodMarkdown, 
+  detectEatenMealWithTime, 
+  parseRecipeIngredients, 
+  detectMalayalamOrManglish 
+} from '../../utils/nutritionEstimator';
 import {
   Bot,
   Sparkles,
@@ -449,12 +455,12 @@ export const AIChatBot: React.FC = () => {
     {
       id: 'welcome-1',
       sender: 'bot',
-      text: `👋 Namaskaram! I am **NutriBot**, your Saleem Valanchery Wellness Clinic Assistant.
+      text: `👋 Namaskaram! I am **NutriBot**, your Saleem Valanchery Wellness Centre Assistant.
 
 I am ready to help you with:
 - 🌴 **Kerala Snacks & Calories Referral:** Ask about **Pazham Pori**, **Parippu Vada**, **Ela Ada**, **Banana Chips**, or tap the **Kerala Referral Guide** above!
 - 🫒 **Was it oily? (3 Cooking Options):** I ask on every food and calculate calories for **Steamed (0 extra fat)**, **Medium Sauté (+45 kcal)**, or **Deep Fried (+120 kcal)**!
-- 📚 **Automatic Food Library Sync:** Every food or snack you write is **automatically added to your Clinic Food Library** for future 1-click logging!
+- 📚 **Automatic Food Library Sync:** Every food or snack you write is **automatically added to your Centre Food Library** for future 1-click logging!
 - ⏰ **Log What You Ate With Time:** Type *"I ate 2 Pazham Pori at 4:30 pm"* and I will stage it for your **Evening Snack**!`,
       timestamp: 'Just now'
     }
@@ -527,7 +533,7 @@ I am ready to help you with:
         servingUnit: foodItem.servingUnit || '1 serving',
         standardServingUnit: foodItem.servingUnit || '1 serving',
         standardServingGrams: 100,
-        description: foodItem.verdict || 'Automatically added to Clinic Food Library via NutriBot chat'
+        description: foodItem.verdict || 'Automatically added to Centre Food Library via NutriBot chat'
       });
       return true;
     }
@@ -565,7 +571,7 @@ ${eatenMeal.foods.map(f => `- **${f.name} (${f.quantity}x ${f.servingUnit}):** *
 - 🟡 **Medium Sauté:** ${(eatenMeal.totalCalories || 0) + 45} kcal (+5g fat)
 - 🔴 **Deep Fried:** ${(eatenMeal.totalCalories || 0) + 120} kcal (+13g fat)
 
-✨ **Auto-Added to Clinic Food Library:** Staged for 1-click entry into your **${eatenMeal.mealSlot || 'Evening Snack'}** daily diary!`
+✨ **Auto-Added to Centre Food Library:** Staged for 1-click entry into your **${eatenMeal.mealSlot || 'Evening Snack'}** daily diary!`
       };
     }
 
@@ -577,7 +583,7 @@ ${eatenMeal.foods.map(f => `- **${f.name} (${f.quantity}x ${f.servingUnit}):** *
         mealLogData: null,
         answer: `👋 **NutriBot is Active & Ready to Assist You!**
 
-Welcome to the **Saleem Valanchery Wellness Clinic Assistant**! I am fully operational and equipped to estimate nutrition for ANY food, snack, or meal.
+Welcome to the **Saleem Valanchery Wellness Centre Assistant**! I am fully operational and equipped to estimate nutrition for ANY food, snack, or meal.
 
 ### **What You Can Do Right Now:**
 1. **Search Any Food or Snack:** Type *any* food (e.g. *"Pazham Pori"*, *"Shawarma"*, *"Boiled Egg"*, *"Paneer Butter Masala"*, *"Salmon"*, *"Salad"*, *"Biryani"*) to see its **calories first in bold**!
@@ -586,7 +592,7 @@ Welcome to the **Saleem Valanchery Wellness Clinic Assistant**! I am fully opera
    - 🟡 **Medium / Home Sauté** (+45 kcal, +5g fat)
    - 🔴 **Deep Fried / Very Oily** (+120 kcal, +13g fat)
 3. **1-Click Direct Add to Log Food:** You can add the searched food directly to your **Morning, Snack, Lunch, Evening, or Night** diary columns!
-4. **Automatic Food Library Sync:** Any food you search is automatically registered in your clinic food library.
+4. **Automatic Food Library Sync:** Any food you search is automatically registered in your centre food library.
 
 What food or snack would you like to check?`
       };
@@ -605,7 +611,7 @@ What food or snack would you like to check?`
   1. Maintain a high-protein calorie deficit (1.2–1.6g protein/kg).
   2. Minimize refined carbs, deep-fried snacks, and late-night heavy calories.
   3. Combine 8,000–10,000 daily steps with resistance training 3x/week.
-  4. Track monthly updates in the clinic InBody 270/770 Body Composition Analyzer.`
+  4. Track monthly updates in the centre InBody 270/770 Body Composition Analyzer.`
       };
     }
 
@@ -614,14 +620,56 @@ What food or snack would you like to check?`
         food: null,
         isMealLogReport: false,
         mealLogData: null,
-        answer: `### **Hydration Target (Saleem Valanchery Wellness Clinic)**
+        answer: `### **Hydration Target (Saleem Valanchery Wellness Centre)**
 - **Daily Goal:** **2.5 to 3.5 Litres** daily.
 - **Tip:** Drink 500ml upon waking. Space water evenly throughout the day.
 - **Meal Rule:** Avoid chugging water immediately after heavy meals.`
       };
     }
 
-    // 3. UNIVERSAL FOOD RESOLUTION: Guarantees ANY searched food always returns a food card!
+    // 3. RECIPE / MULTI-INGREDIENT DISH CALCULATION
+    // If client types ingredients e.g. "200g chicken, 1 onion, 1 tbsp oil", calculate total data + itemized breakdown
+    const recipeResult = parseRecipeIngredients(query);
+    if (recipeResult && recipeResult.ingredients.length > 0) {
+      return {
+        food: {
+          name: recipeResult.recipeTitle,
+          category: 'Proteins',
+          servingUnit: '1 recipe dish',
+          calories: recipeResult.totalCalories,
+          protein: recipeResult.totalProtein,
+          carbs: recipeResult.totalCarbs,
+          fat: recipeResult.totalFat,
+          fiber: recipeResult.totalFiber,
+          glycemicIndex: 'Low-Medium',
+          verdict: recipeResult.isMalayalam ? 'ചേരുവകൾ കൃത്യമായി കണക്കുകൂട്ടിയിട്ടുണ്ട്.' : 'Calculated proportionally across all ingredients.',
+          recommendation: recipeResult.isMalayalam ? 'മീൽ ഡയറിയിലേക്ക് നേരിട്ട് രേഖപ്പെടുത്താം.' : 'Nutrient balanced home recipe.'
+        },
+        isMealLogReport: true,
+        mealLogData: {
+          timeGiven: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          detectedMealType: 'Lunch',
+          foods: recipeResult.ingredients.map(i => ({
+            name: `${i.name} (${i.unit})`,
+            quantity: 1,
+            servingUnit: i.unit,
+            calories: i.calories,
+            protein: i.protein,
+            carbs: i.carbs,
+            fat: i.fat,
+            category: i.category
+          })),
+          totalCalories: recipeResult.totalCalories,
+          totalProtein: recipeResult.totalProtein,
+          totalCarbs: recipeResult.totalCarbs,
+          totalFat: recipeResult.totalFat,
+        },
+        answer: recipeResult.answer
+      };
+    }
+
+    // 4. MALAYALAM DETECTION & UNIVERSAL FOOD RESOLUTION
+    const isMalayalam = detectMalayalamOrManglish(query);
     const estimated = estimateNutrition(query);
     const foodItem: FoodData = {
       name: estimated.name,
@@ -641,7 +689,7 @@ What food or snack would you like to check?`
       food: foodItem,
       isMealLogReport: false,
       mealLogData: null,
-      answer: formatFoodMarkdown(estimated, 'steamed', 1)
+      answer: formatFoodMarkdown(estimated, 'steamed', 1, isMalayalam)
     };
   };
 
@@ -1111,7 +1159,7 @@ What food or snack would you like to check?`
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-100/80">
-                  Saleem Valanchery Clinic • Kerala Snacks &amp; Food Calories
+                  Saleem Valanchery Centre • Kerala Snacks &amp; Food Calories
                 </p>
               </div>
             </div>
@@ -1198,7 +1246,7 @@ What food or snack would you like to check?`
               </div>
 
               <p className="text-[11px] text-slate-600">
-                Official reference values from Saleem Valanchery Wellness Clinic. Tap <strong>Calculate</strong> to inspect oil options &amp; auto-add to clinic library:
+                Official reference values from Saleem Valanchery Wellness Centre. Tap <strong>Calculate</strong> to inspect oil options &amp; auto-add to centre library:
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -1353,7 +1401,7 @@ What food or snack would you like to check?`
                     {msg.autoSavedToLibrary && (
                       <div className="mb-2.5 inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-300 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-2xs">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>✨ Automatically Saved to Clinic Food Library</span>
+                        <span>✨ Automatically Saved to Centre Food Library</span>
                       </div>
                     )}
 
@@ -1934,7 +1982,7 @@ What food or snack would you like to check?`
           <div className="px-4 py-1.5 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between shrink-0">
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              Saleem Valanchery Clinic Kerala Food Database
+              Saleem Valanchery Centre Kerala Food Database
             </span>
             <span>All foods auto-saved to library</span>
           </div>

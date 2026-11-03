@@ -445,7 +445,7 @@ export const ClientApp: React.FC = () => {
               type="button"
               onClick={() => setIsAppointmentsModalOpen(true)}
               className="bg-emerald-600/90 hover:bg-emerald-600 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl transition-all border border-emerald-400/40 flex items-center gap-1.5 cursor-pointer backdrop-blur-xs"
-              title="Clinic appointment & consultation"
+              title="Centre appointment & consultation"
             >
               <CalendarCheck className="w-4 h-4 text-teal-200" />
               <span>Appointments</span>
@@ -470,7 +470,7 @@ export const ClientApp: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
               <span>
-                <b>Next Clinic Visit:</b> {nextAppointment.type.replace('_', ' ')} on <b className="text-white">{nextAppointment.date} at {nextAppointment.time}</b> with {nextAppointment.dietitianName}
+                <b>Next Centre Visit:</b> {nextAppointment.type.replace('_', ' ')} on <b className="text-white">{nextAppointment.date} at {nextAppointment.time}</b> with {nextAppointment.dietitianName}
               </span>
             </div>
             <button
@@ -1637,7 +1637,7 @@ export const ClientApp: React.FC = () => {
                         {assignedDietitian.phone}
                       </span>
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        Clinic Verified
+                        Centre Verified
                       </span>
                     </div>
                   </div>
@@ -2136,7 +2136,7 @@ export const ClientApp: React.FC = () => {
                   {assignedDietitian.phone}
                 </span>
                 <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  Clinic Verified Coach
+                  Centre Verified Coach
                 </span>
               </div>
             </div>
@@ -2149,7 +2149,7 @@ export const ClientApp: React.FC = () => {
                 </div>
                 <div>
                   <span className="text-xs font-bold text-slate-800 block">Active Client Profile</span>
-                  <span className="text-[11px] text-slate-500">Connected to NutriTrack Wellness Clinic</span>
+                  <span className="text-[11px] text-slate-500">Connected to NutriTrack Wellness Centre</span>
                 </div>
               </div>
               <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">

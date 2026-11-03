@@ -1019,7 +1019,7 @@ const CLINIC_FOOD_LOOKUP: Record<string, {
     tips: "High sugar content. Treat as an occasional festive indulgence."
   },
   snack: {
-    name: "Kerala Snack Selection (Saleem Valanchery Clinic)",
+    name: "Kerala Snack Selection (Saleem Valanchery Centre)",
     category: "Beverages & Snacks",
     servingUnit: "1 standard portion",
     calories: 155,
@@ -1030,6 +1030,253 @@ const CLINIC_FOOD_LOOKUP: Record<string, {
     glycemicIndex: "Medium",
     verdict: "Traditional Kerala snacks range from healthy steamed delicacies (Ela Ada, Kozhukatta) to rich fried treats (Pazham Pori, Parippu Vada).",
     tips: "Ask NutriBot about any specific snack or select whether it was Steamed, Medium Sauté, or Deep Fried to see the exact calorie difference!"
+  },
+  sulaimani: {
+    name: "Sulaimani (Black Tea with Lemon & Cardamom)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (150ml)",
+    calories: 8,
+    protein: 0.2,
+    carbs: 1.8,
+    fat: 0.0,
+    fiber: 0,
+    glycemicIndex: "Low",
+    verdict: "Aromatic Malabar spiced black tea with fresh lemon and cardamom. Zero saturated fat.",
+    tips: "Great digestive aid after lunch or dinner."
+  },
+  "chukku kaapi": {
+    name: "Chukku Kaapi (Dry Ginger Herbal Coffee)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 cup (150ml)",
+    calories: 45,
+    protein: 0.5,
+    carbs: 10.5,
+    fat: 0.1,
+    fiber: 0.3,
+    glycemicIndex: "Low",
+    verdict: "Traditional Kerala dry ginger coffee infused with black pepper and palm jaggery.",
+    tips: "Warming, anti-inflammatory, and comforting for throat and digestion."
+  },
+  sambharam: {
+    name: "Morum Vellam / Sambharam (Kerala Spiced Buttermilk)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (240ml)",
+    calories: 38,
+    protein: 3.2,
+    carbs: 3.8,
+    fat: 1.2,
+    fiber: 0.2,
+    glycemicIndex: "Low",
+    verdict: "Churned buttermilk spiced with crushed ginger, green chili, and curry leaves.",
+    tips: "Probiotic powerhouse that hydrates and calms digestive heat."
+  },
+  "morum vellam": {
+    name: "Morum Vellam / Sambharam (Kerala Spiced Buttermilk)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (240ml)",
+    calories: 38,
+    protein: 3.2,
+    carbs: 3.8,
+    fat: 1.2,
+    fiber: 0.2,
+    glycemicIndex: "Low",
+    verdict: "Natural probiotic and electrolyte beverage.",
+    tips: "Superb afternoon thirst quencher."
+  },
+  karikku: {
+    name: "Karikku (Fresh Tender Coconut Water)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 whole (250ml)",
+    calories: 48,
+    protein: 1.8,
+    carbs: 9.0,
+    fat: 0.5,
+    fiber: 2.6,
+    glycemicIndex: "Low",
+    verdict: "Pure natural electrolyte water rich in potassium and active enzymes.",
+    tips: "Superior natural alternative to artificial sports electrolyte drinks."
+  },
+  "kulukki sarbath": {
+    name: "Kulukki Sarbath (Shaken Lemon & Sabja)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (250ml)",
+    calories: 85,
+    protein: 1.2,
+    carbs: 20.0,
+    fat: 0.2,
+    fiber: 1.5,
+    glycemicIndex: "Medium",
+    verdict: "Shaken Kerala street cooler with lemon, green chili, and basil seeds.",
+    tips: "Refreshing and cooling with beneficial dietary fiber from sabja seeds."
+  },
+  "nannari sarbath": {
+    name: "Nannari Sarbath (Roots Sarbath with Lemon)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (250ml)",
+    calories: 105,
+    protein: 0.4,
+    carbs: 26.0,
+    fat: 0.1,
+    fiber: 1.0,
+    glycemicIndex: "Medium-High",
+    verdict: "Herbal roots syrup drink with fresh lemon.",
+    tips: "Traditional Ayurvedic body coolant."
+  },
+  panakam: {
+    name: "Panakam (Traditional Jaggery & Pepper Drink)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (200ml)",
+    calories: 88,
+    protein: 0.3,
+    carbs: 21.5,
+    fat: 0.1,
+    fiber: 0.4,
+    glycemicIndex: "Medium",
+    verdict: "Heritage electrolyte drink made with dark jaggery, dried ginger, and pepper.",
+    tips: "Restores vital electrolytes during summer."
+  },
+  "jeeraka vellam": {
+    name: "Jeeraka Vellam (Warm Cumin Water)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (250ml)",
+    calories: 2,
+    protein: 0.1,
+    carbs: 0.4,
+    fat: 0,
+    fiber: 0.1,
+    glycemicIndex: "Low",
+    verdict: "Boiled cumin seed water.",
+    tips: "Gentle digestive stimulant throughout the day."
+  },
+  "pathimugam vellam": {
+    name: "Pathimugam Vellam (Pink Herbal Water)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (250ml)",
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiber: 0,
+    glycemicIndex: "Zero",
+    verdict: "Traditional Kerala pink drinking water boiled with Caesalpinia sappan wood.",
+    tips: "100% calorie-free and antimicrobial."
+  },
+  "sharjah shake": {
+    name: "Sharjah Shake (Calicut Bakery Shake)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (300ml)",
+    calories: 280,
+    protein: 6.5,
+    carbs: 48.0,
+    fat: 7.2,
+    fiber: 2.2,
+    glycemicIndex: "High",
+    verdict: "Malabar bakery frozen banana, milk, and Horlicks smoothie.",
+    tips: "High calorie density; reserve as an occasional treat."
+  },
+  chaya: {
+    name: "Kerala Naadan Chaya (Milk Tea)",
+    category: "Beverages & Snacks",
+    servingUnit: "1 glass (150ml with milk & sugar)",
+    calories: 75,
+    protein: 2.8,
+    carbs: 9.5,
+    fat: 2.6,
+    fiber: 0,
+    glycemicIndex: "Medium",
+    verdict: "Traditional poured milk tea.",
+    tips: "Switch to black tea / Sulaimani to cut liquid dairy sugars."
+  },
+  kallappam: {
+    name: "Kallappam / Vellayappam (Soft Rice Pancake)",
+    category: "Grains & Breads",
+    servingUnit: "1 piece (50g)",
+    calories: 92,
+    protein: 1.8,
+    carbs: 18.5,
+    fat: 1.2,
+    fiber: 0.8,
+    glycemicIndex: "Medium",
+    verdict: "Fermented rice and coconut pancake with subtle cumin and shallots.",
+    tips: "Gentle on digestion, pair with high-protein curries."
+  },
+  "thattu dosa": {
+    name: "Kerala Thattu Dosa",
+    category: "Grains & Breads",
+    servingUnit: "1 small dosa (45g)",
+    calories: 78,
+    protein: 2.1,
+    carbs: 14.5,
+    fat: 1.2,
+    fiber: 0.7,
+    glycemicIndex: "Medium",
+    verdict: "Soft street-style fermented rice & black gram pancake.",
+    tips: "Pair with sambar or tomato chammanthi."
+  },
+  uppumavu: {
+    name: "Uppumavu / Rava Upma",
+    category: "Grains & Breads",
+    servingUnit: "1 bowl (150g)",
+    calories: 168,
+    protein: 4.5,
+    carbs: 28.0,
+    fat: 4.2,
+    fiber: 2.1,
+    glycemicIndex: "Medium",
+    verdict: "Roasted semolina cooked with mustard, curry leaves, and ginger.",
+    tips: "Pair with boiled eggs for balanced protein."
+  },
+  olan: {
+    name: "Olan (Ash Gourd & Cowpeas in Coconut Milk)",
+    category: "Vegetables",
+    servingUnit: "1 bowl (120g)",
+    calories: 118,
+    protein: 3.8,
+    carbs: 12.0,
+    fat: 6.2,
+    fiber: 2.8,
+    glycemicIndex: "Low",
+    verdict: "Mild white pumpkin and cowpeas stew in fresh coconut milk.",
+    tips: "Alkaline, cooling, and gentle on the gut."
+  },
+  kalan: {
+    name: "Kalan (Sadhya Yam & Curd Curry)",
+    category: "Vegetables",
+    servingUnit: "1 bowl (120g)",
+    calories: 148,
+    protein: 3.2,
+    carbs: 16.5,
+    fat: 7.5,
+    fiber: 2.4,
+    glycemicIndex: "Low-Medium",
+    verdict: "Thick spiced curd and yam curry with ground pepper and coconut.",
+    tips: "Good probiotics from cooked curd."
+  },
+  "chemmeen roast": {
+    name: "Chemmeen Roast (Kerala Prawn Roast)",
+    category: "Proteins",
+    servingUnit: "1 bowl (120g)",
+    calories: 185,
+    protein: 23.0,
+    carbs: 4.5,
+    fat: 8.2,
+    fiber: 1.2,
+    glycemicIndex: "Low",
+    verdict: "Prawns roasted with shallots, kudampuli, garlic, and curry leaves.",
+    tips: "Superb lean seafood protein with zinc and selenium."
+  },
+  "kappa biryani": {
+    name: "Kappa Biryani / Erachi Kappa (Tapioca & Beef)",
+    category: "Grains & Breads",
+    servingUnit: "1 plate (250g)",
+    calories: 395,
+    protein: 24.0,
+    carbs: 46.0,
+    fat: 14.0,
+    fiber: 3.8,
+    glycemicIndex: "Medium-High",
+    verdict: "Mashed boiled tapioca tossed with spiced beef roast and roasted coconut.",
+    tips: "High energy active meal."
   }
 };
 
@@ -1330,14 +1577,14 @@ async function startServer() {
       // If Gemini is available, we query Gemini to give comprehensive answers
       // and explicitly format the first section with EXACT nutrition data if food is inquired!
       if (ai) {
-        const systemPrompt = `You are "NutriBot", the official AI Nutrition & Clinical Wellness Assistant of the Saleem Valanchery Wellness Clinic (led by Wellness Coaches Saleem Valanchery and Faseela Saleem).
+        const systemPrompt = `You are "NutriBot", the official AI Nutrition & Clinical Wellness Assistant of the Saleem Valanchery Wellness Centre (led by Wellness Coaches Saleem Valanchery and Faseela Saleem).
 
 STRICT USER MANDATES:
 1. CHECK AND SAY EACH FOOD'S CALORIES FIRST:
-   - When ANY food, multiple foods, or eaten meal is inquired, you MUST ALWAYS state each food's calories FIRST at the very top of your answer!
+   - When ANY food, multiple foods, recipe with ingredients, or eaten meal is inquired, you MUST ALWAYS state each food's calories FIRST at the very top of your answer!
    - For a single food inquiry:
      "🔥 **Calories:** **[Calories] kcal** (per [serving unit])"
-   - For multiple foods or a meal eaten:
+   - For multiple foods or recipe ingredients or a meal eaten:
      "🔥 **Each Food's Calories:**
      - **[Food 1 Name] ([Portion]):** **[Calories] kcal**
      - **[Food 2 Name] ([Portion]):** **[Calories] kcal**
@@ -1345,70 +1592,43 @@ STRICT USER MANDATES:
 
 2. ALL HEADINGS MUST BE BOLD:
    - Every single heading, section title, and nutrient label MUST be formatted in **bold** markdown!
-   - Format:
-     ### **Nutritional Details**
-     - **Food Category:** ...
-     - **Standard Serving Unit:** ...
-     - **Protein:** ...
-     - **Carbohydrates:** ...
-     - **Healthy Fats:** ...
-     - **Dietary Fiber:** ...
-     - **Glycemic Index:** ...
-     ### **Clinical Verdict**
-     ...
-     ### **Coach Recommendations**
-     - **Optimal Meal Timing:** ...
-     - **Smart Food Pairings:** ...
-     ### **Suggested for Your Meals Section** (when logging eaten food)
 
-3. FOOD EATEN WITH TIME SUGGESTION:
-   - If user types what they ate and includes a time (e.g. "I ate 2 boiled eggs and 1 bread at 8:30 am", "had 1 apple at 4pm", "ate chicken breast and rice at 1:30 pm"):
-     - Extract time: e.g. "8:30 AM", "4:00 PM", etc.
-     - Infer meal slot:
-       - Morning (5:00 AM - 10:30 AM): "Breakfast"
-       - Late Morning (10:31 AM - 11:59 AM): "Morning Snack"
-       - Afternoon (12:00 PM - 3:30 PM): "Lunch"
-       - Late Afternoon (3:31 PM - 6:30 PM): "Evening Snack"
-       - Evening/Night (6:31 PM - 11:59 PM): "Dinner"
-     - Set "isMealLogReport": true
-     - Populate "mealLogData":
-       {
-         "timeGiven": string,
-         "detectedMealType": "Breakfast" | "Morning Snack" | "Lunch" | "Evening Snack" | "Dinner",
-         "foods": [
-           {
-             "name": string,
-             "servingUnit": string,
-             "quantity": number,
-             "calories": number,
-             "protein": number,
-             "carbs": number,
-             "fat": number,
-             "category": string
-           }
-         ],
-         "totalCalories": number,
-         "totalProtein": number,
-         "totalCarbs": number,
-         "totalFat": number
-       }
-     - In the answer, clearly state:
-       "**Time Eaten:** **[Time]** (Categorized as **[Meal Slot]**)
-       
-       🔥 **Each Food's Calories:**
-       [Itemized calories for each food first]
-       - **Total Calories:** **[Total] kcal**
-       
-       ### **Nutritional Details**
-       - **Total Protein:** ...
-       - **Total Carbohydrates:** ...
-       - **Total Healthy Fats:** ...
-       
-       ### **Clinical Verdict & Coach Advice**
-       ...
-       
-       ### **Suggested for Your Meals Section**
-       ✨ I have staged this meal as a suggestion for your **[Meal Slot]** diary! When you navigate to the **Calorie & Meals Tracker** or click **Log Food**, these items will be waiting for you to add with 1-click."
+3. CLIENT-FRIENDLY TONE & MALAYALAM SUPPORT:
+   - Always be warm, encouraging, client-friendly, and speak in simple, clear everyday language without overwhelming medical jargon.
+   - If the user asks in Malayalam (using Malayalam script or Manglish e.g. "ethra calorie und", "njan kazhicho", "parayumo") OR explicitly asks for Malayalam:
+     - You MUST reply in warm, client-friendly, natural Malayalam (using clear Malayalam script).
+     - State calories FIRST in bold:
+       "🔥 **കാലറി (Calories):** **[Calories] kcal**"
+     - Format headings in bold Malayalam:
+       ### **ഭക്ഷണ വിവരങ്ങൾ (Nutrition Breakdown)**
+       - **പ്രോട്ടീൻ (Protein):** **[X] g**
+       - **കാർബോഹൈഡ്രേറ്റ് (Carbs):** **[X] g**
+       - **ഫാറ്റ് (Healthy Fats):** **[X] g**
+       - **നാരുകൾ (Fiber):** **[X] g**
+       ### **ഓയിൽ ഓപ്ഷനുകൾ (Was it oily? - 3 Options)**
+       - 🟢 എണ്ണയില്ലാതെ / ആവിയിൽ വേവിച്ചത്: **[Base] kcal**
+       - 🟡 കുറഞ്ഞ എണ്ണയിൽ / വീട്ടിൽ വഴറ്റിയത്: **[Base+45] kcal**
+       - 🔴 നല്ലെണ്ണയിൽ വറുത്തത് (Deep Fried): **[Base+120] kcal**
+       ### **സലീം വളാഞ്ചേരി വെൽനസ്സ് സെന്റർ കോച്ച് നിർദ്ദേശം**
+       [Encouraging advice in simple Malayalam]
+       ### **മീൽ ഡയറിയിലേക്ക് ചേർക്കാം (Log to Diary)**
+       ✨ ഈ ഭക്ഷണം നിങ്ങളുടെ ഡയറിയിലേക്ക് ചേർക്കാനായി താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്യാം!
+   - If the user writes in English, reply in friendly, simple, conversational English.
+
+4. MULTI-INGREDIENT RECIPES & DISH INGREDIENTS CALCULATION:
+   - When a client types a food with its ingredients (e.g. "I cooked chicken curry with 200g chicken, 1 onion, 1 tbsp oil, 1 tomato" or "Oats bowl: 50g oats, 1 cup milk, 1 banana"):
+     - Break down and calculate EACH ingredient's calories and macros proportionally.
+     - State each ingredient's calories FIRST in bold.
+     - Sum the overall recipe calories, protein, carbs, fat, fiber.
+     - Populate "mealLogData" and "foodsList" with each ingredient and the dish so the client can log it with 1-click!
+
+5. FOOD EATEN WITH TIME SUGGESTION:
+   - If user types what they ate and includes a time (e.g. "I ate 2 boiled eggs and 1 bread at 8:30 am", "had 1 apple at 4pm", "njan 2 mutta kazhichu"):
+     - Extract time and meal slot (Breakfast, Morning Snack, Lunch, Evening Snack, Dinner).
+     - Set "isMealLogReport": true and populate "mealLogData".
+
+6. DYNAMIC OIL & GOOD/BAD CALORIES (NOT PERMANENTLY FIXED):
+   - Always remember: oil adjustments (+0, +45, +120 kcal) and Good vs Bad/Treat calorie classifications are selected per meal log. They never permanently alter or contaminate the base food in the clinic library.
 
 Active Client Context:
 ${clientContext ? JSON.stringify(clientContext) : 'Anonymous / General Wellness Visitor'}
@@ -1996,7 +2216,7 @@ Return a JSON object with this exact schema:
         return res.status(503).json({ error: "AI service not configured" });
       }
 
-      const prompt = `You are Senior Clinical Dietitians Coach Saleem Valanchery and Faseela Saleem at the Saleem Valanchery Wellness Clinic.
+      const prompt = `You are Senior Clinical Dietitians Coach Saleem Valanchery and Faseela Saleem at the Saleem Valanchery Wellness Centre.
 Generate a comprehensive, scientifically calibrated 1-day clinical meal plan.
 Client Profile:
 - Target Calories: ${targetCalories || 1600} kcal
@@ -2061,7 +2281,7 @@ Return a JSON object with this EXACT schema:
         return res.status(503).json({ error: "AI service not configured" });
       }
 
-      const prompt = `You are Coach Saleem Valanchery and Faseela Saleem at the Saleem Valanchery Wellness Clinic.
+      const prompt = `You are Coach Saleem Valanchery and Faseela Saleem at the Saleem Valanchery Wellness Centre.
 Generate a personalized, warm, highly practical ${type || 'tip'} to deliver to a client's mobile app.
 - Client Name: ${clientName || 'Valued Member'}
 - Goal: ${goal || 'Fat Loss & Vitality'}
