@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { NutriTrackLogo } from '../common/NutriTrackLogo';
 import { 
   User, 
   Lock, 
@@ -56,12 +57,15 @@ export const ClientAuth: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto my-6 sm:my-10 px-4">
       {/* Top Banner introducing the Clinic */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 px-3.5 py-1.5 rounded-full text-xs font-bold border border-emerald-200 mb-3 shadow-2xs">
+      <div className="text-center mb-8 flex flex-col items-center">
+        <div className="mb-4">
+          <NutriTrackLogo size="xl" subtitle="Member Nutrition Diary & Lifestyle Tracking" />
+        </div>
+        <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 px-3.5 py-1.5 rounded-full text-xs font-bold border border-emerald-200 mb-2 shadow-2xs">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
           <span>Saleem Valanchery Wellness Centre • Client Nutrition &amp; Diet Portal</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
           Client Portal Sign In
         </h1>
         <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-xl mx-auto">
@@ -77,9 +81,7 @@ export const ClientAuth: React.FC = () => {
           <div>
             <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-emerald-200">
-                  <LogIn className="w-5 h-5" />
-                </div>
+                <NutriTrackLogo size="sm" showText={false} />
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 block">Column 1</span>
                   <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">

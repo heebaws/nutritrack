@@ -12,6 +12,7 @@ import { AppointmentsModal } from '../common/AppointmentsModal';
 import { LoginPortal } from '../common/LoginPortal';
 import { MealType } from '../../types';
 import { calculateCalorieBreakdown, determineCalorieQuality } from '../../utils/calorieQuality';
+import { NutriTrackLogo } from '../common/NutriTrackLogo';
 import { 
   getTodayString, 
   getYesterdayString, 
@@ -368,7 +369,12 @@ export const ClientApp: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       
       {/* ================= WEBSITE CLIENT HERO BANNER ================= */}
-      <div className="bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+      <div className="bg-linear-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+        {/* Subtle background brand watermark */}
+        <div className="absolute -right-8 -bottom-10 opacity-10 pointer-events-none select-none">
+          <NutriTrackLogo size="xl" showText={false} variant="dark" className="w-56 h-56" />
+        </div>
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           
           {/* Client Details & Coach Attribution */}

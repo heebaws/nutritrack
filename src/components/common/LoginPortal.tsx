@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { NutriTrackLogo } from './NutriTrackLogo';
 import { 
   User, 
   Lock, 
@@ -113,16 +114,19 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
     <div className="max-w-2xl mx-auto my-8 sm:my-14 px-4">
       
       {/* Top Clinic Branding Banner */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 px-4 py-1.5 rounded-full text-xs font-bold border border-emerald-200 mb-3 shadow-2xs">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Saleem Valanchery Wellness Centre</span>
+      <div className="text-center mb-8 flex flex-col items-center">
+        <div className="mb-4">
+          <NutriTrackLogo size="xl" subtitle="Clinical Nutrition & Diet Management System" />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          Account Login Portal
+        <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 px-4 py-1.5 rounded-full text-xs font-bold border border-emerald-200 mb-2 shadow-2xs">
+          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <span>Saleem Valanchery Clinic &amp; Diagnostic Centre</span>
+        </div>
+        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+          Secure Portal Access
         </h1>
-        <p className="text-slate-500 text-xs sm:text-sm mt-1.5 max-w-md mx-auto leading-relaxed">
-          Sign in securely to your nutrition diary or clinical dashboard.
+        <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-md mx-auto leading-relaxed">
+          Sign in securely to your personal nutrition diary or clinical practitioner dashboard.
         </p>
 
         {/* Currently active session notice */}

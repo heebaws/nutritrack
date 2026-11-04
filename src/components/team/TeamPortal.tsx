@@ -12,6 +12,7 @@ import { EditClientModal } from './EditClientModal';
 import { PrintReportModal } from '../common/PrintReportModal';
 import { AppointmentsModal } from '../common/AppointmentsModal';
 import { LoginPortal } from '../common/LoginPortal';
+import { NutriTrackLogo } from '../common/NutriTrackLogo';
 import { ClientProfile, DietPlan, DietitianProfile } from '../../types';
 import { 
   Users, 
@@ -166,10 +167,11 @@ export const TeamPortal: React.FC = () => {
       {/* Team Portal Top Banner with Active Staff Profile */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3.5">
+          <NutriTrackLogo size="md" showText={false} />
           <img
             src={currentCoach?.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250'}
             alt={currentCoach?.name || 'Centre Coach'}
-            className="w-13 h-13 rounded-2xl object-cover border-2 border-blue-500 shadow-xs"
+            className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs"
           />
           <div>
             <div className="flex items-center gap-2">
@@ -177,14 +179,14 @@ export const TeamPortal: React.FC = () => {
               <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
                 currentCoach?.role === 'admin' 
                   ? 'bg-purple-100 text-purple-800 border border-purple-200' 
-                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+                  : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
               }`}>
                 <ShieldCheck className="w-3 h-3" />
                 {currentCoach?.role === 'admin' ? 'Centre Administrator' : 'Clinical Dietitian'}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              {currentCoach?.title || 'Wellness Coach & Lead Centre Admin'} • {currentCoach?.specialization || 'Holistic Wellness & Lifestyle Coaching'}
+              NutriTrack Clinic • {currentCoach?.title || 'Wellness Coach & Lead Centre Admin'}
             </p>
           </div>
         </div>

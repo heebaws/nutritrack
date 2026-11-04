@@ -8,6 +8,7 @@ import {
   parseRecipeIngredients, 
   detectMalayalamOrManglish 
 } from '../../utils/nutritionEstimator';
+import { NutriTrackLogo } from './NutriTrackLogo';
 import {
   Bot,
   Sparkles,
@@ -1080,7 +1081,7 @@ What food or snack would you like to check?`
             title="Click to open NutriBot AI, or click and drag move handle to reposition anywhere"
           >
             <div className="relative">
-              <Bot className="w-5 h-5 text-white" />
+              <NutriTrackLogo size="xs" showText={false} variant="dark" />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full" />
             </div>
@@ -1140,16 +1141,14 @@ What food or snack would you like to check?`
           </div>
 
           {/* Top Header */}
-          <div className="bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white p-3.5 sm:p-4 flex items-center justify-between shrink-0 shadow-xs">
+          <div className="bg-linear-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-3.5 sm:p-4 flex items-center justify-between shrink-0 shadow-xs">
             <div 
               onMouseDown={handleModalDragStart}
               onTouchStart={handleModalDragStart}
               className="flex items-center gap-3 cursor-grab active:cursor-grabbing"
               title="Drag header to move"
             >
-              <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20 shadow-inner">
-                <Bot className="w-5 h-5 text-white" />
-              </div>
+              <NutriTrackLogo size="sm" showText={false} variant="dark" />
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-white text-sm tracking-tight">NutriBot AI Assistant</h3>
@@ -1159,7 +1158,7 @@ What food or snack would you like to check?`
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-100/80">
-                  Saleem Valanchery Centre • Kerala Snacks &amp; Food Calories
+                  NutriTrack • Kerala Diet &amp; Ingredient Calorie Intelligence
                 </p>
               </div>
             </div>

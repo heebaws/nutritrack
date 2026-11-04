@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" width="100%" height="100%">
+  <defs>
+    <!-- Fresh Lime Green Gradient -->
+    <linearGradient id="white-lime-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="50%" stop-color="#4ade80" />
+      <stop offset="100%" stop-color="#a3e635" />
+    </linearGradient>
+  </defs>
+
+  <!-- Left Icon Emblem (on dark background, with a clean translucent white/emerald border) -->
+  <g transform="translate(16, 16) scale(0.328)">
+    <rect x="16" y="16" width="480" height="480" rx="120" fill="rgba(255, 255, 255, 0.12)" stroke="rgba(255, 255, 255, 0.25)" stroke-width="8" />
+    <!-- Left Upright Stem of N -->
+    <rect x="140" y="112" width="68" height="288" rx="34" fill="#ffffff" />
+    <!-- Right Upright Stem of N -->
+    <rect x="304" y="112" width="68" height="288" rx="34" fill="#ffffff" />
+    <!-- Diagonal Spanning Leaf of N -->
+    <path 
+      d="M 174 346 
+         C 174 346, 240 250, 320 176 
+         C 356 142, 392 116, 412 84 
+         C 416 78, 418 86, 404 126 
+         C 386 168, 344 216, 290 274 
+         C 246 322, 206 374, 184 388 
+         C 174 394, 168 384, 168 370 
+         Z" 
+      fill="url(#white-lime-grad)" 
+    />
+    <!-- Leaf Vein Accent -->
+    <path 
+      d="M 204 316 
+         C 252 254, 318 182, 404 88" 
+      fill="none" 
+      stroke="#ffffff" 
+      stroke-width="12" 
+      stroke-linecap="round" 
+      stroke-opacity="0.95" 
+    />
+    <circle cx="366" cy="118" r="18" fill="#a3e635" />
+  </g>
+
+  <!-- Typography: NutriTrack for Dark Backgrounds -->
+  <g transform="translate(210, 116)">
+    <text font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="82" font-weight="900" letter-spacing="-1.5">
+      <tspan fill="#ffffff">Nutri</tspan><tspan fill="url(#white-lime-grad)">Track</tspan>
+    </text>
+  </g>
+
+  <!-- Tagline / Subtitle: Clinic & Client Nutrition -->
+  <g transform="translate(214, 154)">
+    <text font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="700" letter-spacing="3" fill="#6ee7b7" text-transform="uppercase">
+      CLINIC &amp; DIET MANAGEMENT
+    </text>
+  </g>
+</svg>

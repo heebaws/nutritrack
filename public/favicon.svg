@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient for Favicon -->
+    <linearGradient id="fav-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+
+    <!-- Leaf Gradient -->
+    <linearGradient id="fav-leaf" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="50%" stop-color="#22c55e" />
+      <stop offset="100%" stop-color="#84cc16" />
+    </linearGradient>
+  </defs>
+
+  <!-- Clean rounded icon container -->
+  <rect x="16" y="16" width="480" height="480" rx="120" fill="url(#fav-bg)" />
+
+  <!-- Left Upright Stem of N -->
+  <rect x="140" y="112" width="68" height="288" rx="34" fill="#ffffff" />
+
+  <!-- Right Upright Stem of N -->
+  <rect x="304" y="112" width="68" height="288" rx="34" fill="#ffffff" />
+
+  <!-- Leaf Diagonal of N -->
+  <path 
+    d="M 174 346 
+       C 174 346, 240 250, 320 176 
+       C 356 142, 392 116, 412 84 
+       C 416 78, 418 86, 404 126 
+       C 386 168, 344 216, 290 274 
+       C 246 322, 206 374, 184 388 
+       C 174 394, 168 384, 168 370 
+       Z" 
+    fill="url(#fav-leaf)" 
+  />
+
+  <!-- Leaf Vein Accent -->
+  <path 
+    d="M 204 316 
+       C 252 254, 318 182, 404 88" 
+    fill="none" 
+    stroke="#ffffff" 
+    stroke-width="12" 
+    stroke-linecap="round" 
+    stroke-opacity="0.9" 
+  />
+
+  <!-- Vitality Leaf Tip Accent -->
+  <circle cx="366" cy="118" r="18" fill="#84cc16" />
+</svg>

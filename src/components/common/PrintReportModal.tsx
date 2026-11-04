@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { NutriTrackLogo } from './NutriTrackLogo';
 import { 
   X, 
   Printer, 
@@ -94,9 +95,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           {/* Clinic Letterhead */}
           <div className="border-b-2 border-emerald-700 pb-5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-700 text-white flex items-center justify-center font-bold text-2xl shadow-sm">
-                🥗
-              </div>
+              <NutriTrackLogo size="lg" showText={false} />
               <div>
                 <h1 className="text-xl font-black text-slate-900 tracking-tight">
                   NutriTrack Wellness Centre
@@ -105,7 +104,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   Center for Metabolic Health, Lifestyle Transformation &amp; Clinical Nutrition
                 </p>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Valanchery, Malappuram, Kerala • Phone: +91 98470 12345 • info@wellnesscentre.com
+                  Valanchery, Malappuram, Kerala • Phone: +91 98470 12345 • info@nutritrackwellness.com
                 </p>
               </div>
             </div>

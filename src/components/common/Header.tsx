@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { NutriTrackLogo } from './NutriTrackLogo';
 import { 
   Bot,
   Cloud,
@@ -27,22 +28,14 @@ export const Header: React.FC = () => {
           
           {/* Logo and Brand */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xl shadow-sm shadow-emerald-200">
-                🥗
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-lg tracking-tight">NutriTrack</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
-                    Wellness Centre
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 hidden sm:block">
-                  Connected Nutrition &amp; Lifestyle Management Portal
-                </p>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setViewMode(activeClient ? 'client' : activeTeamUser ? 'team' : 'login')}
+              className="text-left cursor-pointer hover:opacity-95 transition-opacity"
+              title="NutriTrack Portal Home"
+            >
+              <NutriTrackLogo size="md" subtitle="Connected Nutrition & Lifestyle Portal" />
+            </button>
 
             {/* Mobile View: Only Login Portal */}
             <div className="flex md:hidden items-center">
