@@ -29,7 +29,7 @@ import {
   INITIAL_HABITS,
   INITIAL_APPOINTMENTS
 } from '../data/mockData';
-import { getTodayString, clampToToday, getDayBeforeDateString } from '../utils/dateUtils';
+import { getTodayString, clampToToday, getDayBeforeDateString, getDaysSinceDate, isClientInactiveThreeDays } from '../utils/dateUtils';
 import {
   testFirestoreConnection,
   subscribeToCollection,
@@ -1133,6 +1133,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setClients(prev => [newClient, ...prev]);
     saveDocumentToFirestore('clients', newClient.id, newClient).catch(() => {});
+
+    // Automatically create Morning, Afternoon, and Night meal log reminders for client portal
+    const defaultReminders: ClientReminder[] = [
+      {
+        id: `rem-morn-${newClient.id}`,
+        clientId: newClient.id,
+        title: 'Morning Breakfast Log Reminder',
+        time: '08:30 AM',
+        mealSlot: 'Breakfast',
+        type: 'meal',
+        enabled: true,
+        message: `Good morning ${finalName}! Take a moment to log your breakfast foods and hydration.`,
+        deliveredChannel: 'mobile_push'
+      },
+      {
+        id: `rem-aft-${newClient.id}`,
+        clientId: newClient.id,
+        title: 'Afternoon Lunch Log Reminder',
+        time: '01:30 PM',
+        mealSlot: 'Lunch',
+        type: 'meal',
+        enabled: true,
+        message: `Afternoon reminder: Log your lunch plate to track today's energy and protein intake.`,
+        deliveredChannel: 'mobile_push'
+      },
+      {
+        id: `rem-night-${newClient.id}`,
+        clientId: newClient.id,
+        title: 'Night Dinner Log Reminder',
+        time: '08:30 PM',
+        mealSlot: 'Dinner',
+        type: 'meal',
+        enabled: true,
+        message: `Night check-in: Log your dinner to complete your daily nutrition diary.`,
+        deliveredChannel: 'mobile_push'
+      }
+    ];
+
+    setReminders(prev => [...defaultReminders, ...prev]);
+    defaultReminders.forEach(r => {
+      saveDocumentToFirestore('reminders', r.id, r).catch(() => {});
+    });
   };
 
   const updateClient = (updated: ClientProfile) => {
@@ -1270,15 +1312,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const sendFollowupReminderToInactive = (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
+    const coachName = activeTeamUser?.name || 'Your Wellness Coach';
+    const coachId = activeTeamUser?.id || 'admin-1';
+    const now = new Date();
+    const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // 1. Dispatch DietitianTip / Alert to client portal
     sendTipOrReminder({
-      dietitianId: activeTeamUser.id,
-      dietitianName: activeTeamUser.name,
+      dietitianId: coachId,
+      dietitianName: coachName,
       clientId: client.id,
       targetAudience: 'specific',
       type: 'reminder',
-      title: `Quick Check-in from ${activeTeamUser.name}`,
-      message: `Hi ${client.name}, we noticed you haven't logged your meals in a few days. How are you feeling? Take a moment to log today's meals or message us if you need any adjustments!`
+      title: `⚠️ Meal Log Check-in from ${coachName}`,
+      message: `Hi ${client.name}, we noticed you haven't updated your food logs for over 3 days. Your phone notification has been delivered. Please take a moment to log today's breakfast, lunch, or dinner so your coach can keep your metabolic plan on target!`
     });
+
+    // 2. Add high-priority interactive ClientReminder to client portal
+    const newMobileReminder: ClientReminder = {
+      id: `rem-inact-${Date.now()}`,
+      clientId: client.id,
+      title: 'Action Needed: Update Food Diary',
+      time: timeFormatted,
+      type: 'meal',
+      enabled: true,
+      message: `${coachName} sent a direct alert: You haven't updated food logs in 3+ days. Please log what you ate today!`,
+      deliveredChannel: 'mobile_push'
+    };
+
+    setReminders(prev => [newMobileReminder, ...prev]);
+    saveDocumentToFirestore('reminders', newMobileReminder.id, newMobileReminder).catch(() => {});
   };
 
   const resetAllData = async () => {

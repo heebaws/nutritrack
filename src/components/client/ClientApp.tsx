@@ -58,7 +58,12 @@ import {
   Activity,
   Bot,
   RotateCcw,
-  LogOut
+  LogOut,
+  Smartphone,
+  Sun,
+  Sunset,
+  Moon,
+  AlertTriangle
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -568,6 +573,197 @@ export const ClientApp: React.FC = () => {
           <span className="font-semibold">{planLoggedNotice}</span>
         </div>
       )}
+
+      {/* ================= SCHEDULED MEAL LOG REMINDERS (MORNING, AFTERNOON & NIGHT) ================= */}
+      <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+              <Bell className="w-4 h-4 text-amber-600 animate-pulse" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span>Daily Meal Log Reminders</span>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  Morning • Afternoon • Night
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Log your foods at breakfast, lunch, and dinner to keep your diary updated and stay active with your coach.
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-mono text-slate-400 self-start sm:self-auto">
+            Auto-Sync to Phone &amp; Clinic
+          </span>
+        </div>
+
+        {/* Three Time Cards: Morning (Breakfast), Afternoon (Lunch), Night (Dinner) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* 1. Morning Breakfast */}
+          {(() => {
+            const hasBreakfast = clientLogsForDay.some(m => m.mealType === 'Breakfast');
+            return (
+              <div className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
+                hasBreakfast
+                  ? 'bg-emerald-50/50 border-emerald-200'
+                  : 'bg-amber-50/40 border-amber-200/90 hover:border-amber-400 shadow-2xs'
+              }`}>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-800">
+                      <Sun className="w-4 h-4 text-amber-500" />
+                      <span>Morning (Breakfast)</span>
+                    </span>
+                    <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-white border border-amber-200 text-amber-900">
+                      8:30 AM
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1.5 leading-snug">
+                    {hasBreakfast 
+                      ? '✅ Breakfast recorded! Great start to your morning metabolism.' 
+                      : 'Time for breakfast! Take 30 seconds to record your morning meal.'}
+                  </p>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-amber-200/60 flex items-center justify-between">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                    hasBreakfast ? 'text-emerald-700' : 'text-amber-800'
+                  }`}>
+                    {hasBreakfast ? 'Logged' : 'Pending'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openLogForSlot('Breakfast')}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                      hasBreakfast
+                        ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-amber-500 hover:bg-amber-600 text-white shadow-2xs'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{hasBreakfast ? '+ Add More' : 'Log Breakfast'}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 2. Afternoon Lunch */}
+          {(() => {
+            const hasLunch = clientLogsForDay.some(m => m.mealType === 'Lunch');
+            return (
+              <div className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
+                hasLunch
+                  ? 'bg-emerald-50/50 border-emerald-200'
+                  : 'bg-orange-50/40 border-orange-200/90 hover:border-orange-400 shadow-2xs'
+              }`}>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-orange-800">
+                      <Sunset className="w-4 h-4 text-orange-500" />
+                      <span>Afternoon (Lunch)</span>
+                    </span>
+                    <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-white border border-orange-200 text-orange-900">
+                      1:30 PM
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1.5 leading-snug">
+                    {hasLunch 
+                      ? '✅ Lunch recorded! Midday nutrition & protein logged.' 
+                      : 'Afternoon check-in! Don\'t forget to record your lunch plate.'}
+                  </p>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-orange-200/60 flex items-center justify-between">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                    hasLunch ? 'text-emerald-700' : 'text-orange-800'
+                  }`}>
+                    {hasLunch ? 'Logged' : 'Pending'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openLogForSlot('Lunch')}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                      hasLunch
+                        ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-orange-600 hover:bg-orange-700 text-white shadow-2xs'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{hasLunch ? '+ Add More' : 'Log Lunch'}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 3. Night Dinner */}
+          {(() => {
+            const hasDinner = clientLogsForDay.some(m => m.mealType === 'Dinner');
+            return (
+              <div className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
+                hasDinner
+                  ? 'bg-emerald-50/50 border-emerald-200'
+                  : 'bg-indigo-50/40 border-indigo-200/90 hover:border-indigo-400 shadow-2xs'
+              }`}>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-900">
+                      <Moon className="w-4 h-4 text-indigo-600" />
+                      <span>Night (Dinner)</span>
+                    </span>
+                    <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-white border border-indigo-200 text-indigo-900">
+                      8:30 PM
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1.5 leading-snug">
+                    {hasDinner 
+                      ? '✅ Dinner recorded! Daily calorie and nutrient diary completed.' 
+                      : 'Good evening! Record dinner before resting to lock in today\'s diary.'}
+                  </p>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-indigo-200/60 flex items-center justify-between">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                    hasDinner ? 'text-emerald-700' : 'text-indigo-800'
+                  }`}>
+                    {hasDinner ? 'Logged' : 'Pending'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openLogForSlot('Dinner')}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                      hasDinner
+                        ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{hasDinner ? '+ Add More' : 'Log Dinner'}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Phone notification indicator */}
+        {clientTips.some(t => t.type === 'reminder') && (
+          <div className="mt-3.5 p-3 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-rose-900 font-medium">
+              <Smartphone className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
+              <span>
+                <b>Phone Alert from Coach:</b> {clientTips.find(t => t.type === 'reminder')?.message}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => openLogForSlot('Lunch')}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1 rounded-xl text-[11px] transition-colors shrink-0 cursor-pointer shadow-2xs"
+            >
+              Log Foods Now →
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* ================= TAB 1: TODAY'S CALORIE TRACKER & MEAL LOGS ================= */}
       {activeTab === 'today' && (

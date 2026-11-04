@@ -198,6 +198,8 @@ export interface ClientReminder {
   type: 'meal' | 'measurement' | 'water' | 'centre_visit';
   enabled: boolean;
   message: string;
+  mealSlot?: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+  deliveredChannel?: 'in_app' | 'mobile_push' | 'sms';
 }
 
 export interface AISuggestedMealFood {

@@ -43,6 +43,33 @@ export const clampToToday = (dateStr: string): string => {
   return dateStr > today ? today : dateStr;
 };
 
+/**
+ * Calculates calendar days elapsed between a date string (YYYY-MM-DD) and today.
+ */
+export const getDaysSinceDate = (dateStr?: string | null): number => {
+  if (!dateStr) return 999;
+  try {
+    const today = getTodayString();
+    if (dateStr >= today) return 0;
+    const [y1, m1, d1] = dateStr.split('-').map(Number);
+    const [y2, m2, d2] = today.split('-').map(Number);
+    const dt1 = new Date(y1, m1 - 1, d1);
+    const dt2 = new Date(y2, m2 - 1, d2);
+    const diffTime = dt2.getTime() - dt1.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  } catch {
+    return 999;
+  }
+};
+
+/**
+ * Client is considered inactive if they haven't updated food logs for 3 or more days.
+ */
+export const isClientInactiveThreeDays = (lastActiveDate?: string | null): boolean => {
+  return getDaysSinceDate(lastActiveDate) >= 3;
+};
+
 export const formatDateDisplay = (dateStr: string): string => {
   const today = getTodayString();
   const yesterday = getYesterdayString();

@@ -14,6 +14,7 @@ import { AppointmentsModal } from '../common/AppointmentsModal';
 import { LoginPortal } from '../common/LoginPortal';
 import { NutriTrackLogo } from '../common/NutriTrackLogo';
 import { ClientProfile, DietPlan, DietitianProfile } from '../../types';
+import { getDaysSinceDate, isClientInactiveThreeDays } from '../../utils/dateUtils';
 import { 
   Users, 
   UtensilsCrossed, 
@@ -128,15 +129,41 @@ export const TeamPortal: React.FC = () => {
   const [isAppointmentsModalOpen, setIsAppointmentsModalOpen] = useState(false);
   const [selectedClientIdForAppointment, setSelectedClientIdForAppointment] = useState<string | undefined>(undefined);
 
+  // Dynamically evaluate client inactivity: if no food log for 3+ days, client is inactive (in red)
+  const isClientInactive = (client: ClientProfile): boolean => {
+    // Check mealLogs for this client
+    const logs = mealLogs.filter(m => m.clientId === client.id);
+    if (logs.length > 0) {
+      // Find the most recent meal date
+      const sortedDates = [...logs].map(l => l.date).sort((a, b) => b.localeCompare(a));
+      const mostRecentLogDate = sortedDates[0];
+      return isClientInactiveThreeDays(mostRecentLogDate);
+    }
+    // Fall back to client.lastActiveDate or status
+    if (client.lastActiveDate) {
+      return isClientInactiveThreeDays(client.lastActiveDate);
+    }
+    return client.status === 'inactive';
+  };
+
+  const getDaysInactiveCount = (client: ClientProfile): number => {
+    const logs = mealLogs.filter(m => m.clientId === client.id);
+    if (logs.length > 0) {
+      const sortedDates = [...logs].map(l => l.date).sort((a, b) => b.localeCompare(a));
+      return getDaysSinceDate(sortedDates[0]);
+    }
+    return getDaysSinceDate(client.lastActiveDate);
+  };
+
   // Valid clients list excluding corrupted empty ghost records
   const validClients = useMemo(() => {
     return clients.filter(c => c && c.id && ((c.name && c.name.trim().length > 0) || (c.phone && c.phone.trim().length > 0)));
   }, [clients]);
 
-  // Statistics
+  // Dynamic Statistics based on 3-day rule
   const totalClients = validClients.length;
-  const activeClients = validClients.filter(c => c.status === 'active');
-  const inactiveClients = validClients.filter(c => c.status === 'inactive');
+  const inactiveClients = validClients.filter(c => isClientInactive(c));
+  const activeClients = validClients.filter(c => !isClientInactive(c));
 
   const filteredClients = useMemo(() => {
     return validClients.filter(c => {
@@ -145,25 +172,67 @@ export const TeamPortal: React.FC = () => {
       const s = (clientSearch || '').toLowerCase();
       const matchSearch = cName.includes(s) || cPhone.includes(s);
       const matchDietitian = dietitianFilter === 'all' || c?.assignedDietitianId === dietitianFilter;
-      const matchStatus = statusFilter === 'all' || c?.status === statusFilter;
+      const clientInactive = isClientInactive(c);
+      const matchStatus = statusFilter === 'all' 
+        || (statusFilter === 'inactive' && clientInactive)
+        || (statusFilter === 'active' && !clientInactive);
       return matchSearch && matchDietitian && matchStatus;
     });
-  }, [validClients, clientSearch, dietitianFilter, statusFilter]);
+  }, [validClients, clientSearch, dietitianFilter, statusFilter, mealLogs]);
 
   // Centre device readings count
   const centreReadings = useMemo(() => {
     return measurements.filter(m => m.source === 'centre_device');
   }, [measurements]);
 
+  const [notificationSentMessage, setNotificationSentMessage] = useState<{ clientId: string; text: string } | null>(null);
+
   const handleSendInactiveFollowup = (clientId: string) => {
+    const targetClient = clients.find(c => c.id === clientId);
     sendFollowupReminderToInactive(clientId);
     setQuickFollowupSentId(clientId);
-    setTimeout(() => setQuickFollowupSentId(null), 3000);
+    setNotificationSentMessage({
+      clientId,
+      text: `📱 Push Notification sent to ${targetClient?.name || 'client'}'s phone: "Please log your meals today!"`
+    });
+    setTimeout(() => {
+      setQuickFollowupSentId(null);
+      setNotificationSentMessage(null);
+    }, 4500);
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       
+      {/* Toast Feedback when Coach clicks "Remind on Phone" */}
+      {notificationSentMessage && (
+        <div className="bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white px-5 py-3.5 rounded-2xl shadow-lg border border-emerald-400 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
+              <Smartphone className="w-5 h-5 text-amber-300 animate-bounce" />
+            </div>
+            <div>
+              <div className="font-extrabold text-sm flex items-center gap-2">
+                <span>Phone Reminder Delivered</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-400 text-slate-900 px-2 py-0.5 rounded-full">
+                  SMS &amp; Push Active
+                </span>
+              </div>
+              <p className="text-xs text-emerald-100 font-medium mt-0.5">
+                {notificationSentMessage.text}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotificationSentMessage(null)}
+            className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors text-xs font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Team Portal Top Banner with Active Staff Profile */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -486,7 +555,8 @@ export const TeamPortal: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {validClients.map((client) => {
                     const dietitian = dietitians.find(d => d.id === client.assignedDietitianId) || dietitians[0];
-                    const isInactive = client.status === 'inactive';
+                    const inactive = isClientInactive(client);
+                    const daysAway = getDaysInactiveCount(client);
                     const clientDisplayName = (client.name && client.name.trim().length > 0) ? client.name.trim() : 'Registered Client';
                     const clientPhoneDisplay = client.phone || '5550199';
                     const clientGoalDisplay = client.goal || 'General Health & Metabolic Management';
@@ -495,29 +565,36 @@ export const TeamPortal: React.FC = () => {
                     return (
                       <tr 
                         key={client.id} 
-                        className={`hover:bg-slate-50/80 transition-colors ${
-                          isInactive ? 'bg-rose-50/20' : ''
+                        className={`transition-colors ${
+                          inactive ? 'bg-rose-50/70 border-l-4 border-l-rose-600 hover:bg-rose-100/50' : 'hover:bg-slate-50/80'
                         }`}
                       >
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2.5">
-                            <img
-                              src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
-                              alt={clientDisplayName}
-                              className="w-8 h-8 rounded-full object-cover shrink-0"
-                            />
+                            <div className="relative">
+                              <img
+                                src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
+                                alt={clientDisplayName}
+                                className={`w-9 h-9 rounded-full object-cover shrink-0 border-2 ${
+                                  inactive ? 'border-rose-500 ring-2 ring-rose-200' : 'border-emerald-400'
+                                }`}
+                              />
+                              {inactive && (
+                                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-600 border-2 border-white animate-pulse" title="Inactive for 3+ days" />
+                              )}
+                            </div>
                             <div>
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-slate-900 block">{clientDisplayName}</span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase ${
-                                  isInactive 
-                                    ? 'bg-rose-100 text-rose-800' 
+                                <span className={`font-bold block ${inactive ? 'text-rose-950' : 'text-slate-900'}`}>{clientDisplayName}</span>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                  inactive 
+                                    ? 'bg-rose-600 text-white shadow-xs animate-pulse' 
                                     : 'bg-emerald-100 text-emerald-800'
                                 }`}>
-                                  ({isInactive ? 'Inactive' : 'Active'})
+                                  {inactive ? `Inactive (${daysAway}d no food logs)` : 'Active'}
                                 </span>
                               </div>
-                              <span className="text-[11px] text-slate-500 font-mono block">{clientPhoneDisplay}</span>
+                              <span className="text-[11px] text-slate-500 font-mono block">Phone: {clientPhoneDisplay}</span>
                             </div>
                           </div>
                         </td>
@@ -531,40 +608,47 @@ export const TeamPortal: React.FC = () => {
                         </td>
 
                         <td className="py-3 px-4">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                            isInactive 
-                              ? 'bg-rose-100 text-rose-800' 
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide inline-flex items-center gap-1 ${
+                            inactive 
+                              ? 'bg-rose-600 text-white shadow-xs' 
                               : 'bg-emerald-100 text-emerald-800'
                           }`}>
-                            {client.status || 'active'}
+                            {inactive ? <AlertTriangle className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
+                            <span>{inactive ? 'INACTIVE (3+ DAYS)' : 'ACTIVE'}</span>
                           </span>
                         </td>
 
                         <td className="py-3 px-4 text-slate-600">
-                          <div className="flex items-center gap-1 font-mono text-[11px]">
-                            <Clock className="w-3 h-3 text-slate-400" />
-                            <span>{client.lastActiveDate}</span>
+                          <div className={`flex items-center gap-1 font-mono text-[11px] ${inactive ? 'text-rose-700 font-bold' : ''}`}>
+                            <Clock className={`w-3 h-3 ${inactive ? 'text-rose-500' : 'text-slate-400'}`} />
+                            <span>{client.lastActiveDate || 'No food logs'}</span>
+                            {inactive && (
+                              <span className="text-[10px] bg-rose-100 text-rose-800 px-1.5 rounded-sm font-sans font-bold">
+                                {daysAway} days ago
+                              </span>
+                            )}
                           </div>
                         </td>
 
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {isInactive && (
+                            {inactive && (
                               <button
                                 type="button"
                                 onClick={() => handleSendInactiveFollowup(client.id)}
                                 disabled={quickFollowupSentId === client.id}
-                                className="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-2.5 py-1 rounded-lg text-[11px] transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                                className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-80"
+                                title="Click to send phone notification and in-app reminder to log meals"
                               >
                                 {quickFollowupSentId === client.id ? (
                                   <>
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    <span>Sent!</span>
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 animate-bounce" />
+                                    <span>Phone Alert Sent!</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Bell className="w-3 h-3" />
-                                    <span>Send Reminder</span>
+                                    <Smartphone className="w-3.5 h-3.5 text-amber-200" />
+                                    <span>Remind on Phone</span>
                                   </>
                                 )}
                               </button>
@@ -972,7 +1056,8 @@ export const TeamPortal: React.FC = () => {
                     {filteredClients.map((client) => {
                       const dietitian = dietitians.find(d => d.id === client.assignedDietitianId) || dietitians[0];
                       const plan = dietPlans.find(p => p.id === client.dietPlanId) || dietPlans[0];
-                      const isInactive = client.status === 'inactive';
+                      const inactive = isClientInactive(client);
+                      const daysAway = getDaysInactiveCount(client);
                       const clientDisplayName = (client.name && client.name.trim().length > 0) ? client.name.trim() : 'Registered Client';
                       const clientPhoneDisplay = client.phone || '5550199';
                       const coachDisplayName = dietitian?.name || 'Saleem Valanchery (Lead)';
@@ -985,31 +1070,38 @@ export const TeamPortal: React.FC = () => {
                       return (
                         <tr 
                           key={client.id}
-                          className={`hover:bg-slate-50/90 transition-colors ${
-                            isInactive ? 'bg-rose-50/20' : ''
+                          className={`transition-colors ${
+                            inactive ? 'bg-rose-50/70 border-l-4 border-l-rose-600 hover:bg-rose-100/50' : 'hover:bg-slate-50/90'
                           }`}
                         >
                           {/* 1. Client & Contact */}
                           <td className="py-3 px-3.5">
                             <div className="flex items-center gap-2.5">
-                              <img
-                                src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
-                                alt={clientDisplayName}
-                                className="w-8 h-8 rounded-full object-cover shrink-0"
-                              />
+                              <div className="relative">
+                                <img
+                                  src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
+                                  alt={clientDisplayName}
+                                  className={`w-9 h-9 rounded-full object-cover shrink-0 border-2 ${
+                                    inactive ? 'border-rose-500 ring-2 ring-rose-200' : 'border-emerald-400'
+                                  }`}
+                                />
+                                {inactive && (
+                                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-600 border-2 border-white animate-pulse" title="Inactive for 3+ days" />
+                                )}
+                              </div>
                               <div>
-                                <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                  <span>{clientDisplayName}</span>
+                                <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                                  <span className={inactive ? 'text-rose-950 font-black' : 'text-slate-900'}>{clientDisplayName}</span>
                                   <span className="text-[10px] text-slate-400 font-normal">
                                     ({client.gender || 'Client'}, {client.age || 30}y)
                                   </span>
                                 </div>
-                                <div className="text-[11px] text-slate-500 font-mono flex items-center gap-2">
+                                <div className="text-[11px] text-slate-500 font-mono flex items-center gap-2 mt-0.5">
                                   <span>{clientPhoneDisplay}</span>
-                                  <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold uppercase ${
-                                    isInactive ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                    inactive ? 'bg-rose-600 text-white shadow-2xs animate-pulse' : 'bg-emerald-100 text-emerald-800'
                                   }`}>
-                                    ({isInactive ? 'Inactive' : 'Active'})
+                                    {inactive ? `Inactive (${daysAway}d)` : 'Active'}
                                   </span>
                                 </div>
                               </div>
@@ -1114,6 +1206,28 @@ export const TeamPortal: React.FC = () => {
                           {/* Actions */}
                           <td className="py-3 px-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
+                              {inactive && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendInactiveFollowup(client.id)}
+                                  disabled={quickFollowupSentId === client.id}
+                                  className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] transition-all shadow-2xs flex items-center gap-1 cursor-pointer disabled:opacity-80"
+                                  title="Send push notification to client's phone to log meals"
+                                >
+                                  {quickFollowupSentId === client.id ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-200" />
+                                      <span>Alert Sent!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Smartphone className="w-3 h-3 text-amber-200" />
+                                      <span>Remind on Phone</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1177,39 +1291,52 @@ export const TeamPortal: React.FC = () => {
                 const clientPhoneDisplay = client.phone || '5550199';
                 const uName = client.username || (clientDisplayName.split(' ')[0].toLowerCase()) || 'client';
                 const uPass = client.password || 'password123';
-                const isInactive = client.status === 'inactive';
+                const inactive = isClientInactive(client);
+                const daysAway = getDaysInactiveCount(client);
 
                 return (
                   <div 
                     key={client.id}
-                    className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs hover:border-blue-300 transition-all flex flex-col justify-between"
+                    className={`bg-white rounded-2xl p-4 border transition-all flex flex-col justify-between ${
+                      inactive 
+                        ? 'border-rose-400 bg-linear-to-b from-rose-50/40 via-white to-white ring-2 ring-rose-200 shadow-sm' 
+                        : 'border-slate-200 shadow-xs hover:border-blue-300'
+                    }`}
                   >
                     <div>
                       {/* Top Row: Avatar, Name, Status */}
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
-                            alt={clientDisplayName}
-                            className="w-11 h-11 rounded-full object-cover border-2 border-slate-100"
-                          />
+                          <div className="relative">
+                            <img
+                              src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
+                              alt={clientDisplayName}
+                              className={`w-11 h-11 rounded-full object-cover border-2 ${
+                                inactive ? 'border-rose-500 ring-2 ring-rose-200' : 'border-slate-100'
+                              }`}
+                            />
+                            {inactive && (
+                              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-600 border-2 border-white animate-pulse" title="Inactive for 3+ days" />
+                            )}
+                          </div>
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <h3 className="font-bold text-slate-900 text-sm leading-tight">{clientDisplayName}</h3>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase ${
-                                isInactive ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                              <h3 className={`font-bold text-sm leading-tight ${inactive ? 'text-rose-950 font-black' : 'text-slate-900'}`}>{clientDisplayName}</h3>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                inactive ? 'bg-rose-600 text-white shadow-xs animate-pulse' : 'bg-emerald-100 text-emerald-800'
                               }`}>
-                                ({isInactive ? 'Inactive' : 'Active'})
+                                {inactive ? `Inactive (${daysAway}d)` : 'Active'}
                               </span>
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5 font-mono">Phone: {clientPhoneDisplay}</p>
                           </div>
                         </div>
 
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                          client.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1 ${
+                          inactive ? 'bg-rose-600 text-white shadow-xs' : 'bg-emerald-100 text-emerald-800'
                         }`}>
-                          {client.status || 'active'}
+                          {inactive ? <AlertTriangle className="w-3 h-3 text-white" /> : <CheckCircle2 className="w-3 h-3" />}
+                          <span>{inactive ? 'INACTIVE (3+ DAYS)' : 'ACTIVE'}</span>
                         </span>
                       </div>
 
@@ -1306,6 +1433,28 @@ export const TeamPortal: React.FC = () => {
                       </button>
 
                       <div className="flex items-center gap-1.5">
+                        {inactive && (
+                          <button
+                            type="button"
+                            onClick={() => handleSendInactiveFollowup(client.id)}
+                            disabled={quickFollowupSentId === client.id}
+                            className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold px-2.5 py-1 rounded-lg text-xs transition-all shadow-2xs flex items-center gap-1 cursor-pointer disabled:opacity-80"
+                            title="Send push notification to client's phone to log meals"
+                          >
+                            {quickFollowupSentId === client.id ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
+                                <span>Alert Sent!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Smartphone className="w-3.5 h-3.5 text-amber-200" />
+                                <span>Remind Phone</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => {

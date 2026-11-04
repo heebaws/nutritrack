@@ -1258,41 +1258,117 @@ export const INITIAL_TIPS: DietitianTip[] = [
 ];
 
 export const INITIAL_REMINDERS: ClientReminder[] = [
+  // Sarah Jenkins (cl-1)
   {
-    id: 'rem-1',
+    id: 'rem-1-1',
     clientId: 'cl-1',
-    title: 'Log Your Breakfast',
+    title: 'Morning Breakfast Log Reminder',
     time: '08:30 AM',
+    mealSlot: 'Breakfast',
     type: 'meal',
     enabled: true,
-    message: 'Take 30 seconds to record what you ate for breakfast to stay on track.'
+    message: 'Good morning Sarah! Time for breakfast. Log your breakfast foods and portion sizes to keep your metabolism on target.',
+    deliveredChannel: 'mobile_push'
   },
   {
-    id: 'rem-2',
+    id: 'rem-1-2',
     clientId: 'cl-1',
-    title: 'Midday Hydration & Lunch Log',
+    title: 'Afternoon Lunch Log Reminder',
     time: '01:30 PM',
+    mealSlot: 'Lunch',
     type: 'meal',
     enabled: true,
-    message: 'Have you drank 1.5L of water yet? Log your lunch foods and portions.'
+    message: 'Afternoon check-in! Don\'t forget to record your lunch plate, veggies, and 1.5L hydration progress.',
+    deliveredChannel: 'mobile_push'
   },
   {
-    id: 'rem-3',
+    id: 'rem-1-3',
     clientId: 'cl-1',
-    title: 'Log Your Dinner',
+    title: 'Night Dinner Log Reminder',
     time: '08:30 PM',
+    mealSlot: 'Dinner',
     type: 'meal',
     enabled: true,
-    message: 'Finish your day strong by logging dinner before heading to bed.'
+    message: 'Good evening! Log your dinner before relaxing to finalize today\'s total calorie and protein breakdown.',
+    deliveredChannel: 'mobile_push'
   },
   {
-    id: 'rem-4',
+    id: 'rem-1-4',
     clientId: 'cl-1',
-    title: 'Weekly Body Measurement Check',
-    time: 'Every Monday 07:30 AM',
+    title: 'Morning Weigh-in & InBody Check',
+    time: '07:30 AM',
     type: 'measurement',
     enabled: true,
-    message: 'Step on your scale and measure waist circumference for your dietitian review.'
+    message: 'Take a quick 5-second fasting morning weigh-in on your scale.',
+    deliveredChannel: 'mobile_push'
+  },
+  // Marcus Vance (cl-2)
+  {
+    id: 'rem-2-1',
+    clientId: 'cl-2',
+    title: 'Morning Breakfast Log Reminder',
+    time: '08:00 AM',
+    mealSlot: 'Breakfast',
+    type: 'meal',
+    enabled: true,
+    message: 'Morning Marcus! Fuel up and log your breakfast eggs & whole grains.',
+    deliveredChannel: 'mobile_push'
+  },
+  {
+    id: 'rem-2-2',
+    clientId: 'cl-2',
+    title: 'Afternoon Lunch Log Reminder',
+    time: '01:30 PM',
+    mealSlot: 'Lunch',
+    type: 'meal',
+    enabled: true,
+    message: 'Afternoon fuel check! Log your post-workout lunch protein and clean carbs.',
+    deliveredChannel: 'mobile_push'
+  },
+  {
+    id: 'rem-2-3',
+    clientId: 'cl-2',
+    title: 'Night Dinner Log Reminder',
+    time: '08:30 PM',
+    mealSlot: 'Dinner',
+    type: 'meal',
+    enabled: true,
+    message: 'Night-time check-in! Record your dinner to hit your 140g protein target for the day.',
+    deliveredChannel: 'mobile_push'
+  },
+  // David Miller (cl-4 - Inactive client)
+  {
+    id: 'rem-4-1',
+    clientId: 'cl-4',
+    title: 'Morning Breakfast Log Reminder',
+    time: '08:30 AM',
+    mealSlot: 'Breakfast',
+    type: 'meal',
+    enabled: true,
+    message: 'Good morning David! Saleem Valanchery Clinic is checking in. Log your morning breakfast today.',
+    deliveredChannel: 'mobile_push'
+  },
+  {
+    id: 'rem-4-2',
+    clientId: 'cl-4',
+    title: 'Afternoon Lunch Log Reminder',
+    time: '01:30 PM',
+    mealSlot: 'Lunch',
+    type: 'meal',
+    enabled: true,
+    message: 'Afternoon reminder: Please take 30 seconds to log what you had for lunch.',
+    deliveredChannel: 'mobile_push'
+  },
+  {
+    id: 'rem-4-3',
+    clientId: 'cl-4',
+    title: 'Night Dinner Log Reminder',
+    time: '08:30 PM',
+    mealSlot: 'Dinner',
+    type: 'meal',
+    enabled: true,
+    message: 'Night reminder: Complete your food diary before bed to keep your cardiovascular progress on track.',
+    deliveredChannel: 'mobile_push'
   }
 ];
 
