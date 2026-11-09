@@ -52,12 +52,15 @@
     <text font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="82" font-weight="900" letter-spacing="-1.5">
       <tspan fill="#064e3b">Nutri</tspan><tspan fill="url(#full-lime-grad)">Track</tspan>
     </text>
+    <!-- PRO Pill Badge -->
+    <rect x="420" y="-55" width="76" height="34" rx="17" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="2" />
+    <text x="458" y="-32" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="800" fill="#065f46" letter-spacing="1">PRO</text>
   </g>
 
-  <!-- Tagline / Subtitle: Clinic & Client Nutrition -->
+  <!-- Tagline / Subtitle: Pro Nutrition & Diet Management -->
   <g transform="translate(214, 154)">
     <text font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="700" letter-spacing="3" fill="#047857" text-transform="uppercase">
-      CLINIC &amp; DIET MANAGEMENT
+      PRO DIET &amp; NUTRITION MANAGEMENT
     </text>
   </g>
 </svg>

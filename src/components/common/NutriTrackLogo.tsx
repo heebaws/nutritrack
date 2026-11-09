@@ -7,6 +7,8 @@ export interface NutriTrackLogoProps {
   variant?: 'light' | 'dark' | 'auto';
   /** Whether to render only the N-leaf icon mark or with text */
   showText?: boolean;
+  /** Badge text next to brand name (default: "PRO") */
+  badge?: string;
   /** Optional secondary subtitle / badge */
   subtitle?: string;
   /** Optional extra CSS classes */
@@ -22,6 +24,7 @@ export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
   size = 'md',
   variant = 'light',
   showText = true,
+  badge = 'PRO',
   subtitle,
   className = '',
 }) => {
@@ -127,9 +130,11 @@ export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
             <span className={`font-black tracking-tight ${dimensions.fontSize} ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Nutri<span className="text-emerald-500 font-extrabold">Track</span>
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
-              Clinic
-            </span>
+            {badge && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                {badge}
+              </span>
+            )}
           </div>
           {subtitle !== undefined ? (
             <p className={`font-medium tracking-normal ${dimensions.subSize} ${isDark ? 'text-emerald-200/80' : 'text-slate-500'}`}>
