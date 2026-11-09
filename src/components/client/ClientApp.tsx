@@ -12,6 +12,8 @@ import { AppointmentsModal } from '../common/AppointmentsModal';
 import { LoginPortal } from '../common/LoginPortal';
 import { MealType } from '../../types';
 import { calculateCalorieBreakdown, determineCalorieQuality } from '../../utils/calorieQuality';
+import { CoachClinicalAlertsCard } from './CoachClinicalAlertsCard';
+import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
 import { NutriTrackLogo } from '../common/NutriTrackLogo';
 import { 
   getTodayString, 
@@ -1697,11 +1699,27 @@ export const ClientApp: React.FC = () => {
                               <div className="divide-y divide-slate-100 pt-1">
                                 {itemsInSlot.map((item) => {
                                   const itemQuality = item.calorieQuality || determineCalorieQuality(item.foodName);
+                                  const itemAudit = classifyFoodItem(item.foodName);
                                   return (
                                     <div key={item.id} className="py-2.5 flex items-center justify-between text-xs sm:text-sm">
                                       <div>
-                                        <div className="flex items-center gap-2 flex-wrap">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
                                           <span className="font-bold text-slate-800">{item.foodName}</span>
+                                          {itemAudit.isProblemFood ? (
+                                            <span 
+                                              className="text-[10px] font-black text-rose-900 bg-rose-100/90 border border-rose-300 px-1.5 py-0.2 rounded-md inline-flex items-center gap-0.5"
+                                              title={`${itemAudit.tierLabel}: ${itemAudit.clinicalReason}`}
+                                            >
+                                              🛑 {itemAudit.tier === 'strict_avoid' ? 'Strict Avoid' : itemAudit.tier === 'once_twice_month' ? '1-2x / Month' : '1-2x / Week'}
+                                            </span>
+                                          ) : itemAudit.isSuperFood ? (
+                                            <span 
+                                              className="text-[10px] font-black text-emerald-900 bg-emerald-100/90 border border-emerald-300 px-1.5 py-0.2 rounded-md inline-flex items-center gap-0.5"
+                                              title="Superfood: wholesome nutrition to eat freely"
+                                            >
+                                              🥗 Superfood
+                                            </span>
+                                          ) : null}
                                           {itemQuality === 'good' ? (
                                             <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-md">
                                               🍏 Good Calories
@@ -1763,6 +1781,13 @@ export const ClientApp: React.FC = () => {
 
             {/* Right 4 Columns: Assigned Coach, Reminders & Fast Actions with Show/Hide Line */}
             <div className="lg:col-span-4 space-y-6">
+              {/* Real-time Coach Clinical Reminders (Red for problem foods, Green for healthy choices) */}
+              <CoachClinicalAlertsCard 
+                logs={clientLogsForDay} 
+                client={activeClient} 
+                selectedDate={selectedDate} 
+              />
+
               {!visibleSections.sideWidgets ? (
                 <div 
                   onClick={() => toggleSection('sideWidgets')}

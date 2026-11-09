@@ -3,7 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { FoodCategory, FoodItem, MealType } from '../../types';
 import { estimateNutrition } from '../../utils/nutritionEstimator';
 import { determineCalorieQuality, CalorieQuality } from '../../utils/calorieQuality';
-import { X, Search, Plus, Check, Flame, Dumbbell, Wheat, Droplets, Sparkles, BookOpen, Camera, Loader2, ShieldCheck, CheckCircle2, Bot } from 'lucide-react';
+import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
+import { X, Search, Plus, Check, Flame, Dumbbell, Wheat, Droplets, Sparkles, BookOpen, Camera, Loader2, ShieldCheck, CheckCircle2, CheckCircle, AlertTriangle, Bot } from 'lucide-react';
 
 interface MealLogModalProps {
   isOpen: boolean;
@@ -582,6 +583,54 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       Change Food
                     </button>
                   </div>
+
+                  {/* Real-time Coach Clinical Advisory & Frequency Limit */}
+                  {(() => {
+                    const audit = classifyFoodItem(selectedFood.name, selectedFood.category, oilOption);
+                    if (audit.isProblemFood) {
+                      return (
+                        <div className="p-3 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 space-y-1.5 animate-in fade-in">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-600 text-white flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              {audit.tierLabel}
+                            </span>
+                            <span className="text-[10px] font-bold text-rose-800">
+                              Coach Saleem Advisory
+                            </span>
+                          </div>
+                          <p className="text-xs text-rose-900 font-semibold leading-snug">
+                            {audit.coachWarning}
+                          </p>
+                          <p className="text-[11px] text-rose-800 leading-snug">
+                            {audit.clinicalReason}
+                          </p>
+                          <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-200 text-emerald-950 text-[11px] space-y-0.5">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block">
+                              🔄 Suggested Healthy Swap:
+                            </span>
+                            <span className="font-bold text-emerald-900">{audit.recommendedSwap.name}</span>
+                            <p className="text-[10px] text-emerald-700">{audit.recommendedSwap.description}</p>
+                          </div>
+                        </div>
+                      );
+                    } else if (audit.isSuperFood) {
+                      return (
+                        <div className="p-2.5 rounded-2xl bg-emerald-100/80 border border-emerald-300 text-emerald-950 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
+                          <div>
+                            <span className="text-xs font-black text-emerald-900 block">
+                              🌟 Coach Saleem Approved Superfood
+                            </span>
+                            <span className="text-[11px] text-emerald-800 font-medium leading-snug">
+                              {audit.healthBenefits || audit.frequencyGuideline}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* Quantity Input */}
                   <div className="pt-2 border-t border-emerald-200/60">

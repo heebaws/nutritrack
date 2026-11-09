@@ -39,7 +39,13 @@ import {
   Move,
   Camera,
   Image as ImageIcon,
-  Trash2
+  Trash2,
+  Mic,
+  MicOff,
+  Volume2,
+  Wifi,
+  WifiOff,
+  AlertTriangle
 } from 'lucide-react';
 
 interface FoodData {
@@ -302,6 +308,152 @@ export const AIChatBot: React.FC = () => {
   // Quick food search input state
   const [foodSearchQuery, setFoodSearchQuery] = useState<string>('');
   
+  // Network connectivity state (online vs offline mode)
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Voice recording & transcription state
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [voiceSeconds, setVoiceSeconds] = useState(0);
+  const [isTranscribingVoice, setIsTranscribingVoice] = useState(false);
+  const voiceTimerRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const speechRecognitionRef = useRef<any>(null);
+
+  // Start Voice Recording (uses Web Speech API or MediaRecorder with Gemini transcription)
+  const startVoiceRecording = async () => {
+    try {
+      // 1. Try Browser SpeechRecognition first for instant real-time transcription
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-IN';
+
+        recognition.onresult = (event: any) => {
+          let currentTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript + ' ';
+          }
+          if (currentTranscript.trim()) {
+            setInputMessage(currentTranscript.trim());
+          }
+        };
+
+        recognition.onerror = (err: any) => {
+          console.warn('SpeechRecognition notice:', err);
+        };
+
+        speechRecognitionRef.current = recognition;
+        try {
+          recognition.start();
+        } catch (e) {
+          console.warn('Recognition start error:', e);
+        }
+      }
+
+      // 2. Also record audio stream with MediaRecorder for server-side Gemini transcription
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        mediaRecorderRef.current = mediaRecorder;
+        mediaRecorder.start(250);
+      }
+
+      setIsRecordingVoice(true);
+      setVoiceSeconds(0);
+      voiceTimerRef.current = setInterval(() => {
+        setVoiceSeconds(prev => prev + 1);
+      }, 1000);
+
+    } catch (err: any) {
+      console.error('Microphone access failed:', err);
+      alert('Could not access microphone. Please enable microphone permissions in your browser.');
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    if (voiceTimerRef.current) {
+      clearInterval(voiceTimerRef.current);
+      voiceTimerRef.current = null;
+    }
+
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch (e) {}
+      speechRecognitionRef.current = null;
+    }
+
+    setIsRecordingVoice(false);
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      setIsTranscribingVoice(true);
+      mediaRecorderRef.current.onstop = async () => {
+        try {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+
+          if (!inputMessage.trim() && audioBlob.size > 1000) {
+            const reader = new FileReader();
+            reader.onload = async () => {
+              const base64 = reader.result as string;
+              try {
+                const res = await fetch('/api/ai/transcribe', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    audioBase64: base64,
+                    mimeType: 'audio/webm'
+                  })
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.transcript) {
+                    setInputMessage(data.transcript);
+                  }
+                }
+              } catch (e) {
+                console.warn('Server transcription error:', e);
+              } finally {
+                setIsTranscribingVoice(false);
+              }
+            };
+            reader.readAsDataURL(audioBlob);
+          } else {
+            setIsTranscribingVoice(false);
+          }
+        } catch (err) {
+          console.warn('Audio processing error:', err);
+          setIsTranscribingVoice(false);
+        }
+      };
+      mediaRecorderRef.current.stop();
+    } else {
+      setIsTranscribingVoice(false);
+    }
+  };
+
   // Multimodal meal photo upload state
   const [selectedImage, setSelectedImage] = useState<{ base64: string; mimeType: string; preview: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -669,9 +821,136 @@ What food or snack would you like to check?`
       };
     }
 
-    // 4. MALAYALAM DETECTION & UNIVERSAL FOOD RESOLUTION
+    // 3.5 CLINICAL HEALTH, LIFESTYLE & FACTOR INQUIRIES
+    if (lower.includes('fasting') || lower.includes('16:8') || lower.includes('eating window')) {
+      return {
+        food: null,
+        isMealLogReport: false,
+        mealLogData: null,
+        answer: `### **Intermittent Fasting (16:8 Protocol) • Saleem Valanchery Wellness Clinic**
+
+- **Recommended Fasting Window:** **16 Hours Fasting / 8 Hours Eating Window** (e.g. 8:00 PM to 12:00 PM next day).
+- **During the Fast:** Hydrate with fresh water, black coffee (no sugar/milk), green tea, or warm lemon water with a pinch of salt.
+- **Breaking the Fast:** Break with lean protein and fiber (e.g. 2 boiled eggs with cucumber/almonds, or light vegetable soup) to prevent sudden insulin spikes.
+- **Clinical Benefits:** Enhances cellular autophagy, improves insulin sensitivity, accelerates stubborn visceral fat breakdown, and eliminates late-night cravings.`
+      };
+    }
+
+    if (lower.includes('sugar') || lower.includes('diabetes') || lower.includes('diabetic') || lower.includes('glucose') || lower.includes('hba1c')) {
+      return {
+        food: null,
+        isMealLogReport: false,
+        mealLogData: null,
+        answer: `### **Blood Sugar & Diabetes Nutrition Guidance • Saleem Valanchery Wellness Centre**
+
+1. **Plate Composition Strategy:**
+   - 🥗 **50% Fiber:** Non-starchy vegetables (cucumber, cabbage, thoran, cheera, beans, salads).
+   - 🥩 **25% Clean Protein:** Boiled eggs, fish, skinless chicken breast, paneer, sprouts, or chana dal.
+   - 🌾 **25% Low GI Carbs:** Kerala Matta Rice (1 medium cup / 120g), oats, or multigrain chapati.
+2. **Food Sequencing:** Always eat vegetables/salad and protein FIRST before touching carbohydrates to blunt post-meal glucose spikes by up to 40%.
+3. **Avoid Liquid Sugars:** Completely eliminate sweetened sodas, sugary tea, fruit juices (eat whole fruits with pulp instead).
+4. **Post-Meal Walk:** Take a light 10–15 minute walk after lunch and dinner to stimulate muscular glucose uptake.`
+      };
+    }
+
+    if (lower.includes('workout') || lower.includes('gym') || lower.includes('exercise') || lower.includes('muscle') || lower.includes('pre workout') || lower.includes('post workout')) {
+      return {
+        food: null,
+        isMealLogReport: false,
+        mealLogData: null,
+        answer: `### **Fitness & Workout Nutrition Protocol • Saleem Valanchery Wellness Centre**
+
+- **Daily Protein Target:** Aim for **1.2 to 1.6 grams of protein per kilogram of body weight** (e.g., a 70kg individual targets 85g–110g protein daily).
+- **Pre-Workout Fuel (45–60 mins before):** 
+  - 1 banana or 1 slice whole wheat bread with 1 tsp peanut butter, or black coffee for sustained energy.
+- **Post-Workout Recovery (Within 45 mins):** 
+  - 3–4 egg whites + 1 whole egg, or 1 scoop whey protein, or 150g grilled chicken breast + small bowl of boiled sweet potato or rice.
+- **Hydration during training:** Drink 200–300ml water every 15–20 minutes of intense physical activity.`
+      };
+    }
+
+    if (lower.includes('sleep') || lower.includes('tired') || lower.includes('energy') || lower.includes('fatigue') || lower.includes('stress')) {
+      return {
+        food: null,
+        isMealLogReport: false,
+        mealLogData: null,
+        answer: `### **Sleep, Cortisol & Metabolic Energy • Saleem Valanchery Wellness Centre**
+
+- **Target Sleep Duration:** **7 to 8 hours** of continuous, deep restorative sleep.
+- **Why Sleep Impacts Weight:** Poor sleep elevates cortisol (stress hormone) and ghrelin (hunger hormone), triggering intense cravings for high-calorie sugary/greasy snacks.
+- **Evening Wind-down Routine:** 
+  1. Have dinner at least 2.5–3 hours before bedtime.
+  2. Avoid caffeine after 3:00 PM.
+  3. Turn off bright phone/tablet screens 45 minutes before sleeping.
+  4. Keep the bedroom cool and dark.`
+      };
+    }
+
+    if (lower.includes('belly') || lower.includes('plateau') || lower.includes('thadi') || lower.includes('weight loss') || lower.includes('kurayan')) {
+      return {
+        food: null,
+        isMealLogReport: false,
+        mealLogData: null,
+        answer: `### **Belly Fat Reduction & Overcoming Weight Plateaus • Saleem Valanchery Wellness Centre**
+
+1. **Audit Hidden Cooking Oils:** 1 tablespoon of coconut oil or sunflower oil adds **120 kcal**! Use our "Was it oily?" tracker to log light sauté or steamed preparations.
+2. **Prioritize Daily Steps:** Target **8,000 to 10,000 steps** daily. Non-Exercise Activity Thermogenesis (NEAT) accounts for more daily calorie burn than gym workouts!
+3. **High-Protein Breakfast:** Start your morning with boiled eggs, moong dal sprouts, or Greek yogurt to curb afternoon snacking.
+4. **Hydration Check:** Drink 3 Litres of fresh water daily to prevent fluid retention and false hunger cravings.
+5. **Progress Review:** Schedule a monthly InBody 270/770 Body Composition scan with Coach Saleem to assess visceral fat rating and lean muscle mass.`
+      };
+    }
+
+    // 4. CHECK VERIFIED CLINIC LIBRARY OR CALCULATE WITH NUTRITIONAL ENGINE
+    const cleanQuery = query.toLowerCase()
+      .replace(/calories|calorie|macro|macros|what is|tell me about|how many|can i eat/g, '')
+      .trim();
+
+    // Look for exact or high-confidence match in foods or referral snacks:
+    const matchedLibraryItem = foods.find(f => {
+      const fName = f.name.toLowerCase();
+      return cleanQuery === fName || cleanQuery.includes(fName) || fName.includes(cleanQuery) || fName.split(' ')[0] === cleanQuery.split(' ')[0];
+    }) || KERALA_SNACKS_REFERRAL.find(s => {
+      const sName = s.name.toLowerCase();
+      return cleanQuery === sName || cleanQuery.includes(sName.split(' ')[0]) || sName.includes(cleanQuery);
+    });
+
+    if (matchedLibraryItem) {
+      const isRef = 'steamedCal' in matchedLibraryItem;
+      const baseCal = isRef ? (matchedLibraryItem as any).steamedCal : (matchedLibraryItem as any).calories;
+      const baseFat = isRef ? (matchedLibraryItem as any).baseFat : (matchedLibraryItem as any).fat;
+      const p = (matchedLibraryItem as any).protein;
+      const c = (matchedLibraryItem as any).carbs;
+      const name = matchedLibraryItem.name;
+      const unit = (matchedLibraryItem as any).servingUnit || '1 serving';
+
+      const foodItem: FoodData = {
+        name,
+        category: (matchedLibraryItem as any).category || 'Beverages & Snacks',
+        servingUnit: unit,
+        calories: baseCal,
+        protein: p,
+        carbs: c,
+        fat: baseFat,
+        fiber: (matchedLibraryItem as any).fiber || 1,
+        glycemicIndex: (matchedLibraryItem as any).glycemicIndex || 'Low-Medium',
+        verdict: (matchedLibraryItem as any).description || (matchedLibraryItem as any).tips || 'Verified Clinic Food Item',
+        recommendation: (matchedLibraryItem as any).tips || 'Authentic clinical nutritional calibration from clinic database.'
+      };
+
+      return {
+        food: foodItem,
+        isMealLogReport: false,
+        mealLogData: null,
+        answer: `🔥 **Calories:** **${baseCal} kcal** (per **${unit}**)
+- **Protein:** **${p}g** • **Carbs:** **${c}g** • **Fat:** **${baseFat}g**
+✅ Verified in Saleem Valanchery Clinic Food Library.`
+      };
+    }
+
+    // Dynamic Nutritional Inference for ANY food, ingredient, or recipe
     const isMalayalam = detectMalayalamOrManglish(query);
-    const estimated = estimateNutrition(query);
+    const estimated = estimateNutrition(cleanQuery || query);
     const foodItem: FoodData = {
       name: estimated.name,
       category: estimated.category,
@@ -713,9 +992,38 @@ What food or snack would you like to check?`
     setSelectedImage(null);
     setIsLoading(true);
 
+    // If client is offline, resolve directly through verified library or require-internet notice
+    if (!navigator.onLine) {
+      setTimeout(() => {
+        const localResult = createLocalFallbackResponse(textToSend);
+        const botMsgId = 'bot-' + Date.now();
+        if (localResult.food) {
+          autoAddFoodToLibrary(localResult.food);
+        }
+        const botMsg: ChatMessage = {
+          id: botMsgId,
+          sender: 'bot',
+          text: localResult.answer,
+          food: localResult.food,
+          mealLogData: localResult.mealLogData,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        if (localResult.food) {
+          setSelectedPortions(prev => ({ ...prev, [botMsgId]: 1 }));
+          setSelectedMeasures(prev => ({ ...prev, [botMsgId]: 'serving' }));
+          setSelectedSlots(prev => ({ ...prev, [botMsgId]: 'Evening Snack' }));
+          setSelectedOilOptions(prev => ({ ...prev, [botMsgId]: 'steamed' }));
+        }
+        setMessages(prev => [...prev, botMsg]);
+        setIsLoading(false);
+      }, 300);
+      return;
+    }
+
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      // Generous 30-second timeout for full Gemini 3.8 Flash multimodal vision & recipe analysis
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -1008,35 +1316,86 @@ What food or snack would you like to check?`
     setTimeout(() => setSavedFoodNotice(null), 3500);
   };
 
-  // Formatter for bold text and headings
+  // Enhanced clinical visual formatter for headings, key-value pills, calories, and Malayalam text
   const renderFormattedText = (content: string) => {
+    const isWarning = content.includes('Internet Required') || content.includes('ഇന്റർനെറ്റ് കണക്ഷൻ ആവശ്യമാണ്');
     const lines = content.split('\n');
+
     return (
-      <div className="space-y-1 text-xs sm:text-sm leading-relaxed">
+      <div className={`space-y-1.5 text-xs sm:text-sm leading-relaxed ${isWarning ? 'p-3 bg-amber-50/90 border border-amber-300 rounded-2xl' : ''}`}>
         {lines.map((line, idx) => {
           const trimmed = line.trim();
           if (!trimmed) return <div key={idx} className="h-1" />;
 
-          if (trimmed.startsWith('### ')) {
+          // Prominent Hero Calories Line
+          if (trimmed.startsWith('🔥 **Calories:**') || trimmed.startsWith('🔥 **കാലറി (Calories):**') || trimmed.startsWith('🔥 **Each Food\'s Calories')) {
             return (
-              <h4 key={idx} className="font-extrabold text-slate-900 text-xs sm:text-sm pt-2 pb-0.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-3 bg-emerald-600 rounded-full inline-block" />
-                {formatInlineBolds(trimmed.replace('### ', ''))}
-              </h4>
+              <div key={idx} className="my-2 p-2.5 bg-linear-to-r from-amber-100 via-amber-50 to-orange-100 border-2 border-amber-300 rounded-xl flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-amber-600 shrink-0 animate-pulse" />
+                  <span className="font-extrabold text-amber-950 text-xs sm:text-sm">
+                    {formatInlineBolds(trimmed.replace('🔥 ', ''))}
+                  </span>
+                </div>
+              </div>
             );
           }
 
+          // Section Headings (###)
+          if (trimmed.startsWith('### ')) {
+            const headingText = trimmed.replace('### ', '');
+            return (
+              <div key={idx} className="pt-2 pb-1 border-b border-slate-100">
+                <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full inline-block" />
+                  <span>{formatInlineBolds(headingText)}</span>
+                </h4>
+              </div>
+            );
+          }
+
+          // Was it oily / colored cooking options
+          if (trimmed.startsWith('- 🟢') || trimmed.startsWith('- 🟡') || trimmed.startsWith('- 🔴')) {
+            const isGreen = trimmed.includes('🟢');
+            const isYellow = trimmed.includes('🟡');
+            return (
+              <div
+                key={idx}
+                className={`flex items-center justify-between p-2 rounded-xl text-xs font-semibold my-1 border ${
+                  isGreen
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                    : isYellow
+                    ? 'bg-amber-50 border-amber-200 text-amber-950'
+                    : 'bg-red-50 border-red-200 text-red-950'
+                }`}
+              >
+                <span>{formatInlineBolds(trimmed.substring(2))}</span>
+              </div>
+            );
+          }
+
+          // Normal bullet points
           if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
             return (
-              <div key={idx} className="flex items-start gap-1.5 pl-2 py-0.5">
-                <span className="text-emerald-600 font-black">•</span>
-                <span className="text-slate-800">{formatInlineBolds(trimmed.substring(2))}</span>
+              <div key={idx} className="flex items-start gap-2 pl-1 py-0.5">
+                <span className="text-emerald-600 font-bold text-xs mt-0.5">•</span>
+                <span className="text-slate-800 leading-normal">{formatInlineBolds(trimmed.substring(2))}</span>
+              </div>
+            );
+          }
+
+          // Warning block detection
+          if (trimmed.startsWith('⚠️')) {
+            return (
+              <div key={idx} className="flex items-center gap-2 p-2 bg-amber-100/80 border border-amber-300 rounded-xl text-amber-950 font-bold">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>{formatInlineBolds(trimmed.replace('⚠️', ''))}</span>
               </div>
             );
           }
 
           return (
-            <p key={idx} className="text-slate-800">
+            <p key={idx} className="text-slate-800 leading-relaxed font-normal">
               {formatInlineBolds(trimmed)}
             </p>
           );
@@ -1109,8 +1468,8 @@ What food or snack would you like to check?`
             isExpanded
               ? 'inset-4 sm:inset-8'
               : modalPos
-                ? 'w-[calc(100vw-32px)] sm:w-[480px] h-[660px] max-h-[88vh]'
-                : 'bottom-4 right-4 w-[calc(100vw-32px)] sm:w-[480px] h-[660px] max-h-[88vh]'
+                ? 'w-[calc(100vw-24px)] sm:w-[540px] h-[740px] max-h-[94vh]'
+                : 'bottom-4 right-4 w-[calc(100vw-24px)] sm:w-[540px] h-[740px] max-h-[94vh]'
           }`}
         >
           {/* Draggable repositioning bar */}
@@ -1151,19 +1510,41 @@ What food or snack would you like to check?`
               <NutriTrackLogo size="sm" showText={false} variant="dark" />
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-white text-sm tracking-tight">NutriBot AI Assistant</h3>
-                  <span className="text-[10px] uppercase font-extrabold bg-emerald-500/40 text-emerald-100 px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1 shadow-xs">
-                    <Sparkles className="w-2.5 h-2.5 text-amber-300 animate-pulse" />
-                    Gemini 3.8 Flash
-                  </span>
+                  <h3 className="font-black text-white text-sm sm:text-base tracking-tight">NutriBot (Kerala Food AI)</h3>
+                  {isOnline ? (
+                    <span className="text-[10px] uppercase font-black bg-emerald-500/30 text-emerald-100 px-2 py-0.5 rounded-full border border-emerald-400/40 flex items-center gap-1 shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      NutriAI Online
+                    </span>
+                  ) : (
+                    <span className="text-[10px] uppercase font-black bg-amber-500/30 text-amber-200 px-2 py-0.5 rounded-full border border-amber-400/40 flex items-center gap-1 shadow-xs">
+                      <WifiOff className="w-2.5 h-2.5 text-amber-300" />
+                      Verified Library
+                    </span>
+                  )}
                 </div>
-                <p className="text-[11px] text-emerald-100/80">
-                  NutriTrack • Kerala Diet &amp; Ingredient Calorie Intelligence
+                <p className="text-[11px] text-emerald-100/90 font-medium">
+                  Super NutriAI Engine • Vision &amp; Voice Multimodal Intelligence
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              {/* Grant Bot Access Pill in Header */}
+              <button
+                type="button"
+                onClick={() => setGrantBotColumnAccess(!grantBotColumnAccess)}
+                title={grantBotColumnAccess ? "Bot has access to directly log into client diary" : "Click to grant bot access to client diary"}
+                className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                  grantBotColumnAccess
+                    ? 'bg-emerald-500/30 text-emerald-100 border-emerald-400/40'
+                    : 'bg-white/10 text-white/70 border-white/20'
+                }`}
+              >
+                <ShieldCheck className="w-3 h-3 text-emerald-300" />
+                <span>{grantBotColumnAccess ? '✓ Column Access' : 'Access Off'}</span>
+              </button>
+
               {/* Kerala Snacks Referral Toggle Button */}
               <button
                 type="button"
@@ -1175,7 +1556,7 @@ What food or snack would you like to check?`
                     : 'bg-white/15 text-white hover:bg-white/25 border-white/20'
                 }`}
               >
-                <span>🌴 Kerala Referral</span>
+                <span>🌴 Referral</span>
               </button>
 
               <button
@@ -1197,23 +1578,18 @@ What food or snack would you like to check?`
             </div>
           </div>
 
-          {/* Active Client Strip */}
-          {activeClient ? (
-            <div className="bg-emerald-50/90 px-4 py-2 border-b border-emerald-100 flex items-center justify-between text-xs text-emerald-900 shrink-0">
+          {/* Active Client Strip (Only shown when client is signed in) */}
+          {activeClient && (
+            <div className="bg-emerald-50/90 px-4 py-1.5 border-b border-emerald-100 flex items-center justify-between text-xs text-emerald-900 shrink-0">
               <div className="flex items-center gap-2 truncate">
                 <User className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                 <span className="font-semibold truncate">{activeClient.name}</span>
                 <span className="text-emerald-500">•</span>
-                <span className="text-slate-600 truncate">{activeClient.goal}</span>
+                <span className="text-slate-600 truncate text-[11px]">{activeClient.goal}</span>
               </div>
               <div className="font-mono font-bold text-[11px] text-emerald-800 shrink-0">
                 {clientContext.remainingCalories} kcal left today
               </div>
-            </div>
-          ) : (
-            <div className="bg-amber-50 px-4 py-2 border-b border-amber-200 flex items-center justify-between text-xs text-amber-900 shrink-0">
-              <span className="font-medium">Guest Mode • Tap Column 2 in Client Portal to sign in</span>
-              <span className="text-amber-800 font-bold">NutriBot Ready</span>
             </div>
           )}
 
@@ -1245,7 +1621,7 @@ What food or snack would you like to check?`
               </div>
 
               <p className="text-[11px] text-slate-600">
-                Official reference values from Saleem Valanchery Wellness Centre. Tap <strong>Calculate</strong> to inspect oil options &amp; auto-add to centre library:
+                Official reference values from Saleem Valanchery Wellness Centre. Tap <strong>Check</strong> to inspect oil options &amp; auto-add to centre library:
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -1277,109 +1653,8 @@ What food or snack would you like to check?`
             </div>
           )}
 
-          {/* Quick Food Search & Direct Logging Bar */}
-          <div className="bg-linear-to-r from-emerald-50 via-white to-teal-50/60 border-b border-emerald-100 p-2.5 sm:p-3 shrink-0 shadow-2xs space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5 text-xs font-black text-slate-800">
-                <Search className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Search Food Portions &amp; Calories:</span>
-              </div>
-              
-              {/* Grant Access to Bot to Directly Give Other Details to Column */}
-              <div className="flex items-center gap-2">
-                <div
-                  title="Grant bot access to directly write calories and nutrition to client diary columns"
-                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
-                    grantBotColumnAccess
-                      ? 'bg-emerald-100/90 border-emerald-300 text-emerald-900'
-                      : 'bg-slate-100 border-slate-300 text-slate-600'
-                  }`}
-                >
-                  <ShieldCheck className={`w-3.5 h-3.5 ${grantBotColumnAccess ? 'text-emerald-700' : 'text-slate-400'}`} />
-                  <label className="text-[10px] font-bold flex items-center gap-1 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={grantBotColumnAccess}
-                      onChange={(e) => setGrantBotColumnAccess(e.target.checked)}
-                      className="w-3 h-3 text-emerald-600 rounded border-emerald-300 focus:ring-emerald-500 cursor-pointer"
-                    />
-                    <span>{grantBotColumnAccess ? '✓ Bot Column Access Granted' : 'Grant Bot Access'}</span>
-                  </label>
-                </div>
-
-                <label
-                  title="When searching, automatically add the food with its calories to the selected column"
-                  className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer select-none"
-                >
-                  <input
-                    type="checkbox"
-                    checked={autoAddToColumnOnSearch}
-                    onChange={(e) => setAutoAddToColumnOnSearch(e.target.checked)}
-                    className="w-3 h-3 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
-                  />
-                  <span>Auto-add on search</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Search Input */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!foodSearchQuery.trim()) return;
-                handleSendMessage(foodSearchQuery.trim());
-                setFoodSearchQuery('');
-              }}
-              className="flex items-center gap-1.5"
-            >
-              <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={foodSearchQuery}
-                  onChange={(e) => setFoodSearchQuery(e.target.value)}
-                  placeholder="Search any food (e.g. Pazham Pori, Boiled Egg, Oats, Rice, Apple)..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-slate-900 transition-all placeholder:text-slate-400 font-medium shadow-2xs"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isLoading || !foodSearchQuery.trim()}
-                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 shadow-2xs"
-              >
-                <Search className="w-3 h-3" />
-                <span>Search</span>
-              </button>
-            </form>
-
-            {/* Quick Food Shortcuts */}
-            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none text-[10px]">
-              <span className="font-bold text-slate-400 uppercase shrink-0">Quick:</span>
-              {[
-                { label: '🍌 Pazham Pori', q: 'Pazham Pori calories and portions' },
-                { label: '🥚 Boiled Egg', q: 'Boiled Egg calories and portions' },
-                { label: '🍞 Wheat Bread', q: 'Whole Wheat Bread calories' },
-                { label: '🥟 Parippu Vada', q: 'Parippu Vada calories and portions' },
-                { label: '🌾 Oats', q: 'Oats calories and portions' },
-                { label: '🍎 Apple', q: 'Apple portions and calories' },
-                { label: '🍗 Chicken', q: 'Chicken Breast calories' },
-                { label: '🍛 Rice', q: 'Kerala Matta Rice calories' },
-                { label: '🍃 Ela Ada', q: 'Ela Ada calories and portions' },
-              ].map((chip, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSendMessage(chip.q)}
-                  className="px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 border border-slate-200 rounded-lg text-slate-700 font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 shadow-2xs"
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Message List */}
-          <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-4 bg-slate-50/50">
+          {/* Message List - Maximum vertical space and high visibility */}
+          <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-slate-50/50">
             {messages.map((msg) => {
               // Extract oil adjustment calculations if food object is present
               const adjusted = msg.food ? getAdjustedNutrition(msg.id, msg.food) : null;
@@ -1939,6 +2214,38 @@ What food or snack would you like to check?`
             className="hidden"
           />
 
+          {/* Active Voice Recording / Transcribing Indicator Banner */}
+          {isRecordingVoice && (
+            <div className="px-3.5 py-2 bg-rose-50 border-t border-rose-200 flex items-center justify-between text-xs text-rose-950 shrink-0 animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600"></span>
+                </span>
+                <span className="font-black text-xs">
+                  🎙️ Recording Voice Note... ({voiceSeconds}s)
+                </span>
+                <span className="text-[10px] text-rose-700 hidden sm:inline font-medium">
+                  Speak in Malayalam or English (e.g. "Pazham Pori calories", "2 appam kazhichu")
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={stopVoiceRecording}
+                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+              >
+                Done &rarr;
+              </button>
+            </div>
+          )}
+
+          {isTranscribingVoice && (
+            <div className="px-3.5 py-2 bg-emerald-50 border-t border-emerald-200 flex items-center gap-2 text-xs text-emerald-900 shrink-0">
+              <Bot className="w-4 h-4 text-emerald-600 animate-spin" />
+              <span className="font-bold">NutriAI is transcribing Malayalam / English audio...</span>
+            </div>
+          )}
+
           {/* Input Form */}
           <form
             onSubmit={(e) => {
@@ -1947,6 +2254,7 @@ What food or snack would you like to check?`
             }}
             className="p-3 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0"
           >
+            {/* Camera / Photo Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -1955,23 +2263,48 @@ What food or snack would you like to check?`
                   ? 'bg-emerald-100 text-emerald-800 border-emerald-300 ring-2 ring-emerald-400' 
                   : 'bg-slate-50 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 text-slate-500'
               }`}
-              title="Upload or snap meal photo for Gemini AI analysis"
+              title="Upload or snap meal photo for Gemini 3.8 Flash AI analysis"
             >
               <Camera className="w-4 h-4" />
             </button>
+
+            {/* Voice Recording Button */}
+            <button
+              type="button"
+              onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}
+              disabled={isLoading || isTranscribingVoice}
+              className={`p-2.5 rounded-2xl border transition-all cursor-pointer shrink-0 ${
+                isRecordingVoice
+                  ? 'bg-rose-600 text-white border-rose-700 ring-2 ring-rose-400 animate-pulse'
+                  : 'bg-slate-50 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 text-slate-500'
+              }`}
+              title={isRecordingVoice ? "Stop recording & transcribe" : "Record voice note in Malayalam or English"}
+            >
+              {isRecordingVoice ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+
+            {/* Text Input */}
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder={selectedImage ? "Add note about this meal (optional)..." : "Ask about food, oil options, or snap a plate photo..."}
-              disabled={isLoading}
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+              placeholder={
+                selectedImage 
+                  ? "Add note about this meal photo..." 
+                  : isRecordingVoice 
+                    ? "Listening to voice note..." 
+                    : "Ask in English or Malayalam, speak with mic, or snap plate photo..."
+              }
+              disabled={isLoading || isRecordingVoice}
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
             />
+
+            {/* Send Button */}
             <button
               type="submit"
-              disabled={isLoading || (!inputMessage.trim() && !selectedImage)}
+              disabled={isLoading || isRecordingVoice || (!inputMessage.trim() && !selectedImage)}
               className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white p-2.5 rounded-2xl transition-colors cursor-pointer shadow-xs shrink-0 flex items-center justify-center"
-              title="Send message"
+              title="Send to NutriAI"
             >
               <Send className="w-4 h-4" />
             </button>

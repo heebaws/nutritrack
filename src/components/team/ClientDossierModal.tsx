@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ClientProfile, MealType } from '../../types';
+import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
 import { 
   X, 
   User, 
@@ -468,27 +469,45 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
 
               {clientMealLogs.length > 0 ? (
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl bg-white overflow-hidden">
-                  {clientMealLogs.map((log) => (
-                    <div key={log.id} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-slate-900">{log.foodName}</span>
-                          <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-                            {log.mealType}
+                  {clientMealLogs.map((log) => {
+                    const audit = classifyFoodItem(log.foodName);
+                    return (
+                      <div key={log.id} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-slate-900">{log.foodName}</span>
+                            <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
+                              {log.mealType}
+                            </span>
+                            {audit.isProblemFood ? (
+                              <span 
+                                className="text-[10px] font-black text-rose-800 bg-rose-50 border border-rose-300 px-1.5 py-0.2 rounded"
+                                title={audit.clinicalReason}
+                              >
+                                🛑 {audit.tier === 'strict_avoid' ? 'Strict Avoid' : audit.tier === 'once_twice_month' ? '1-2x/Month' : '1-2x/Week'}
+                              </span>
+                            ) : audit.isSuperFood ? (
+                              <span 
+                                className="text-[10px] font-black text-emerald-800 bg-emerald-50 border border-emerald-300 px-1.5 py-0.2 rounded"
+                                title="Wholesome superfood"
+                              >
+                                🥗 Superfood
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="text-[11px] text-slate-500 block mt-0.5">
+                            {log.date} at {log.timeLogged} • {log.quantity}x ({log.servingUnit})
                           </span>
                         </div>
-                        <span className="text-[11px] text-slate-500 block mt-0.5">
-                          {log.date} at {log.timeLogged} • {log.quantity}x ({log.servingUnit})
-                        </span>
+                        <div className="text-right">
+                          <span className="font-bold text-amber-700 block">{log.calories} kcal</span>
+                          <span className="text-[10px] text-slate-500">
+                            P: {log.protein}g | C: {log.carbs}g | F: {log.fat}g
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="font-bold text-amber-700 block">{log.calories} kcal</span>
-                        <span className="text-[10px] text-slate-500">
-                          P: {log.protein}g | C: {log.carbs}g | F: {log.fat}g
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="bg-slate-50 p-8 text-center text-slate-400 rounded-xl">

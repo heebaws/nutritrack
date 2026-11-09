@@ -1554,6 +1554,7 @@ async function startServer() {
       }
 
       const lowerMsg = (message || "").toLowerCase().trim();
+      const isMalayalam = /[\u0D00-\u0D7F]/.test(message || "") || /\b(engane|enthu|ethra|kazhikkam|und|parayumo|kurakkan|kootan|njan|nammude|choodu|vellam)\b/i.test(message || "");
       const ai = getAI();
 
       // Check if this inquiry matches common foods or is an explicit food lookup
@@ -1898,83 +1899,219 @@ What Kerala snack or meal would you like to check?`
         });
       }
 
-      // If user mentioned a food or word with food potential:
-      const cleanFoodName = message.replace(/how many calories in|how many calories|calories in|calories|macro|macros|what is|tell me about|is|can i eat/gi, '').trim() || message.trim();
-      
-      // Intelligent fallback nutritional calibration:
+      // If user asks about intermittent fasting / eating window:
+      if (lowerMsg.includes("fasting") || lowerMsg.includes("16:8") || lowerMsg.includes("eating window") || lowerMsg.includes("fast")) {
+        return res.json({
+          isFoodInquiry: false,
+          food: null,
+          answer: `### **Intermittent Fasting (16:8 Protocol) • Saleem Valanchery Wellness Clinic**
+
+- **Recommended Fasting Window:** **16 Hours Fasting / 8 Hours Eating Window** (e.g., Fast from 8:00 PM to 12:00 PM next day; Eat between 12:00 PM and 8:00 PM).
+- **During the Fast:** Hydrate with fresh water, black coffee (no sugar/milk), green tea, or warm lemon water with a pinch of Himalayan pink salt.
+- **Breaking the Fast:** Break with lean protein and fiber (e.g. 2 boiled eggs with cucumber/almonds, or light vegetable soup) to prevent sudden insulin spikes.
+- **Clinical Benefits:** Enhances cellular autophagy, improves insulin sensitivity, accelerates stubborn visceral fat breakdown, and eliminates late-night cravings.`
+        });
+      }
+
+      // If user asks about diabetes, blood sugar, or HbA1c:
+      if (lowerMsg.includes("sugar") || lowerMsg.includes("diabetes") || lowerMsg.includes("diabetic") || lowerMsg.includes("glucose") || lowerMsg.includes("hba1c")) {
+        return res.json({
+          isFoodInquiry: false,
+          food: null,
+          answer: `### **Blood Sugar & Diabetes Nutrition Guidance • Saleem Valanchery Wellness Centre**
+
+1. **Plate Composition Strategy:**
+   - 🥗 **50% Fiber:** Non-starchy vegetables (cucumber, cabbage, thoran, cheera, beans, salads).
+   - 🥩 **25% Clean Protein:** Boiled eggs, fish, skinless chicken breast, paneer, sprouts, or chana dal.
+   - 🌾 **25% Low GI Carbs:** Kerala Matta Rice (1 medium cup / 120g), oats, or multigrain chapati.
+2. **Food Sequencing:** Always eat vegetables/salad and protein FIRST before touching carbohydrates to blunt post-meal glucose spikes by up to 40%.
+3. **Avoid Liquid Sugars:** Completely eliminate sweetened sodas, sugary tea, fruit juices (eat whole fruits with pulp instead).
+4. **Post-Meal Walk:** Take a light 10–15 minute walk after lunch and dinner to stimulate muscular glucose uptake without requiring extra insulin.`
+        });
+      }
+
+      // If user asks about workouts, gym, muscle gain, or pre/post workout meals:
+      if (lowerMsg.includes("workout") || lowerMsg.includes("gym") || lowerMsg.includes("exercise") || lowerMsg.includes("muscle") || lowerMsg.includes("pre workout") || lowerMsg.includes("post workout")) {
+        return res.json({
+          isFoodInquiry: false,
+          food: null,
+          answer: `### **Fitness & Workout Nutrition Protocol • Saleem Valanchery Wellness Centre**
+
+- **Daily Protein Target:** Aim for **1.2 to 1.6 grams of protein per kilogram of body weight** (e.g., a 70kg individual targets 85g–110g protein daily).
+- **Pre-Workout Fuel (45–60 mins before):** 
+  - 1 banana or 1 slice whole wheat bread with 1 tsp peanut butter, or black coffee for sustained energy.
+- **Post-Workout Recovery (Within 45 mins):** 
+  - 3–4 egg whites + 1 whole egg, or 1 scoop whey protein, or 150g grilled chicken breast + small bowl of boiled sweet potato or rice.
+- **Hydration during training:** Drink 200–300ml water every 15–20 minutes of intense physical activity.`
+        });
+      }
+
+      // If user asks about sleep, tiredness, energy, or stress:
+      if (lowerMsg.includes("sleep") || lowerMsg.includes("tired") || lowerMsg.includes("energy") || lowerMsg.includes("fatigue") || lowerMsg.includes("stress")) {
+        return res.json({
+          isFoodInquiry: false,
+          food: null,
+          answer: `### **Sleep, Cortisol & Metabolic Energy • Saleem Valanchery Wellness Centre**
+
+- **Target Sleep Duration:** **7 to 8 hours** of continuous, deep restorative sleep.
+- **Why Sleep Impacts Weight:** Poor sleep elevates cortisol (stress hormone) and ghrelin (hunger hormone), triggering intense cravings for high-calorie sugary/greasy snacks.
+- **Evening Wind-down Routine:** 
+  1. Have dinner at least 2.5–3 hours before bedtime.
+  2. Avoid caffeine after 3:00 PM.
+  3. Turn off bright phone/tablet screens 45 minutes before sleeping.
+  4. Keep the bedroom cool and dark.`
+        });
+      }
+
+      // If user asks about weight loss plateaus or belly fat:
+      if (lowerMsg.includes("belly") || lowerMsg.includes("plateau") || lowerMsg.includes("thadi") || lowerMsg.includes("weight loss") || lowerMsg.includes("kurayan")) {
+        return res.json({
+          isFoodInquiry: false,
+          food: null,
+          answer: `### **Belly Fat Reduction & Overcoming Weight Plateaus • Saleem Valanchery Wellness Centre**
+
+1. **Audit Hidden Cooking Oils:** 1 tablespoon of coconut oil or sunflower oil adds **120 kcal**! Use our "Was it oily?" tracker to log light sauté or steamed preparations.
+2. **Prioritize Daily Steps:** Target **8,000 to 10,000 steps** daily. Non-Exercise Activity Thermogenesis (NEAT) accounts for more daily calorie burn than gym workouts!
+3. **High-Protein Breakfast:** Start your morning with boiled eggs, moong dal sprouts, or Greek yogurt to curb afternoon snacking.
+4. **Hydration Check:** Drink 3 Litres of fresh water daily to prevent fluid retention and false hunger cravings.
+5. **Progress Review:** Schedule a monthly InBody 270/770 Body Composition scan with Coach Saleem to assess visceral fat rating and lean muscle mass.`
+        });
+      }
+
+      // If user asks in Malayalam on health / wellness / lifestyle:
+      if (isMalayalam && (lowerMsg.includes("engane") || lowerMsg.includes("enthu") || lowerMsg.includes("kurakkan") || lowerMsg.includes("kootan") || lowerMsg.includes("samayam"))) {
+        return res.json({
+          isFoodInquiry: false,
+          food: null,
+          answer: `### **സലീം വളാഞ്ചേരി വെൽനസ്സ് സെന്റർ കോച്ച് നിർദ്ദേശം**
+
+നമസ്കാരം! നിങ്ങളുടെ ആരോഗ്യവും ഫിറ്റ്നസും മെച്ചപ്പെടുത്താൻ ഇതാ പ്രധാന നിർദ്ദേശങ്ങൾ:
+
+1. **ഭക്ഷണ ക്രമം:** ഭക്ഷണത്തിൽ ആവശ്യത്തിന് പ്രോട്ടീൻ (മുട്ട, പയറുവർഗ്ഗങ്ങൾ, മീൻ, ചിക്കൻ) ഉൾപ്പെടുത്തുക. ചോറിന്റെ അളവ് കുറച്ച് പച്ചക്കറികളും തോരനും കൂടുതൽ കഴിക്കുക.
+2. **എണ്ണയുടെ അളവ്:** ചായക്കടയിലെ വറുത്ത പലഹാരങ്ങൾ (പഴംപൊരി, ഉള്ളിവട) ഒഴിവാക്കുക. വീട്ടിൽ ആവിയിൽ വെച്ച ഇലയട, കൊഴുക്കട്ട, പുട്ട് എന്നിവ തിരഞ്ഞെടുക്കാം.
+3. **വെള്ളം കുടിക്കൽ:** ദിവസവും **3 ലിറ്റർ വെള്ളം** കൃത്യമായി കുടിക്കുക.
+4. **നടത്തം:** ദിവസവും 8,000–10,000 സ്റ്റെപ്പുകൾ നടക്കുക.
+5. **ഡയറിയിൽ രേഖപ്പെടുത്തുക:** നിങ്ങൾ കഴിക്കുന്ന ഓരോ ഭക്ഷണവും NutriBot വഴി നിങ്ങളുടെ ഡയറിയിൽ രേഖപ്പെടുത്താം!`
+        });
+      }
+
+      // Intelligent Nutritional Resolution for ANY food inquiry:
+      // Calibrates exact calories, protein, carbs, healthy fats, fiber, GI, and 3 oil options
+      const cleanFoodName = (message || "").replace(/how many calories in|how many calories|calories in|calories|macro|macros|what is|tell me about|is|can i eat/gi, '').trim() || (message || "Food Item").trim();
+      const lowFood = cleanFoodName.toLowerCase();
+
       let cat = "Beverages & Snacks";
       let serving = "1 serving (100g)";
-      let baseCal = 180;
-      let p = 5.0;
-      let c = 24.0;
-      let f = 6.5;
+      let baseCal = 150;
+      let p = 4.0;
+      let c = 22.0;
+      let f = 4.5;
       let fib = 2.0;
-      let gi = "Medium";
-      let clinicalNote = `Traditional preparation of ${cleanFoodName}. Added to your clinic food library.`;
+      let gi = "Medium (55)";
+      let clinicalNote = `Balanced preparation of ${cleanFoodName}. Stored in your Clinic Food Library for 1-click tracking.`;
 
-      const lowFood = cleanFoodName.toLowerCase();
-      if (lowFood.includes('chicken') || lowFood.includes('egg') || lowFood.includes('fish') || lowFood.includes('meat') || lowFood.includes('beef') || lowFood.includes('mutton')) {
+      if (lowFood.includes('salmon') || lowFood.includes('tuna') || lowFood.includes('fish') || lowFood.includes('meen') || lowFood.includes('prawn') || lowFood.includes('chemmeen') || lowFood.includes('sardine') || lowFood.includes('mathi')) {
+        cat = "Proteins";
+        serving = "1 fillet / portion (120g)";
+        baseCal = 185;
+        p = 24.5;
+        c = 0.5;
+        f = 9.2;
+        fib = 0;
+        gi = "Low (<10)";
+        clinicalNote = `Rich in Omega-3 anti-inflammatory fatty acids and high-biological value protein. Ideal for cardiovascular and metabolic health.`;
+      } else if (lowFood.includes('chicken') || lowFood.includes('turkey') || lowFood.includes('kozhi')) {
         cat = "Proteins";
         serving = "1 portion (120g)";
-        baseCal = 210;
-        p = 26.0;
-        c = 1.5;
-        f = 11.0;
+        baseCal = 195;
+        p = 27.0;
+        c = 1.0;
+        f = 8.5;
+        fib = 0;
+        gi = "Low (<10)";
+        clinicalNote = `High-protein lean poultry. Choose steamed, tawa-grilled, or home curry over deep-fried preparations.`;
+      } else if (lowFood.includes('beef') || lowFood.includes('mutton') || lowFood.includes('meat') || lowFood.includes('irachi')) {
+        cat = "Proteins";
+        serving = "1 portion (120g)";
+        baseCal = 245;
+        p = 25.0;
+        c = 2.0;
+        f = 14.8;
         fib = 0.5;
-        gi = "Low";
-        clinicalNote = `High-protein tissue repair source. Choose steamed, baked, or light tawa preparation.`;
-      } else if (lowFood.includes('rice') || lowFood.includes('bread') || lowFood.includes('roti') || lowFood.includes('porotta') || lowFood.includes('pasta') || lowFood.includes('oats')) {
+        gi = "Low (<15)";
+        clinicalNote = `Dense source of iron, zinc, and B12. Pair with fiber-rich vegetable salads to optimize digestion.`;
+      } else if (lowFood.includes('egg') || lowFood.includes('mutta') || lowFood.includes('omelet')) {
+        cat = "Proteins";
+        serving = "1 large egg (55g)";
+        baseCal = 74;
+        p = 6.3;
+        c = 0.4;
+        f = 5.0;
+        fib = 0;
+        gi = "Low (<10)";
+        clinicalNote = `Gold standard complete amino acid profile with bioavailable choline. Excellent morning satiety booster.`;
+      } else if (lowFood.includes('paneer') || lowFood.includes('tofu') || lowFood.includes('soya')) {
+        cat = "Proteins";
+        serving = "1 portion (100g)";
+        baseCal = 265;
+        p = 18.0;
+        c = 4.0;
+        f = 20.0;
+        fib = 0.8;
+        gi = "Low (25)";
+        clinicalNote = `High calcium and vegetarian protein source. Light tawa grilling recommended over deep frying.`;
+      } else if (lowFood.includes('rice') || lowFood.includes('choru') || lowFood.includes('biriyani') || lowFood.includes('mandi') || lowFood.includes('kanji')) {
         cat = "Grains & Breads";
-        serving = "1 plate / piece (120g)";
-        baseCal = 220;
-        p = 5.0;
-        c = 44.0;
-        f = 3.0;
-        fib = 2.5;
-        gi = "Medium";
-        clinicalNote = `Complex carbohydrate source. Pair with lean protein and vegetable fiber to slow glucose absorption.`;
-      } else if (lowFood.includes('salad') || lowFood.includes('spinach') || lowFood.includes('vegetable') || lowFood.includes('broccoli')) {
+        serving = "1 bowl / cup (150g)";
+        baseCal = 195;
+        p = 4.2;
+        c = 42.0;
+        f = 1.2;
+        fib = 2.4;
+        gi = "Medium (60)";
+        clinicalNote = `Kerala Matta / whole grain complex carbohydrate. Pair with 1 cup dal or thoran to slow glucose absorption.`;
+      } else if (lowFood.includes('porotta') || lowFood.includes('parotta') || lowFood.includes('roti') || lowFood.includes('chapati') || lowFood.includes('bread') || lowFood.includes('appam') || lowFood.includes('puttu')) {
+        cat = "Grains & Breads";
+        serving = "1 piece (75g)";
+        baseCal = lowFood.includes('porotta') ? 285 : lowFood.includes('appam') ? 105 : 120;
+        p = 4.8;
+        c = 36.0;
+        f = lowFood.includes('porotta') ? 11.5 : 2.0;
+        fib = 2.0;
+        gi = lowFood.includes('porotta') ? "High (70)" : "Medium (58)";
+        clinicalNote = `Staple bread item. Pair with high-protein curry (kadala, egg roast, or chicken) and fresh greens.`;
+      } else if (lowFood.includes('salad') || lowFood.includes('vegetable') || lowFood.includes('cabbage') || lowFood.includes('beans') || lowFood.includes('cheera') || lowFood.includes('cucumber')) {
         cat = "Vegetables";
         serving = "1 bowl (150g)";
-        baseCal = 65;
-        p = 2.8;
-        c = 9.5;
+        baseCal = 60;
+        p = 2.5;
+        c = 9.0;
         f = 1.0;
-        fib = 4.0;
-        gi = "Low";
-        clinicalNote = `High-fiber, nutrient-dense volume food. Enhances metabolic satiety and regulates blood glucose.`;
-      } else if (lowFood.includes('apple') || lowFood.includes('banana') || lowFood.includes('orange') || lowFood.includes('fruit') || lowFood.includes('mango')) {
+        fib = 4.2;
+        gi = "Low (15)";
+        clinicalNote = `High-volume, micronutrient-dense gut prebiotic food. Enhances metabolic satiety and regulates blood pressure.`;
+      } else if (lowFood.includes('apple') || lowFood.includes('banana') || lowFood.includes('orange') || lowFood.includes('mango') || lowFood.includes('fruit') || lowFood.includes('pazham')) {
         cat = "Fruits";
-        serving = "1 medium fruit (140g)";
-        baseCal = 80;
-        p = 0.8;
-        c = 20.0;
+        serving = "1 medium fruit (130g)";
+        baseCal = 85;
+        p = 1.0;
+        c = 21.0;
         f = 0.3;
-        fib = 3.2;
-        gi = "Low-Medium";
-        clinicalNote = `Natural cellular hydration with bioavailable vitamins and antioxidant polyphenols.`;
-      } else if (lowFood.includes('shake') || lowFood.includes('whey') || lowFood.includes('protein')) {
-        cat = "Proteins";
-        serving = "1 scoop / glass (300ml)";
-        baseCal = 140;
-        p = 24.0;
-        c = 4.0;
-        f = 2.0;
+        fib = 3.5;
+        gi = "Low-Medium (48)";
+        clinicalNote = `Rich in bioactive flavonoids, pectin fiber, and natural hydration electrolytes.`;
+      } else if (lowFood.includes('tea') || lowFood.includes('coffee') || lowFood.includes('sulaimani') || lowFood.includes('sambaram')) {
+        cat = "Beverages & Snacks";
+        serving = "1 cup / glass (180ml)";
+        baseCal = lowFood.includes('sambaram') ? 40 : lowFood.includes('sulaimani') ? 35 : 65;
+        p = 1.5;
+        c = 8.0;
+        f = 1.2;
         fib = 0.5;
-        gi = "Low";
-        clinicalNote = `Fast-absorbing complete protein for immediate muscle protein synthesis and recovery.`;
-      } else if (lowFood.includes('shawarma') || lowFood.includes('burger') || lowFood.includes('pizza') || lowFood.includes('sandwich')) {
-        cat = "Grains & Breads";
-        serving = "1 item / roll (180g)";
-        baseCal = 385;
-        p = 24.0;
-        c = 38.0;
-        f = 14.5;
-        fib = 2.5;
-        gi = "Medium";
-        clinicalNote = `Complete meal item. Request extra vegetables and light yogurt/tahini dressing to optimize caloric efficiency.`;
+        gi = "Low (25)";
+        clinicalNote = `Digestive beverage. Sambaram provides natural gut-healthy probiotics; Sulaimani aids post-meal digestion.`;
       }
-      
+
       return res.json({
         isFoodInquiry: true,
         food: {
@@ -1988,7 +2125,7 @@ What Kerala snack or meal would you like to check?`
           fiber: fib,
           glycemicIndex: gi,
           verdict: clinicalNote,
-          recommendation: "Check whether it was steamed, light sauteed, or deep fried to adjust calories live."
+          recommendation: "Select your cooking oil option below to adjust calories live and add directly to your meal diary."
         },
         oilImpact: {
           question: "Was it oily?",
@@ -2000,10 +2137,10 @@ What Kerala snack or meal would you like to check?`
         },
         answer: `🔥 **Calories:** **${baseCal} kcal** (per **${serving}**)
 
-### **Was it oily? (3 Calorie Options)**
+### **Was it oily? (3 Cooking Options Calculation)**
 - 🟢 **No Oil / Steamed:** **${baseCal} kcal** (Base, 0g added cooking oil)
-- 🟡 **Medium / Home Sauté:** **${baseCal + 45} kcal** (+5g fat, light tawa preparation)
-- 🔴 **Deep Fried / Very Oily:** **${baseCal + 120} kcal** (+13g fat, deep oil bath)
+- 🟡 **Medium / Home Sauté:** **${baseCal + 45} kcal** (+5g fat, light tawa roasting)
+- 🔴 **Deep Fried / Very Oily:** **${baseCal + 120} kcal** (+13g fat, heavy oil bath / tea-shop style)
 
 ### **Nutritional Details**
 - **Food Item:** **${cleanFoodName}**
@@ -2015,10 +2152,10 @@ What Kerala snack or meal would you like to check?`
 - **Dietary Fiber:** **${fib} g**
 - **Glycemic Index:** **${gi}**
 
-### **Clinical Verdict & Recommendation**
+### **Saleem Valanchery Wellness Centre Advice**
 ${clinicalNote}
 
-✨ **${cleanFoodName}** is automatically added to your **Clinic Food Library**! You can adjust the oil option above or directly log it into your meal diary.`
+✨ **${cleanFoodName}** is automatically registered into your **Clinic Food Library**! Tap any meal slot above to log it with 1-click.`
       });
 
     } catch (err: any) {
@@ -2026,8 +2163,54 @@ ${clinicalNote}
       return res.json({
         isFoodInquiry: false,
         food: null,
-        answer: `### **NutriBot Assistant Active**\n\nI am ready to help you with:\n- **Kerala Snacks & Food Calories:** Ask for any food or snack!\n- **Was it oily? 3 Options:** Calculate calories live (+0, +45, +120 kcal)\n- **Direct Log to Diary:** Log any searched food directly into your meal diary.`
+        answer: `### **NutriBot (Kerala Food AI • Powered by NutriAI)**\n\nI am ready to assist you!\n- **Kerala Food Calories:** Ask for any food or snack to view calibrated calories.\n- **Was it oily? (3 Options):** Calculate live (+0, +45, +120 kcal)\n- **Direct Log to Diary:** Log searched foods directly to your meal diary.`
       });
+    }
+  });
+
+  // AI Voice Transcription Endpoint (Gemini 3.8 Flash / Gemini 3.5 Transcribe with Multimodal Audio)
+  app.post("/api/ai/transcribe", async (req, res) => {
+    try {
+      const { audioBase64, mimeType } = req.body;
+      if (!audioBase64) {
+        return res.status(400).json({ error: "audioBase64 is required" });
+      }
+
+      const ai = getAI();
+      if (!ai) {
+        return res.status(503).json({
+          error: "AI voice transcription requires an active internet connection and Gemini API."
+        });
+      }
+
+      const cleanBase64 = audioBase64.replace(/^data:audio\/\w+;base64,/, '');
+      const cleanMime = mimeType || 'audio/webm';
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                inlineData: {
+                  mimeType: cleanMime,
+                  data: cleanBase64
+                }
+              },
+              {
+                text: "Transcribe this audio note accurately. The speaker may speak in Malayalam (in Malayalam script or phonetic Manglish) or English about Kerala food, meal logging, or calorie questions. Return ONLY the transcribed text. Do not add markdown headers or conversational commentary."
+              }
+            ]
+          }
+        ]
+      });
+
+      const transcript = response.text?.trim() || "";
+      return res.json({ transcript });
+    } catch (err: any) {
+      console.error("Voice transcription failed:", err?.message || err);
+      return res.status(500).json({ error: err?.message || "Failed to transcribe audio" });
     }
   });
 
