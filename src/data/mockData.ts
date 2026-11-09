@@ -9,6 +9,7 @@ import {
   ClientReminder 
 } from '../types';
 import { getTodayString, getYesterdayString, getDaysAgoString } from '../utils/dateUtils';
+import { KERALA_EXPANDED_FOODS } from './keralaExpandedFoods';
 
 export const INITIAL_DIETITIANS: DietitianProfile[] = [
   {
@@ -67,6 +68,7 @@ export const INITIAL_DIETITIANS: DietitianProfile[] = [
 ];
 
 export const INITIAL_FOODS: FoodItem[] = [
+  ...KERALA_EXPANDED_FOODS,
   { id: 'f-1', name: "Grilled Chicken Breast", category: 'Proteins', servingUnit: '100g (cooked)', servingGrams: 100, calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, calorieQuality: 'good' },
   { id: 'f-2', name: "Boiled Eggs (2 whole)", category: 'Proteins', servingUnit: '2 large eggs', servingGrams: 100, calories: 144, protein: 12.6, carbs: 0.8, fat: 9.8, fiber: 0, calorieQuality: 'good' },
   { id: 'f-3', name: "Egg Whites (3 whites)", category: 'Proteins', servingUnit: '3 large whites', servingGrams: 99, calories: 51, protein: 10.8, carbs: 0.7, fat: 0.2, fiber: 0, calorieQuality: 'good' },

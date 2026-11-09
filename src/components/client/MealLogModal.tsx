@@ -276,7 +276,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
     return foods.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
       if (categoryFilter === '🌴 Kerala Snacks') {
-        const isKerala = keralaKeywords.some(kw => item.name.toLowerCase().includes(kw)) || item.id.startsWith('kl-');
+        const isKerala = keralaKeywords.some(kw => item.name.toLowerCase().includes(kw)) || item.id.startsWith('kl-') || /[\u0D00-\u0D7F]/.test(item.name);
         return matchesSearch && isKerala;
       }
       const matchesCategory = categoryFilter === 'All' || item.category === categoryFilter;

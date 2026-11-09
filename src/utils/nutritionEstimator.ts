@@ -1497,11 +1497,10 @@ export function estimateNutrition(rawQuery: string): EstimatedFood {
     }
   }
 
-  // 1b. Direct match against canonical INITIAL_FOODS library
+  // 1b. Direct match against canonical INITIAL_FOODS library (supports both Malayalam & English)
   for (const food of INITIAL_FOODS) {
     const rawName = food.name.toLowerCase();
-    const cleanName = rawName.replace(/\(.*?\)/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-    if (clean === cleanName || clean.includes(cleanName) || cleanName.includes(clean)) {
+    if (clean === rawName || rawName.includes(clean) || clean.includes(rawName)) {
       return {
         name: food.name,
         category: food.category,
@@ -1516,6 +1515,29 @@ export function estimateNutrition(rawQuery: string): EstimatedFood {
         recommendation: food.calorieQuality === 'bad' ? 'Consume mindfully in moderation due to cooking style or sugar/fat density.' : 'Wholesome, nutrient-dense choice recommended in healthy meal plans.'
       };
     }
+
+    // Check Malayalam script part and English parenthetical part separately
+    const m = rawName.match(/^(.*?)\s*\((.*?)\)$/);
+    if (m) {
+      const mal = m[1].trim();
+      const eng = m[2].trim();
+      if ((mal && (clean.includes(mal) || mal.includes(clean))) || 
+          (eng && (clean.includes(eng) || eng.includes(clean)))) {
+        return {
+          name: food.name,
+          category: food.category,
+          servingUnit: food.servingUnit,
+          calories: food.calories,
+          protein: food.protein,
+          carbs: food.carbs,
+          fat: food.fat,
+          fiber: food.fiber ?? 0,
+          glycemicIndex: (food.glycemicIndex as string) || 'Medium',
+          verdict: `${food.name} is an official clinic item (${food.calories} kcal, ${food.protein}g protein).`,
+          recommendation: food.calorieQuality === 'bad' ? 'Consume mindfully in moderation.' : 'Wholesome choice.'
+        };
+      }
+    }
   }
 
   // 2. Multi-word fuzzy match in comprehensive catalog
@@ -1528,7 +1550,7 @@ export function estimateNutrition(rawQuery: string): EstimatedFood {
 
   // 2b. Multi-word fuzzy match in INITIAL_FOODS library
   for (const food of INITIAL_FOODS) {
-    const foodWords = food.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(' ').filter(w => w.length > 2);
+    const foodWords = food.name.toLowerCase().split(/[^\p{L}\p{N}]+/gu).filter(w => w.length > 2);
     if (words.some(w => foodWords.includes(w) && w.length > 2)) {
       return {
         name: food.name,

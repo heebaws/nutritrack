@@ -4,6 +4,7 @@ import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
+import { KERALA_SERVER_LOOKUP } from "./src/data/keralaServerLookup";
 
 dotenv.config();
 
@@ -1279,6 +1280,9 @@ const CLINIC_FOOD_LOOKUP: Record<string, {
     tips: "High energy active meal."
   }
 };
+
+// Merge 145 verified Kerala & Indian dishes from official nutrition guide
+Object.assign(CLINIC_FOOD_LOOKUP, KERALA_SERVER_LOOKUP);
 
 // Helper to parse meal eaten messages with time in fallback mode
 function parseEatenMealFallback(message: string) {

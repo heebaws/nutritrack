@@ -205,7 +205,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Helper to deduplicate foods by normalized name to guarantee no double-entries
   const deduplicateFoodList = (list: FoodItem[]): { unique: FoodItem[]; duplicates: FoodItem[] } => {
-    const normalize = (n: string) => (n || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '').trim();
+    const normalize = (n: string) => {
+      const clean = (n || '').toLowerCase().trim();
+      const unicodeClean = clean.replace(/[^\p{L}\p{N}]/gu, '');
+      return unicodeClean || clean;
+    };
     const map = new Map<string, FoodItem>();
     const dupes: FoodItem[] = [];
 
@@ -249,8 +253,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (!map.has(f.id)) {
             map.set(f.id, f);
           } else {
-            // Keep updated values
-            map.set(f.id, { ...map.get(f.id)!, ...f });
+            const canonical = map.get(f.id)!;
+            if (canonical.clinicVerified) {
+              map.set(f.id, canonical);
+            } else {
+              map.set(f.id, { ...canonical, ...f });
+            }
           }
         }
       });
@@ -388,7 +396,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const map = new Map<string, FoodItem>();
               INITIAL_FOODS.forEach(f => map.set(f.id, f));
               prev.forEach(f => { if (f?.id) map.set(f.id, f); });
-              items.forEach(f => { if (f?.id) map.set(f.id, { ...map.get(f.id), ...f }); });
+              items.forEach(f => {
+                if (f?.id) {
+                  const canonical = map.get(f.id);
+                  if (canonical && canonical.clinicVerified) {
+                    map.set(f.id, canonical);
+                  } else {
+                    map.set(f.id, { ...canonical, ...f });
+                  }
+                }
+              });
               
               const { unique, duplicates } = deduplicateFoodList(Array.from(map.values()));
               if (duplicates.length > 0) {
@@ -1209,7 +1226,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Team: Food items
   const addFoodItem = (foodData: Omit<FoodItem, 'id'>): FoodItem => {
     // Normalization check to prevent double-entry of existing foods
-    const normalize = (n: string) => (n || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '').trim();
+    const normalize = (n: string) => {
+      const clean = (n || '').toLowerCase().trim();
+      const unicodeClean = clean.replace(/[^\p{L}\p{N}]/gu, '');
+      return unicodeClean || clean;
+    };
     const targetKey = normalize(foodData.name);
     const existing = foods.find(f => normalize(f.name) === targetKey);
     if (existing) {

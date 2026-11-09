@@ -28,7 +28,11 @@ export const FoodDatabaseManager: React.FC = () => {
 
   // Duplicate detection count
   const duplicateCount = useMemo(() => {
-    const normalize = (n: string) => (n || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '').trim();
+    const normalize = (n: string) => {
+      const clean = (n || '').toLowerCase().trim();
+      const unicodeClean = clean.replace(/[^\p{L}\p{N}]/gu, '');
+      return unicodeClean || clean;
+    };
     const seen = new Set<string>();
     let dupes = 0;
     for (const f of foods) {
@@ -74,6 +78,7 @@ export const FoodDatabaseManager: React.FC = () => {
 
   const categories: string[] = [
     'All',
+    '🌴 Kerala Foods (145 Items)',
     'Proteins',
     'Grains & Breads',
     'Vegetables',
@@ -86,7 +91,12 @@ export const FoodDatabaseManager: React.FC = () => {
   const filteredFoods = useMemo(() => {
     return foods.filter(f => {
       const matchesQuery = f.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCat = selectedCategory === 'All' || f.category === selectedCategory;
+      let matchesCat = true;
+      if (selectedCategory === '🌴 Kerala Foods (145 Items)') {
+        matchesCat = f.id.startsWith('kl-') || /[\u0D00-\u0D7F]/.test(f.name);
+      } else if (selectedCategory !== 'All') {
+        matchesCat = f.category === selectedCategory;
+      }
       return matchesQuery && matchesCat;
     });
   }, [foods, searchQuery, selectedCategory]);

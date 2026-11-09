@@ -647,10 +647,13 @@ I am ready to help you with:
 
   // Quick preset questions demonstrating mandates
   const quickPrompts = [
+    { label: '🌾 പുട്ട് (Puttu)', query: 'പുട്ട് (Puttu) calories and portion' },
     { label: '🍌 Pazham Pori (Calories First)', query: 'Pazham Pori calories and was it oily options' },
+    { label: '🍗 ചിക്കൻ അൽഫഹം (Alfaham)', query: 'ചിക്കൻ അൽഫഹം (Chicken alfaham) calories' },
+    { label: '🍛 തലശ്ശേരി ബിരിയാണി', query: 'തലശ്ശേരി ബിരിയാണി (Thalassery biriyani) calories' },
+    { label: '🐟 മീൻ കറി മുളകിട്ടത്', query: 'മീൻ കറി മുളകിട്ടത് (Meen curry mulakittathu) calories' },
     { label: '🥟 Parippu Vada calories', query: 'Parippu Vada calories and macros' },
     { label: '🍃 Ela Ada (Steamed)', query: 'Ela Ada calories and nutrition' },
-    { label: '📋 Kerala Snacks Referral', query: 'Show me the full Kerala snacks calories referral guide' },
     { label: '⏰ Ate 2 eggs & 1 bread at 8:30 am', query: 'I ate 2 boiled eggs and 1 bread at 8:30 am' },
     { label: '📊 My Remaining Calories', query: 'How many calories do I have remaining today?' }
   ];
