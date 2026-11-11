@@ -1151,39 +1151,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setClients(prev => [newClient, ...prev]);
     saveDocumentToFirestore('clients', newClient.id, newClient).catch(() => {});
 
-    // Automatically create Morning, Afternoon, and Night meal log reminders for client portal
+    // Automatically create Morning, Afternoon, and Night meal log reminders for client portal (Official scientific times)
     const defaultReminders: ClientReminder[] = [
       {
         id: `rem-morn-${newClient.id}`,
         clientId: newClient.id,
         title: 'Morning Breakfast Log Reminder',
-        time: '08:30 AM',
+        time: '08:00 AM',
         mealSlot: 'Breakfast',
         type: 'meal',
         enabled: true,
-        message: `Good morning ${finalName}! Take a moment to log your breakfast foods and hydration.`,
+        message: `Good morning ${finalName}! Scientific Breakfast window (7:00–8:30 AM). Log your morning foods to kickstart metabolism.`,
         deliveredChannel: 'mobile_push'
       },
       {
         id: `rem-aft-${newClient.id}`,
         clientId: newClient.id,
         title: 'Afternoon Lunch Log Reminder',
-        time: '01:30 PM',
+        time: '01:00 PM',
         mealSlot: 'Lunch',
         type: 'meal',
         enabled: true,
-        message: `Afternoon reminder: Log your lunch plate to track today's energy and protein intake.`,
+        message: `Afternoon reminder: Peak metabolic fire window (12:30–1:30 PM). Log your lunch plate to track energy and protein.`,
         deliveredChannel: 'mobile_push'
       },
       {
         id: `rem-night-${newClient.id}`,
         clientId: newClient.id,
         title: 'Night Dinner Log Reminder',
-        time: '08:30 PM',
+        time: '07:30 PM',
         mealSlot: 'Dinner',
         type: 'meal',
         enabled: true,
-        message: `Night check-in: Log your dinner to complete your daily nutrition diary.`,
+        message: `Night check-in: Optimal dinner window (7:00–8:00 PM). Finish eating 3 hours before sleep for nocturnal recovery and fat burn.`,
         deliveredChannel: 'mobile_push'
       }
     ];

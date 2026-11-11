@@ -839,6 +839,50 @@ What food or snack would you like to check?`
       };
     }
 
+    // 3.4 CALORIE BASICS, DETECTION & HUMAN REQUIREMENT INQUIRIES
+    if (
+      lower.includes('what is a calorie') || 
+      lower.includes('what is calorie') || 
+      lower.includes('how calorie works') || 
+      lower.includes('how calories work') || 
+      lower.includes('how much calorie') || 
+      lower.includes('how much calories') || 
+      lower.includes('how many calories') || 
+      lower.includes('how it detects') || 
+      lower.includes('how do you detect') || 
+      lower.includes('human needs') || 
+      lower.includes('how much a human needs') ||
+      lower.includes('how does nutritrack calculate') ||
+      lower.includes('bmr') ||
+      lower.includes('tdee')
+    ) {
+      return {
+        food: null,
+        isMealLogReport: false,
+        mealLogData: null,
+        answer: `### **Understanding Calories, Detection & Human Requirements • NutriTrack PRO**
+
+1. **What is a Calorie (kcal)?**
+   - A calorie is simply a unit of energy. Just as a vehicle burns fuel to run its engine, your body burns calories every second to pump your heart, breathe air, repair cellular tissue, and walk.
+   - **1 kcal** is the energy required to raise the temperature of 1 kg of water by 1°C.
+
+2. **How NutriTrack Detects & Calculates Food Calories:**
+   - **The Scientific 4-4-9 Macronutrient Formula:**
+     - 🥩 **1g Protein = 4 kcal** (builds muscle & enzymes, high fullness factor)
+     - 🌾 **1g Carbohydrates = 4 kcal** (primary fuel for brain & movement)
+     - 🥑 **1g Fats/Oils = 9 kcal** (hormone regulation & cellular walls)
+   - **560+ Lab-Verified Kerala & Indian Dishes:** Each food in our verified library is weighed by exact grams and oil cooking methods (e.g. shallow vs deep fry oil absorption).
+   - **Multimodal AI Detection:** You can type any food, upload a photo, or speak in Malayalam or English to calculate calories instantly.
+
+3. **How Much Calories Does a Human Need Daily?**
+   - **Basal Metabolic Rate (BMR):** ~1,200 to 1,600 kcal burned just lying in bed staying alive (calculated using the international medical Mifflin-St Jeor formula).
+   - **Total Daily Energy (TDEE):** BMR multiplied by your physical activity factor (~1,800 to 2,500 kcal).
+   - **The 8,000 kcal Weight Rule:** Clinically, **8,000 kcal deficit = 1.0 kg of body fat burned**. A gentle deficit of 400–500 kcal/day loses ~1 kg every 16–20 days safely without starving!
+
+💡 *Tip: Click the **"🧠 Calorie 101 Guide"** button on your dashboard to use the interactive calculator with your personalized height and weight!*`
+      };
+    }
+
     if (lower.includes('sugar') || lower.includes('diabetes') || lower.includes('diabetic') || lower.includes('glucose') || lower.includes('hba1c')) {
       return {
         food: null,

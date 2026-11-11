@@ -6,7 +6,8 @@ import {
   Cloud,
   LogIn,
   LogOut,
-  Crown
+  Crown,
+  Flame
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -92,6 +93,16 @@ export const Header: React.FC = () => {
                     <span className="text-[10px] text-emerald-700 font-mono font-medium">@{activeClient.username || 'client'}</span>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-calorie-guide'))}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 rounded-xl transition-all shadow-2xs cursor-pointer"
+                  title="Learn What is a Calorie, Detection, and Human Requirements"
+                >
+                  <Flame className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Calorie 101</span>
+                </button>
 
                 <button
                   type="button"

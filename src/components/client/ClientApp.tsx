@@ -10,6 +10,9 @@ import { QuickWeightModal } from './QuickWeightModal';
 import { PrintReportModal } from '../common/PrintReportModal';
 import { AppointmentsModal } from '../common/AppointmentsModal';
 import { LoginPortal } from '../common/LoginPortal';
+import { CalorieKnowledgeModal } from './CalorieKnowledgeModal';
+import { AppTourGuideModal } from './AppTourGuideModal';
+import { ClinicalFoodGuideModal } from './ClinicalFoodGuideModal';
 import { MealType } from '../../types';
 import { calculateCalorieBreakdown, determineCalorieQuality } from '../../utils/calorieQuality';
 import { CoachClinicalAlertsCard } from './CoachClinicalAlertsCard';
@@ -65,7 +68,12 @@ import {
   Sun,
   Sunset,
   Moon,
-  AlertTriangle
+  AlertTriangle,
+  HelpCircle,
+  Lightbulb,
+  BookOpen,
+  Compass,
+  ArrowRight
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -98,7 +106,8 @@ export const ClientApp: React.FC = () => {
     dismissSuggestedMeal,
     activities,
     appointments,
-    resetClientDayMealsToDayBefore
+    resetClientDayMealsToDayBefore,
+    foods
   } = useApp();
 
   // Active website navigation tab
@@ -124,9 +133,63 @@ export const ClientApp: React.FC = () => {
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isAppointmentsModalOpen, setIsAppointmentsModalOpen] = useState(false);
+  const [isCalorieGuideOpen, setIsCalorieGuideOpen] = useState(false);
+  const [calorieGuideTab, setCalorieGuideTab] = useState<'what-is-calorie' | 'how-it-detects' | 'how-much-needed' | 'calculator' | 'chrononutrition'>('what-is-calorie');
+
+  const openCalorieGuide = (tab: 'what-is-calorie' | 'how-it-detects' | 'how-much-needed' | 'calculator' | 'chrononutrition' = 'what-is-calorie') => {
+    setCalorieGuideTab(tab);
+    setIsCalorieGuideOpen(true);
+  };
+  const [isTourModalOpen, setIsTourModalOpen] = useState(false);
+  const [isClinicalGuideOpen, setIsClinicalGuideOpen] = useState(false);
   const [planLoggedNotice, setPlanLoggedNotice] = useState<string | null>(null);
   const [isResettingMeals, setIsResettingMeals] = useState(false);
   const [resetFeedbackNotice, setResetFeedbackNotice] = useState<string | null>(null);
+
+  // Friendly Orientation state
+  const [isOrientationDismissed, setIsOrientationDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('nutritrack_orientation_dismissed') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const dismissOrientation = () => {
+    setIsOrientationDismissed(true);
+    try {
+      localStorage.setItem('nutritrack_orientation_dismissed', 'true');
+    } catch (e) {}
+  };
+
+  const showOrientation = () => {
+    setIsOrientationDismissed(false);
+    try {
+      localStorage.removeItem('nutritrack_orientation_dismissed');
+    } catch (e) {}
+  };
+
+  // Comfort Mode vs Detailed Pro Mode
+  const [comfortMode, setComfortMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('nutritrack_comfort_mode');
+      return saved !== null ? saved === 'true' : true; // Default to true (comfort mode)
+    } catch (e) {
+      return true;
+    }
+  });
+
+  // Listen to open-calorie-guide or open-app-tour events
+  useEffect(() => {
+    const handleOpenCalorieGuide = () => setIsCalorieGuideOpen(true);
+    const handleOpenTour = () => setIsTourModalOpen(true);
+    window.addEventListener('open-calorie-guide', handleOpenCalorieGuide);
+    window.addEventListener('open-app-tour', handleOpenTour);
+    return () => {
+      window.removeEventListener('open-calorie-guide', handleOpenCalorieGuide);
+      window.removeEventListener('open-app-tour', handleOpenTour);
+    };
+  }, []);
 
   const handleResetMealsToDayBefore = async () => {
     if (!activeClient) return;
@@ -168,10 +231,10 @@ export const ClientApp: React.FC = () => {
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return {
-      trajectory: true,
+      trajectory: false, // Default to FALSE so heavy 8,000 kcal table doesn't overwhelm client
       nutritionTarget: true,
       waterTracker: true,
-      dailyHabits: true,
+      dailyHabits: false, // Accessible via 1-click shortcut
       suggestions: true,
       mealsTimeline: true,
       sideWidgets: true,
@@ -186,6 +249,24 @@ export const ClientApp: React.FC = () => {
       } catch (e) {}
       return updated;
     });
+  };
+
+  const toggleComfortMode = () => {
+    const next = !comfortMode;
+    setComfortMode(next);
+    try {
+      localStorage.setItem('nutritrack_comfort_mode', String(next));
+    } catch (e) {}
+    if (next) {
+      // Comfort mode: hide heavy trajectory and habits by default
+      const comfortSections = { ...visibleSections, trajectory: false, dailyHabits: false };
+      setVisibleSections(comfortSections);
+      try {
+        localStorage.setItem('nutritrack_front_sections', JSON.stringify(comfortSections));
+      } catch (e) {}
+    } else {
+      showAllSections();
+    }
   };
 
   const showAllSections = () => {
@@ -331,6 +412,77 @@ export const ClientApp: React.FC = () => {
     return reminders.filter(r => r.clientId === activeClient.id);
   }, [reminders, activeClient.id]);
 
+  // Current time-contextual meal recommendation (Circadian Chrononutrition)
+  const currentCircadianMeal = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) {
+      const isLogged = clientLogsForDay.some(m => m.mealType === 'Breakfast');
+      return {
+        slot: 'Breakfast' as MealType,
+        targetTime: '8:00 AM',
+        window: '7:00 AM – 8:30 AM',
+        title: 'Morning Breakfast Window',
+        scientificReason: 'Diurnal peak for cortisol & insulin sensitivity. Kickstarts resting metabolic rate.',
+        isLogged,
+        actionText: isLogged ? 'Breakfast Logged ✓' : 'Log Breakfast (8:00 AM)'
+      };
+    } else if (hour >= 11 && hour < 16) {
+      const isLogged = clientLogsForDay.some(m => m.mealType === 'Lunch');
+      return {
+        slot: 'Lunch' as MealType,
+        targetTime: '1:00 PM',
+        window: '12:30 PM – 1:30 PM',
+        title: 'Midday Lunch Window',
+        scientificReason: 'Peak digestive enzymes & resting metabolic fire. Consuming lunch before 2 PM optimizes fat loss by 25%.',
+        isLogged,
+        actionText: isLogged ? 'Lunch Logged ✓' : 'Log Lunch (1:00 PM)'
+      };
+    } else if (hour >= 16 && hour < 22) {
+      const isLogged = clientLogsForDay.some(m => m.mealType === 'Dinner');
+      return {
+        slot: 'Dinner' as MealType,
+        targetTime: '7:30 PM',
+        window: '7:00 PM – 8:00 PM',
+        title: 'Evening Dinner Window',
+        scientificReason: 'Pre-melatonin window (finish 3h before bed). Avoids nocturnal glucose spike & activates overnight autophagy.',
+        isLogged,
+        actionText: isLogged ? 'Dinner Logged ✓' : 'Log Dinner (7:30 PM)'
+      };
+    } else {
+      return {
+        slot: 'Breakfast' as MealType,
+        targetTime: '8:00 AM',
+        window: '7:00 AM – 8:30 AM',
+        title: 'Overnight Fasting & Recovery',
+        scientificReason: '12-hour cellular autophagy fast is active until breakfast. Drink water or warm herbal tea if needed.',
+        isLogged: false,
+        actionText: 'Preview Breakfast'
+      };
+    }
+  }, [clientLogsForDay]);
+
+  // 1-Tap Quick Common Foods logger
+  const handleQuickLogStaple = (foodName: string, calories: number, protein: number, carbs: number, fat: number, unit: string) => {
+    if (!activeClient) return;
+    const targetSlot = currentCircadianMeal.slot || 'Breakfast';
+    const matchedFood = foods.find(f => f.name.toLowerCase().includes(foodName.toLowerCase().split(' ')[0]));
+    addMealLog({
+      clientId: activeClient.id,
+      date: selectedDate,
+      mealType: targetSlot,
+      foodId: matchedFood?.id || `staple-${foodName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      foodName,
+      quantity: 1,
+      servingUnit: unit,
+      calories,
+      protein,
+      carbs,
+      fat,
+    });
+    setPlanLoggedNotice(`⚡ Quick logged: ${foodName} (${calories} kcal) into ${targetSlot}!`);
+    setTimeout(() => setPlanLoggedNotice(null), 3500);
+  };
+
   // Handle logging a whole meal from the diet plan with 1-click
   const handleLogPlannedMeal = (mealType: MealType) => {
     const plannedMeal = assignedPlan.meals.find(m => m.mealType === mealType);
@@ -436,6 +588,26 @@ export const ClientApp: React.FC = () => {
 
             <button
               type="button"
+              onClick={() => setIsCalorieGuideOpen(true)}
+              className="bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold text-xs sm:text-sm px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+              title="Click to learn what is a calorie, detection, and human energy needs"
+            >
+              <Flame className="w-4 h-4 text-slate-900" />
+              <span>Calorie 101</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsTourModalOpen(true)}
+              className="bg-white/15 hover:bg-white/25 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer backdrop-blur-xs"
+              title="60-Second Quick Tour of how the app works"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>App Tour</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setIsQuickWeightModalOpen(true)}
               className="bg-emerald-600/90 hover:bg-emerald-600 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl transition-all border border-emerald-400/40 flex items-center gap-1.5 cursor-pointer backdrop-blur-xs"
               title="Quick 5-second morning weigh-in"
@@ -496,6 +668,134 @@ export const ClientApp: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ================= FRIENDLY WELCOME & 60-SECOND ORIENTATION BANNER ================= */}
+      {!isOrientationDismissed ? (
+        <div className="bg-linear-to-r from-emerald-50 via-teal-50 to-emerald-50 rounded-3xl p-5 sm:p-6 border-2 border-emerald-300 shadow-sm relative overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="space-y-3 w-full">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-600 text-white">
+                    👋 60-Second Quick Guide
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-emerald-950">
+                    Welcome, {activeClient.name}! How NutriTrack PRO works:
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={dismissOrientation}
+                  className="text-xs font-bold text-emerald-800 hover:text-emerald-950 px-2.5 py-1 rounded-lg hover:bg-emerald-200/50 transition-colors cursor-pointer"
+                  title="Minimize this guide"
+                >
+                  ✕ Minimize
+                </button>
+              </div>
+
+              {/* 3 Step Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <div className="bg-white/95 backdrop-blur-xs p-3.5 rounded-2xl border border-emerald-200 shadow-2xs space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center shrink-0">1</span>
+                    <b className="text-xs text-slate-900">Log Your Meals</b>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-snug">
+                    Tap <b className="text-emerald-700">+ Log Meal</b> or speak to NutriBot in English or Malayalam. Calories auto-calculate!
+                  </p>
+                </div>
+
+                <div className="bg-white/95 backdrop-blur-xs p-3.5 rounded-2xl border border-emerald-200 shadow-2xs space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 text-xs font-black flex items-center justify-center shrink-0">2</span>
+                    <b className="text-xs text-slate-900">Watch Your Target Bar</b>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-snug">
+                    Your target is <b className="text-amber-800 font-extrabold">{targetCalories} kcal</b>. Eat wholesome foods (eggs, fish, oats) to stay full and stay in green.
+                  </p>
+                </div>
+
+                <div className="bg-white/95 backdrop-blur-xs p-3.5 rounded-2xl border border-emerald-200 shadow-2xs space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-800 text-xs font-black flex items-center justify-center shrink-0">3</span>
+                    <b className="text-xs text-slate-900">1-Tap Water &amp; Habits</b>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-snug">
+                    Tap water glasses and check daily habits. Your coach reviews your diary live to keep you motivated.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsCalorieGuideOpen(true)}
+                  className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs px-4 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Flame className="w-4 h-4 text-slate-900" />
+                  <span>What is a Calorie &amp; How It Calculates (101 Guide)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsTourModalOpen(true)}
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>60-Second Interactive Tour</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={dismissOrientation}
+                  className="text-xs font-bold text-emerald-800 hover:text-emerald-950 px-3 py-1.5 rounded-xl hover:bg-emerald-100/60 transition-colors cursor-pointer sm:ml-auto"
+                >
+                  Got It, Start Tracking ✓
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Collapsed quiet bar with fast access */
+        <div className="bg-emerald-50/70 rounded-2xl px-4 py-2.5 border border-emerald-200/80 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs text-emerald-900 font-medium">
+            <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>
+              Welcome, <b>{activeClient.name}</b>! Need a refresher on how calories work or how to use the app?
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCalorieGuideOpen(true)}
+              className="text-xs font-extrabold text-amber-950 bg-amber-300 hover:bg-amber-400 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+            >
+              <Flame className="w-3.5 h-3.5 text-slate-900" />
+              <span>Calorie 101</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsTourModalOpen(true)}
+              className="text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>App Tour</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={showOrientation}
+              className="text-xs text-emerald-700 hover:underline cursor-pointer pl-1 font-semibold"
+            >
+              Expand Guide
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ================= WEBSITE NAVIGATION TABS ================= */}
       <div className="bg-white rounded-2xl p-1.5 shadow-2xs border border-slate-200 flex items-center overflow-x-auto gap-1">
@@ -576,182 +876,258 @@ export const ClientApp: React.FC = () => {
         </div>
       )}
 
-      {/* ================= SCHEDULED MEAL LOG REMINDERS (MORNING, AFTERNOON & NIGHT) ================= */}
-      <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-              <Bell className="w-4 h-4 text-amber-600 animate-pulse" />
+      {/* ================= OFFICIAL SCIENTIFIC MEAL CHECK-INS & CHRONONUTRITION ================= */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-2xs border border-slate-200 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold shrink-0">
+              <Clock className="w-4 h-4 text-amber-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span>Daily Meal Log Reminders</span>
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  Morning • Afternoon • Night
+              <h2 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-2">
+                <span>Official Scientific Meal Check-ins</span>
+                <span className="text-[10px] text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full font-bold">
+                  Chrononutrition Standard
                 </span>
               </h2>
-              <p className="text-xs text-slate-500">
-                Log your foods at breakfast, lunch, and dinner to keep your diary updated and stay active with your coach.
+              <p className="text-[11px] text-slate-500">
+                Optimal windows: <b>8:00 AM</b> Breakfast • <b>1:00 PM</b> Lunch • <b>7:30 PM</b> Dinner
               </p>
             </div>
           </div>
-          <span className="text-[11px] font-mono text-slate-400 self-start sm:self-auto">
-            Auto-Sync to Phone &amp; Clinic
-          </span>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => openCalorieGuide('chrononutrition')}
+              className="text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors cursor-pointer flex items-center gap-1"
+              title="Read official clinical study and metabolic rationale"
+            >
+              <span>Timing Science</span>
+              <ArrowRight className="w-3 h-3 text-emerald-700" />
+            </button>
+            <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              Live Sync
+            </span>
+          </div>
         </div>
 
-        {/* Three Time Cards: Morning (Breakfast), Afternoon (Lunch), Night (Dinner) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* 1. Morning Breakfast */}
+        {/* Live Circadian Smart Banner (Contextual to Current Time of Day) */}
+        <div className="p-3 sm:p-3.5 rounded-xl bg-linear-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5 shadow-2xs">
+              ⚡
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-slate-900">
+                  Current Window: {currentCircadianMeal.title} ({currentCircadianMeal.targetTime})
+                </span>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                  Aptable: {currentCircadianMeal.window}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                {currentCircadianMeal.scientificReason}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => openLogForSlot(currentCircadianMeal.slot)}
+            className={`text-xs font-extrabold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-2xs ${
+              currentCircadianMeal.isLogged
+                ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
+          >
+            {currentCircadianMeal.actionText} →
+          </button>
+        </div>
+
+        {/* 3 Compact Slots with Official Aptable Scientific Times */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {/* Morning: 8:00 AM (7:00 AM - 8:30 AM) */}
           {(() => {
             const hasBreakfast = clientLogsForDay.some(m => m.mealType === 'Breakfast');
             return (
-              <div className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
-                hasBreakfast
-                  ? 'bg-emerald-50/50 border-emerald-200'
-                  : 'bg-amber-50/40 border-amber-200/90 hover:border-amber-400 shadow-2xs'
+              <div className={`px-3 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                hasBreakfast ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:border-amber-300'
               }`}>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-800">
-                      <Sun className="w-4 h-4 text-amber-500" />
-                      <span>Morning (Breakfast)</span>
-                    </span>
-                    <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-white border border-amber-200 text-amber-900">
-                      8:30 AM
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    hasBreakfast ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    <Sun className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-900 block">Morning 8:00 AM</span>
+                      <span className="text-[9px] font-mono font-bold text-slate-500 bg-slate-200/60 px-1 py-0.2 rounded">7:00–8:30</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block">Breakfast • Insulin Peak</span>
+                    <span className={`text-[10px] font-bold ${hasBreakfast ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {hasBreakfast ? '✅ Logged' : '⏳ Pending'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-snug">
-                    {hasBreakfast 
-                      ? '✅ Breakfast recorded! Great start to your morning metabolism.' 
-                      : 'Time for breakfast! Take 30 seconds to record your morning meal.'}
-                  </p>
                 </div>
-                <div className="mt-3 pt-2.5 border-t border-amber-200/60 flex items-center justify-between">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                    hasBreakfast ? 'text-emerald-700' : 'text-amber-800'
-                  }`}>
-                    {hasBreakfast ? 'Logged' : 'Pending'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => openLogForSlot('Breakfast')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                      hasBreakfast
-                        ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : 'bg-amber-500 hover:bg-amber-600 text-white shadow-2xs'
-                    }`}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{hasBreakfast ? '+ Add More' : 'Log Breakfast'}</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => openLogForSlot('Breakfast')}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors cursor-pointer shrink-0 ${
+                    hasBreakfast
+                      ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                  }`}
+                >
+                  {hasBreakfast ? '+ Add' : 'Log'}
+                </button>
               </div>
             );
           })()}
 
-          {/* 2. Afternoon Lunch */}
+          {/* Lunch: 1:00 PM (12:30 PM - 1:30 PM) */}
           {(() => {
             const hasLunch = clientLogsForDay.some(m => m.mealType === 'Lunch');
             return (
-              <div className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
-                hasLunch
-                  ? 'bg-emerald-50/50 border-emerald-200'
-                  : 'bg-orange-50/40 border-orange-200/90 hover:border-orange-400 shadow-2xs'
+              <div className={`px-3 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                hasLunch ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:border-orange-300'
               }`}>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-orange-800">
-                      <Sunset className="w-4 h-4 text-orange-500" />
-                      <span>Afternoon (Lunch)</span>
-                    </span>
-                    <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-white border border-orange-200 text-orange-900">
-                      1:30 PM
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    hasLunch ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    <Sunset className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-900 block">Afternoon 1:00 PM</span>
+                      <span className="text-[9px] font-mono font-bold text-slate-500 bg-slate-200/60 px-1 py-0.2 rounded">12:30–1:30</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block">Lunch • Solar Digestive Peak</span>
+                    <span className={`text-[10px] font-bold ${hasLunch ? 'text-emerald-700' : 'text-orange-700'}`}>
+                      {hasLunch ? '✅ Logged' : '⏳ Pending'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-snug">
-                    {hasLunch 
-                      ? '✅ Lunch recorded! Midday nutrition & protein logged.' 
-                      : 'Afternoon check-in! Don\'t forget to record your lunch plate.'}
-                  </p>
                 </div>
-                <div className="mt-3 pt-2.5 border-t border-orange-200/60 flex items-center justify-between">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                    hasLunch ? 'text-emerald-700' : 'text-orange-800'
-                  }`}>
-                    {hasLunch ? 'Logged' : 'Pending'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => openLogForSlot('Lunch')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                      hasLunch
-                        ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : 'bg-orange-600 hover:bg-orange-700 text-white shadow-2xs'
-                    }`}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{hasLunch ? '+ Add More' : 'Log Lunch'}</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => openLogForSlot('Lunch')}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors cursor-pointer shrink-0 ${
+                    hasLunch
+                      ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                  }`}
+                >
+                  {hasLunch ? '+ Add' : 'Log'}
+                </button>
               </div>
             );
           })()}
 
-          {/* 3. Night Dinner */}
+          {/* Dinner: 7:30 PM (7:00 PM - 8:00 PM) */}
           {(() => {
             const hasDinner = clientLogsForDay.some(m => m.mealType === 'Dinner');
             return (
-              <div className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
-                hasDinner
-                  ? 'bg-emerald-50/50 border-emerald-200'
-                  : 'bg-indigo-50/40 border-indigo-200/90 hover:border-indigo-400 shadow-2xs'
+              <div className={`px-3 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                hasDinner ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:border-indigo-300'
               }`}>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-900">
-                      <Moon className="w-4 h-4 text-indigo-600" />
-                      <span>Night (Dinner)</span>
-                    </span>
-                    <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-white border border-indigo-200 text-indigo-900">
-                      8:30 PM
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    hasDinner ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'
+                  }`}>
+                    <Moon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-900 block">Night 7:30 PM</span>
+                      <span className="text-[9px] font-mono font-bold text-slate-500 bg-slate-200/60 px-1 py-0.2 rounded">7:00–8:00</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block">Dinner • Pre-Melatonin Window</span>
+                    <span className={`text-[10px] font-bold ${hasDinner ? 'text-emerald-700' : 'text-indigo-700'}`}>
+                      {hasDinner ? '✅ Logged' : '⏳ Pending'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-snug">
-                    {hasDinner 
-                      ? '✅ Dinner recorded! Daily calorie and nutrient diary completed.' 
-                      : 'Good evening! Record dinner before resting to lock in today\'s diary.'}
-                  </p>
                 </div>
-                <div className="mt-3 pt-2.5 border-t border-indigo-200/60 flex items-center justify-between">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                    hasDinner ? 'text-emerald-700' : 'text-indigo-800'
-                  }`}>
-                    {hasDinner ? 'Logged' : 'Pending'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => openLogForSlot('Dinner')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                      hasDinner
-                        ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs'
-                    }`}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{hasDinner ? '+ Add More' : 'Log Dinner'}</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => openLogForSlot('Dinner')}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors cursor-pointer shrink-0 ${
+                    hasDinner
+                      ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                  }`}
+                >
+                  {hasDinner ? '+ Add' : 'Log'}
+                </button>
               </div>
             );
           })()}
+        </div>
+
+        {/* 1-Tap Quick Common Kerala Staples (Instant Logging in 1-Click) */}
+        <div className="pt-1 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <span className="font-bold text-slate-700 text-[11px]">⚡ 1-Tap Quick Staples for {currentCircadianMeal.slot}:</span>
+          </div>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => handleQuickLogStaple('2 Boiled Eggs', 140, 12, 1, 10, 'pieces')}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap"
+              title="Quick Log 2 Boiled Eggs (140 kcal, 12g protein)"
+            >
+              🥚 2 Boiled Eggs (140k)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickLogStaple('2 Appam (Kerala Rice Pancake)', 240, 4, 52, 2, 'pieces')}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap"
+              title="Quick Log 2 Appam (240 kcal)"
+            >
+              🫓 2 Appam (240k)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickLogStaple('Oats with Skimmed Milk', 180, 8, 30, 3, 'bowl')}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap"
+              title="Quick Log Oats Bowl (180 kcal)"
+            >
+              🥣 Oats (180k)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickLogStaple('Kerala Matta Rice + Ayala Curry', 380, 24, 45, 10, 'plate')}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap"
+              title="Quick Log Rice + Fish Curry (380 kcal)"
+            >
+              🍛 Rice + Fish (380k)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickLogStaple('Black Tea / Coffee (No Sugar)', 5, 0, 1, 0, 'cup')}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap"
+              title="Quick Log Black Tea (5 kcal)"
+            >
+              ☕ Black Tea (5k)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickLogStaple('Fresh Green Salad (Cucumber & Tomato)', 45, 2, 8, 0, 'bowl')}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap"
+              title="Quick Log Fresh Salad (45 kcal)"
+            >
+              🥗 Salad (45k)
+            </button>
+          </div>
         </div>
 
         {/* Phone notification indicator */}
         {clientTips.some(t => t.type === 'reminder') && (
-          <div className="mt-3.5 p-3 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between gap-3 text-xs">
+          <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2 text-rose-900 font-medium">
-              <Smartphone className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
+              <Smartphone className="w-3.5 h-3.5 text-rose-600 shrink-0 animate-bounce" />
               <span>
                 <b>Phone Alert from Coach:</b> {clientTips.find(t => t.type === 'reminder')?.message}
               </span>
@@ -759,7 +1135,7 @@ export const ClientApp: React.FC = () => {
             <button
               type="button"
               onClick={() => openLogForSlot('Lunch')}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1 rounded-xl text-[11px] transition-colors shrink-0 cursor-pointer shadow-2xs"
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition-colors shrink-0 cursor-pointer shadow-2xs"
             >
               Log Foods Now →
             </button>
@@ -875,119 +1251,138 @@ export const ClientApp: React.FC = () => {
             </div>
           </div>
 
-          {/* Front Page Display Lines Customizer Toolbar */}
-          <div className="bg-white/90 backdrop-blur-xs rounded-2xl px-4 py-2.5 border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-emerald-600" />
-              <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-                Front Page Display:
-              </span>
+          {/* ================= QUICK DATA SHORTCUTS & COMFORT VIEW CONTROLS ================= */}
+          <div className="bg-white/95 backdrop-blur-xs rounded-2xl p-3.5 border border-slate-200 shadow-2xs space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-xs font-black uppercase tracking-wider text-slate-800">
+                  Quick Data Shortcuts:
+                </span>
+                <span className="text-[11px] text-slate-400 hidden md:inline">
+                  Click any shortcut to inspect deep data without page clutter
+                </span>
+              </div>
+
+              {/* View Mode Toggle: Comfort View vs Detailed View */}
+              <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                <span className="text-[10px] uppercase font-bold text-slate-400 mr-1 hidden sm:inline">Mode:</span>
+                <button
+                  type="button"
+                  onClick={() => !comfortMode && toggleComfortMode()}
+                  className={`text-xs font-bold px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                    comfortMode
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                  title="Comfort View: Decluttered, clean layout with deep data tucked into shortcuts"
+                >
+                  <span>🌿 Comfort View</span>
+                  {comfortMode && <Check className="w-3 h-3 text-white" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => comfortMode && toggleComfortMode()}
+                  className={`text-xs font-bold px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                    !comfortMode
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                  title="Detailed View: Shows all charts and diagnostic tables expanded"
+                >
+                  <span>📊 Detailed Pro</span>
+                  {!comfortMode && <Check className="w-3 h-3 text-white" />}
+                </button>
+              </div>
             </div>
 
-            {/* Quick Pills to toggle individual lines or expand/collapse all */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            {/* Quick 1-Click Access Shortcuts */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* 1. Calorie Knowledge 101 Modal Shortcut */}
+              <button
+                type="button"
+                onClick={() => setIsCalorieGuideOpen(true)}
+                className="text-xs font-extrabold px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs group"
+                title="Click to understand what is a calorie, detection methods, and human requirements"
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
+                <span>🧠 Calorie &amp; Detection Guide</span>
+              </button>
+
+              {/* 2. 8,000 kcal Trajectory Shortcut */}
               <button
                 type="button"
                 onClick={() => toggleSection('trajectory')}
-                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                   visibleSections.trajectory
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white hover:bg-emerald-50 text-slate-700 border-slate-200 hover:border-emerald-300'
                 }`}
-                title="Toggle 8,000 kcal Weight & Calorie Trajectory"
+                title="Click to show or hide the 8,000 kcal Weight Trajectory Table & Chart"
               >
-                {visibleSections.trajectory ? <Check className="w-3 h-3 text-emerald-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
-                <span>8,000 kcal Tracker</span>
+                <Scale className="w-3.5 h-3.5" />
+                <span>8,000 kcal Trajectory</span>
+                <span className="text-[10px] font-mono opacity-80">
+                  {visibleSections.trajectory ? '▲ Hide' : '▼ View Data'}
+                </span>
               </button>
 
+              {/* 3. Coach Clinical Rules & Alerts */}
               <button
                 type="button"
-                onClick={() => toggleSection('nutritionTarget')}
-                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
-                  visibleSections.nutritionTarget
-                    ? 'bg-amber-50 text-amber-900 border-amber-300'
-                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                }`}
-                title="Toggle Daily Calorie & Macro Target Breakdown"
+                onClick={() => setIsClinicalGuideOpen(true)}
+                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200 hover:border-teal-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="View Coach Saleem's official food frequency rules and clinical cautions"
               >
-                {visibleSections.nutritionTarget ? <Check className="w-3 h-3 text-amber-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
-                <span>Daily Targets</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                <span>Clinical Food Rules</span>
               </button>
 
+              {/* 4. Hydration Water Tracker */}
               <button
                 type="button"
                 onClick={() => toggleSection('waterTracker')}
-                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                   visibleSections.waterTracker
-                    ? 'bg-cyan-50 text-cyan-900 border-cyan-300'
-                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                    ? 'bg-cyan-600 text-white border-cyan-600'
+                    : 'bg-white hover:bg-cyan-50 text-slate-700 border-slate-200 hover:border-cyan-300'
                 }`}
-                title="Toggle Daily Hydration Tracker"
+                title="Click to show or hide the Water Hydration Tracker"
               >
-                {visibleSections.waterTracker ? <Check className="w-3 h-3 text-cyan-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
-                <span>Hydration (Water)</span>
+                <Droplets className="w-3.5 h-3.5" />
+                <span>Water Tracker</span>
+                <span className="text-[10px] font-mono opacity-80">
+                  {visibleSections.waterTracker ? '▲' : '▼'}
+                </span>
               </button>
 
+              {/* 5. Daily Habits & Recovery */}
               <button
                 type="button"
                 onClick={() => toggleSection('dailyHabits')}
-                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                   visibleSections.dailyHabits
-                    ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
-                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                    ? 'bg-emerald-700 text-white border-emerald-700'
+                    : 'bg-white hover:bg-emerald-50 text-slate-700 border-slate-200 hover:border-emerald-300'
                 }`}
-                title="Toggle Daily Lifestyle Habits (Steps, Sleep, Vitamins)"
+                title="Click to show or hide Daily Habits (Steps, Sleep, Vitamins)"
               >
-                {visibleSections.dailyHabits ? <Check className="w-3 h-3 text-emerald-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
+                <Activity className="w-3.5 h-3.5" />
                 <span>Daily Habits</span>
+                <span className="text-[10px] font-mono opacity-80">
+                  {visibleSections.dailyHabits ? '▲' : '▼'}
+                </span>
               </button>
 
+              {/* 6. Prescribed Diet Plan */}
               <button
                 type="button"
-                onClick={() => toggleSection('mealsTimeline')}
-                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
-                  visibleSections.mealsTimeline
-                    ? 'bg-teal-50 text-teal-900 border-teal-300'
-                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                }`}
-                title="Toggle Today's Meals Timeline"
+                onClick={() => setActiveTab('plan')}
+                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ml-auto"
+                title="Open full prescribed diet plan timetable"
               >
-                {visibleSections.mealsTimeline ? <Check className="w-3 h-3 text-teal-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
-                <span>Meals Timeline</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => toggleSection('sideWidgets')}
-                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
-                  visibleSections.sideWidgets
-                    ? 'bg-blue-50 text-blue-900 border-blue-300'
-                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                }`}
-                title="Toggle Coach Information & Habits Reminders"
-              >
-                {visibleSections.sideWidgets ? <Check className="w-3 h-3 text-blue-600" /> : <Plus className="w-3 h-3 text-slate-400" />}
-                <span>Coach &amp; Habits</span>
-              </button>
-
-              <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
-
-              <button
-                type="button"
-                onClick={showAllSections}
-                className="text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors cursor-pointer"
-                title="Show all sections expanded"
-              >
-                Show All
-              </button>
-
-              <button
-                type="button"
-                onClick={collapseAllSections}
-                className="text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors cursor-pointer"
-                title="Collapse all sections to sleek lines"
-              >
-                Line View (Collapse All)
+                <BookOpen className="w-3.5 h-3.5 text-slate-500" />
+                <span>Full Diet Plan →</span>
               </button>
             </div>
           </div>
@@ -2428,6 +2823,26 @@ export const ClientApp: React.FC = () => {
       <AppointmentsModal
         isOpen={isAppointmentsModalOpen}
         onClose={() => setIsAppointmentsModalOpen(false)}
+      />
+
+      <CalorieKnowledgeModal
+        isOpen={isCalorieGuideOpen}
+        onClose={() => setIsCalorieGuideOpen(false)}
+        client={activeClient}
+        initialTab={calorieGuideTab}
+      />
+
+      <AppTourGuideModal
+        isOpen={isTourModalOpen}
+        onClose={() => setIsTourModalOpen(false)}
+        onOpenCalorieGuide={() => setIsCalorieGuideOpen(true)}
+        onOpenMealLog={() => openLogForSlot('Breakfast')}
+      />
+
+      <ClinicalFoodGuideModal
+        isOpen={isClinicalGuideOpen}
+        onClose={() => setIsClinicalGuideOpen(false)}
+        clientName={activeClient.name}
       />
     </div>
   );
