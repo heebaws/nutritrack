@@ -202,23 +202,23 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs p-4">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-transparent dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-50/50">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-blue-50/50 dark:bg-slate-800/80">
           <div>
-            <h2 className="text-base font-bold text-slate-900">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
               {existingPlan ? 'Edit Diet Plan' : 'Create & Assign Diet Plan'}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Prescribe daily calorie targets, meal timings, and food portions
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -228,16 +228,16 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
         <form onSubmit={handleSavePlan} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
           
           {/* AI Clinical Plan Generator Banner */}
-          <div className="p-3 bg-linear-to-r from-blue-50 via-indigo-50 to-emerald-50 rounded-xl border border-blue-200 flex items-center justify-between gap-3 shadow-2xs">
+          <div className="p-3 bg-linear-to-r from-blue-50 via-indigo-50 to-emerald-50 dark:from-blue-950/50 dark:via-slate-800 dark:to-emerald-950/40 rounded-xl border border-blue-200 dark:border-blue-800 flex items-center justify-between gap-3 shadow-2xs">
             <div>
-              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
-                <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
+              <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-100 text-xs">
+                <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-pulse" />
                 <span>AI Clinical Diet Plan Generator</span>
-                <span className="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.5 rounded-full border border-blue-300">
+                <span className="text-[10px] bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 font-extrabold px-1.5 py-0.5 rounded-full border border-blue-300 dark:border-blue-800">
                   Gemini 3.8 Flash
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Calibrates 5 meal slots with wholesome Kerala staples for {targetCalories} kcal with 1-click
               </p>
             </div>
@@ -253,7 +253,7 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
           </div>
 
           {aiNotice && (
-            <div className="p-2.5 bg-emerald-100 text-emerald-900 rounded-xl text-xs font-semibold border border-emerald-300 animate-in fade-in">
+            <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 rounded-xl text-xs font-semibold border border-emerald-300 dark:border-emerald-800 animate-in fade-in">
               {aiNotice}
             </div>
           )}
@@ -261,7 +261,7 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
           {/* Plan Title and Description */}
           <div className="space-y-3">
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Plan Title *
               </label>
               <input
@@ -269,13 +269,13 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. 1,600 kcal Balanced Glycemic Deficit Plan"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden text-sm"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden text-sm"
                 required
               />
             </div>
 
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Clinical Focus / Description
               </label>
               <input
@@ -283,71 +283,71 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="e.g. Optimized for steady fat loss, high fiber, and insulin stabilization"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
           </div>
 
           {/* Calorie and Macro Targets */}
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <h3 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] mb-2.5">
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px] mb-2.5">
               Daily Nutrition Targets
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               <div>
-                <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Calories (kcal)</label>
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Calories (kcal)</label>
                 <input
                   type="number"
                   value={targetCalories}
                   onChange={(e) => setTargetCalories(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-bold text-amber-700"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-bold text-amber-700 dark:text-amber-400"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Protein (g)</label>
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Protein (g)</label>
                 <input
                   type="number"
                   value={targetProtein}
                   onChange={(e) => setTargetProtein(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-semibold text-emerald-700"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-semibold text-emerald-700 dark:text-emerald-400"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Carbs (g)</label>
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Carbs (g)</label>
                 <input
                   type="number"
                   value={targetCarbs}
                   onChange={(e) => setTargetCarbs(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-semibold text-blue-700"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-semibold text-blue-700 dark:text-blue-400"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Fat (g)</label>
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Fat (g)</label>
                 <input
                   type="number"
                   value={targetFat}
                   onChange={(e) => setTargetFat(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-semibold text-slate-700"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-semibold text-slate-700 dark:text-slate-200"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Water (Litres)</label>
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Water (Litres)</label>
                 <input
                   type="number"
                   step="0.1"
                   value={waterTargetLitres}
                   onChange={(e) => setWaterTargetLitres(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-semibold text-cyan-700"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-semibold text-cyan-700 dark:text-cyan-400"
                 />
               </div>
             </div>
           </div>
 
           {/* Meals & Foods Configuration */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-white space-y-3">
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-800/40 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 text-xs">Configure Meal Slots</h3>
-              <span className="text-[11px] text-slate-500">Pick foods from centre database</span>
+              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-xs">Configure Meal Slots</h3>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">Pick foods from centre database</span>
             </div>
 
             {/* Meal Slot Tabs */}
@@ -357,10 +357,10 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
                   key={slot}
                   type="button"
                   onClick={() => setActiveSlot(slot)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                     activeSlot === slot
                       ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
                   {slot}
@@ -374,9 +374,9 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
               if (!currentSlotData) return null;
 
               return (
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+                <div className="bg-slate-50 dark:bg-slate-900/70 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-bold text-slate-800 text-xs">{activeSlot} Guidelines:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">{activeSlot} Guidelines:</span>
                     <input
                       type="text"
                       value={currentSlotData.instructions || ''}
@@ -385,7 +385,7 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
                         setMeals(prev => prev.map(m => m.mealType === activeSlot ? { ...m, instructions: val } : m));
                       }}
                       placeholder="e.g. Eat within 1 hour of waking"
-                      className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900"
+                      className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-900 dark:text-slate-100"
                     />
                   </div>
 
@@ -393,35 +393,35 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
                   <div className="space-y-1.5">
                     {currentSlotData.recommendedFoods.length > 0 ? (
                       currentSlotData.recommendedFoods.map((rf, idx) => (
-                        <div key={idx} className="bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                        <div key={idx} className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
                           <div>
-                            <span className="font-semibold text-slate-900">{rf.foodName}</span>
-                            <span className="text-slate-500 text-[11px] ml-2">
+                            <span className="font-semibold text-slate-900 dark:text-slate-100">{rf.foodName}</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-[11px] ml-2">
                               {rf.portion}x {rf.unit} {rf.notes && `(${rf.notes})`}
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleRemoveFoodFromSlot(activeSlot, idx)}
-                            className="text-slate-400 hover:text-rose-600 p-1"
+                            className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       ))
                     ) : (
-                      <p className="text-[11px] text-slate-400 italic py-1">
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 italic py-1">
                         No foods added to {activeSlot} yet. Use the picker below.
                       </p>
                     )}
                   </div>
 
                   {/* Add Food Row */}
-                  <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <select
                       value={selectedFoodId}
                       onChange={(e) => setSelectedFoodId(e.target.value)}
-                      className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1.5 font-medium text-slate-900 text-xs"
+                      className="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 font-medium text-slate-900 dark:text-slate-100 text-xs"
                     >
                       {foods.map((f) => (
                         <option key={f.id} value={f.id}>
@@ -438,7 +438,7 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
                       value={portion}
                       onChange={(e) => setPortion(parseFloat(e.target.value) || 1)}
                       placeholder="Qty"
-                      className="w-16 bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-center font-bold text-xs"
+                      className="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-slate-900 dark:text-slate-100 text-xs"
                     />
 
                     <input
@@ -446,7 +446,7 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
                       value={foodNote}
                       onChange={(e) => setFoodNote(e.target.value)}
                       placeholder="Notes (optional)"
-                      className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs"
+                      className="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-900 dark:text-slate-100 text-xs"
                     />
 
                     <button
@@ -465,31 +465,31 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
 
           {/* General Dietitian Guidelines */}
           <div>
-            <label className="block font-semibold uppercase text-slate-600 mb-1">
+            <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
               General Dietitian Guidelines (One per line)
             </label>
             <textarea
               rows={3}
               value={guidelinesText}
               onChange={(e) => setGuidelinesText(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
             />
           </div>
 
           {/* Assign Plan to Clients */}
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <h3 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               Assign to Clients
             </h3>
-            <p className="text-[11px] text-slate-500 mb-2">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
               Select clients to immediately activate this plan on their mobile app:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {clients.map((c) => (
                 <label
                   key={c.id}
-                  className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 transition-colors"
+                  className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
                 >
                   <input
                     type="checkbox"
@@ -498,8 +498,8 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
                     className="rounded text-blue-600 focus:ring-blue-500"
                   />
                   <div className="truncate">
-                    <span className="font-semibold text-slate-900 block">{c.name}</span>
-                    <span className="text-[10px] text-slate-500">{c.phone} • {c.goal}</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100 block">{c.name}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">{c.phone} • {c.goal}</span>
                   </div>
                 </label>
               ))}
@@ -511,7 +511,7 @@ export const DietPlanBuilderModal: React.FC<DietPlanBuilderModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 font-semibold text-slate-600 hover:text-slate-900 rounded-xl"
+              className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl cursor-pointer"
             >
               Cancel
             </button>

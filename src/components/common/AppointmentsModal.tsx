@@ -98,10 +98,10 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-teal-700 to-emerald-700 text-white">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-teal-700 to-emerald-700 text-white">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center font-bold">
               <CalendarCheck className="w-5 h-5 text-white" />
@@ -125,12 +125,12 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
         {/* Existing Scheduled Appointments */}
         <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
               {t('Scheduled Appointments')} ({clientAppointments.length})
             </h3>
 
             {clientAppointments.length === 0 ? (
-              <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-200/80 text-xs text-slate-500">
+              <div className="bg-slate-50 dark:bg-slate-800/70 rounded-2xl p-4 text-center border border-slate-200/80 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                 {isMl
                   ? 'ഇതുവരെ അപ്പോയിന്റ്മെന്റുകളൊന്നും ബുക്ക് ചെയ്തിട്ടില്ല. അടുത്ത ഇൻബോഡി സ്കാനോ പരിശോധനയോ താഴെ ബുക്ക് ചെയ്യുക!'
                   : 'No upcoming consultations scheduled yet. Book your next InBody scan or review below!'}
@@ -140,29 +140,29 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                 {clientAppointments.map((app) => (
                   <div
                     key={app.id}
-                    className="bg-emerald-50/50 border border-emerald-200/80 rounded-2xl p-3 text-xs flex items-start justify-between gap-3"
+                    className="bg-emerald-50/50 dark:bg-emerald-950/35 border border-emerald-200/80 dark:border-emerald-800/70 rounded-2xl p-3 text-xs flex items-start justify-between gap-3"
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-slate-900">
+                        <span className="font-bold text-slate-900 dark:text-white">
                           {getTypeLabel(app.type)}
                         </span>
-                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">
+                        <span className="bg-emerald-100 dark:bg-emerald-900/70 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">
                           {isMl && app.status === 'scheduled' ? 'നിശ്ചയിച്ചത്' : app.status}
                         </span>
                       </div>
-                      <p className="text-slate-600 flex items-center gap-1.5 font-medium flex-wrap">
-                        <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+                      <p className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 font-medium flex-wrap">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                         <span>{app.date} {isMl ? 'സമയം:' : 'at'} {app.time}</span>
-                        <span className="text-slate-300">•</span>
+                        <span className="text-slate-300 dark:text-slate-600">•</span>
                         <span>{t('Coach')}: <b>{app.dietitianName}</b></span>
                       </p>
-                      <p className="text-slate-500 text-[11px] flex items-center gap-1.5 mt-1">
+                      <p className="text-slate-500 dark:text-slate-400 text-[11px] flex items-center gap-1.5 mt-1">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
                         <span>{app.location}</span>
                       </p>
                       {app.notes && (
-                        <p className="text-slate-400 text-[11px] italic mt-1">
+                        <p className="text-slate-400 dark:text-slate-400 text-[11px] italic mt-1">
                           &ldquo;{app.notes}&rdquo;
                         </p>
                       )}
@@ -171,7 +171,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => deleteAppointment(app.id)}
-                      className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                      className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
                       title={isMl ? 'അപ്പോയിന്റ്മെന്റ് റദ്ദാക്കുക' : 'Cancel appointment'}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -183,9 +183,9 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
           </div>
 
           {/* Schedule / Request New Form */}
-          <form onSubmit={handleCreate} className="pt-4 border-t border-slate-100 space-y-3">
-            <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Plus className="w-4 h-4 text-emerald-600" />
+          <form onSubmit={handleCreate} className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+              <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>
                 {viewMode === 'team'
                   ? (isMl ? 'ക്ലയന്റിന് പുതിയ പരിശോധന ബുക്ക് ചെയ്യുക' : 'Book New Consultation for Client')
@@ -195,7 +195,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
+                <label className="block text-[11px] font-bold uppercase text-slate-400 dark:text-slate-400 mb-1">
                   {t('Date')}
                 </label>
                 <input
@@ -203,13 +203,13 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                   min={getTodayString()}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-emerald-500 cursor-pointer"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white font-semibold focus:outline-emerald-500 cursor-pointer"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
+                <label className="block text-[11px] font-bold uppercase text-slate-400 dark:text-slate-400 mb-1">
                   {isMl ? 'സമയം' : 'Time Slot'}
                 </label>
                 <input
@@ -217,7 +217,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                   placeholder={isMl ? 'ഉദാ: 10:30 AM' : 'e.g. 10:30 AM'}
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-emerald-500"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 font-semibold focus:outline-emerald-500"
                   required
                 />
               </div>
@@ -225,13 +225,13 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
+                <label className="block text-[11px] font-bold uppercase text-slate-400 dark:text-slate-400 mb-1">
                   {isMl ? 'പരിശോധന വിഭാഗം' : 'Appointment Type'}
                 </label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-emerald-500 cursor-pointer"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white font-semibold focus:outline-emerald-500 cursor-pointer"
                 >
                   <option value="inbody_scan">{isMl ? 'ഇൻബോഡി ഫുൾ സ്കാൻ & പരിശോധന' : 'InBody Full Scan & Composition'}</option>
                   <option value="diet_review">{isMl ? 'ഡയറ്റ് പ്ലാനും കലോറിയും അവലോകനം' : 'Diet Plan Review & Calories'}</option>
@@ -241,13 +241,13 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
+                <label className="block text-[11px] font-bold uppercase text-slate-400 dark:text-slate-400 mb-1">
                   {isMl ? 'കോച്ച് / ഡയറ്റീഷ്യൻ' : 'Coach / Dietitian'}
                 </label>
                 <select
                   value={selectedDietitianId}
                   onChange={(e) => setSelectedDietitianId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-emerald-500 cursor-pointer"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white font-semibold focus:outline-emerald-500 cursor-pointer"
                 >
                   {dietitians.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -259,20 +259,20 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
+              <label className="block text-[11px] font-bold uppercase text-slate-400 dark:text-slate-400 mb-1">
                 {isMl ? 'സ്ഥലം / ബ്രാഞ്ച്' : 'Location / Branch'}
               </label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-medium focus:outline-emerald-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white font-medium focus:outline-emerald-500"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
+              <label className="block text-[11px] font-bold uppercase text-slate-400 dark:text-slate-400 mb-1">
                 {isMl ? 'പരിശോധന ഉദ്ദേശ്യം / കുറിപ്പുകൾ' : 'Consultation Purpose / Clinical Notes'}
               </label>
               <input
@@ -280,7 +280,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                 placeholder={isMl ? 'ഇൻബോഡി 270 സ്കാനും ഡയറ്റ് ക്രമീകരണവും' : 'Periodic InBody 270 scan, body fat % review, and diet adjustment.'}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-medium focus:outline-emerald-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 font-medium focus:outline-emerald-500"
               />
             </div>
 
@@ -288,7 +288,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 {t('Close')}
               </button>

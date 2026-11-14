@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ClientProfile, ClientReminder, DietitianTip, MealLogItem, MealType } from '../../types';
 import { CoachClinicalAlertsCard } from './CoachClinicalAlertsCard';
+import { getNotificationStatus, requestOSNotificationPermission, showOSNotification } from '../../utils/notifications';
 import {
   Bell,
   BellRing,
@@ -48,37 +49,29 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 }) => {
   const { t, language, markTipAsRead, markAllTipsAsRead, isTipRead } = useApp();
   const isMl = language === 'ml';
-  const [notifPermission, setNotifPermission] = useState<'default' | 'granted' | 'denied' | 'unsupported'>(() => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
-    return Notification.permission;
-  });
+  const [notifPermission, setNotifPermission] = useState<'default' | 'granted' | 'denied' | 'unsupported'>(() => getNotificationStatus());
   const [testSentBanner, setTestSentBanner] = useState(false);
 
   const requestPhonePermission = async () => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
-    try {
-      const perm = await Notification.requestPermission();
-      setNotifPermission(perm);
-      if (perm === 'granted') {
-        new Notification(isMl ? 'ന്യൂട്രിട്രാക്ക് പ്രോ അലേർട്ടുകൾ സജീവമായി' : 'NutriTrack Pro Alerts Enabled', {
-          body: isMl
-            ? `ഹായ് ${client.name}, 8:00 AM, 1:00 PM, 7:30 PM എന്നീ ഭക്ഷണ സമയങ്ങളിലും കോച്ച് നിർദ്ദേശങ്ങളിലും അലേർട്ട് ലഭിക്കും.`
-            : `Hi ${client.name}, you will receive on-time reminders at 8:00 AM (Breakfast), 1:00 PM (Lunch), and 7:30 PM (Dinner), plus coach alerts.`,
-          icon: '/favicon.ico',
-        });
-      }
-    } catch {}
+    const perm = await requestOSNotificationPermission();
+    setNotifPermission(perm);
+    if (perm === 'granted') {
+      void showOSNotification(isMl ? 'ന്യൂട്രിട്രാക്ക് പ്രോ അലേർട്ടുകൾ സജീവമായി' : 'NutriTrack Pro Alerts Enabled', {
+        body: isMl
+          ? `ഹായ് ${client.name}, 8:00 AM, 1:00 PM, 7:30 PM എന്നീ ഭക്ഷണ സമയങ്ങളിലും കോച്ച് നിർദ്ദേശങ്ങളിലും അലേർട്ട് ലഭിക്കും.`
+          : `Hi ${client.name}, you will receive on-time reminders at 8:00 AM (Breakfast), 1:00 PM (Lunch), and 7:30 PM (Dinner), plus coach alerts.`,
+        tag: 'nutritrack-welcome-notif',
+      });
+    }
   };
 
   const sendTestPhoneAlert = () => {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification(isMl ? 'കോച്ച് സലീം · ഭക്ഷണ ഓർമ്മപ്പെടുത്തൽ' : 'Coach Saleem · Meal Reminder', {
-        body: isMl
-          ? `ന്യൂട്രിട്രാക്ക് പ്രോയിൽ ഇന്നത്തെ ഭക്ഷണം രേഖപ്പെടുത്താൻ സമയമായി!`
-          : `Time to log your nutrition in NutriTrack Pro! Stay consistent with your ${client.goal} goal.`,
-        icon: '/favicon.ico',
-      });
-    }
+    void showOSNotification(isMl ? 'കോച്ച് സലീം · ഭക്ഷണ ഓർമ്മപ്പെടുത്തൽ' : 'Coach Saleem · Meal Reminder', {
+      body: isMl
+        ? `ന്യൂട്രിട്രാക്ക് പ്രോയിൽ ഇന്നത്തെ ഭക്ഷണം രേഖപ്പെടുത്താൻ സമയമായി!`
+        : `Time to log your nutrition in NutriTrack Pro! Stay consistent with your ${client.goal} goal.`,
+      tag: `nutritrack-test-${Date.now()}`,
+    });
     setTestSentBanner(true);
     setTimeout(() => setTestSentBanner(false), 3500);
   };
@@ -116,11 +109,11 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -156,24 +149,29 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-5 overflow-y-auto space-y-6 bg-slate-50/70">
+        <div className="p-5 overflow-y-auto space-y-6 bg-slate-50/70 dark:bg-slate-950">
 
           {/* 1. Native Phone Push Notification Permission Card */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <Smartphone className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                   {t('Phone Notification Delivery')}
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
                   {notifPermission === 'granted'
                     ? t('Active: Scheduled meal times & coach reminders trigger native alerts directly on your phone.')
                     : notifPermission === 'denied'
                     ? t('Notifications are blocked in your browser settings. Enable them in site permissions to receive phone alerts.')
                     : t('Allow notifications so meal check-ins and coach alerts arrive on your phone on time — without cluttering the app.')}
+                </p>
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 font-medium">
+                  {isMl
+                    ? 'സെർവീസ് വർക്കർ (PWA) വഴി Android/Desktop നോട്ടിഫിക്കേഷനുകൾ പ്രവർത്തിക്കുന്നു.'
+                    : 'Delivered via Service Worker (PWA) for mobile & desktop reliability.'}
                 </p>
               </div>
             </div>
@@ -202,16 +200,16 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           </div>
 
           {testSentBanner && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>{t('Test notification sent! Scheduled reminders will alert your phone at exact meal times.')}</span>
             </div>
           )}
 
           {/* 2. Quick-Action Square Icons inside Notification Center */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-700">{t('Quick Actions from Alerts')}</h3>
+              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200">{t('Quick Actions from Alerts')}</h3>
             </div>
 
             <div className="grid grid-cols-5 gap-2.5">
@@ -223,10 +221,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 }}
                 className="flex flex-col items-center gap-1.5 group cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white text-emerald-700 flex items-center justify-center transition-colors">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 group-hover:bg-emerald-600 group-hover:text-white text-emerald-700 dark:text-emerald-400 flex items-center justify-center transition-colors">
                   <Utensils className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Log Meal')}</span>
+                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Log Meal')}</span>
               </button>
 
               <button
@@ -237,10 +235,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 }}
                 className="flex flex-col items-center gap-1.5 group cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-200 group-hover:bg-cyan-600 group-hover:text-white text-cyan-700 flex items-center justify-center transition-colors">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-800 group-hover:bg-cyan-600 group-hover:text-white text-cyan-700 dark:text-cyan-400 flex items-center justify-center transition-colors">
                   <Droplets className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Daily Hydration')}</span>
+                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Daily Hydration')}</span>
               </button>
 
               <button
@@ -251,10 +249,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 }}
                 className="flex flex-col items-center gap-1.5 group cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 group-hover:bg-blue-600 group-hover:text-white text-blue-700 flex items-center justify-center transition-colors">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 group-hover:bg-blue-600 group-hover:text-white text-blue-700 dark:text-blue-400 flex items-center justify-center transition-colors">
                   <Scale className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Morning Weight')}</span>
+                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Morning Weight')}</span>
               </button>
 
               <button
@@ -265,10 +263,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 }}
                 className="flex flex-col items-center gap-1.5 group cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 group-hover:bg-amber-500 group-hover:text-white text-amber-700 flex items-center justify-center transition-colors">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 group-hover:bg-amber-500 group-hover:text-white text-amber-700 dark:text-amber-400 flex items-center justify-center transition-colors">
                   <CalendarDays className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Diet Plan')}</span>
+                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Diet Plan')}</span>
               </button>
 
               <button
@@ -279,10 +277,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 }}
                 className="flex flex-col items-center gap-1.5 group cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 group-hover:bg-rose-600 group-hover:text-white text-rose-700 flex items-center justify-center transition-colors">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 group-hover:bg-rose-600 group-hover:text-white text-rose-700 dark:text-rose-400 flex items-center justify-center transition-colors">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Food Rules')}</span>
+                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Food Rules')}</span>
               </button>
             </div>
           </div>
@@ -290,11 +288,11 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           {/* 3. Coach Reminders & Clinical Meal Alerts */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-2 px-1">
-              <h3 className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+              <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 <span>{t('Coach Reminders & Live Guidance')}</span>
                 <span className="text-slate-400">·</span>
-                <span className={`tabular-nums ${unreadCount > 0 ? 'text-rose-600 font-extrabold' : 'text-emerald-700'}`}>
+                <span className={`tabular-nums ${unreadCount > 0 ? 'text-rose-600 dark:text-rose-400 font-extrabold' : 'text-emerald-700 dark:text-emerald-400'}`}>
                   {unreadCount} {t('Unread')}
                 </span>
               </h3>
@@ -303,7 +301,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => markAllTipsAsRead(unreadTipIds)}
-                  className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                  className="text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-100 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
                   <span>{t('Mark All as Read')}</span>
@@ -321,7 +319,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             {/* Direct Coach Messages / Reminders with Mark as Read */}
             <div className="space-y-2">
               {sortedTips.length === 0 ? (
-                <div className="rounded-2xl p-4 border border-slate-200 bg-white text-center text-xs text-slate-500">
+                <div className="rounded-2xl p-4 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs text-slate-500 dark:text-slate-400">
                   {t('No notifications right now')}
                 </div>
               ) : (
@@ -332,24 +330,24 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       key={tip.id}
                       className={`rounded-2xl p-4 border space-y-2 transition-colors ${
                         read
-                          ? 'bg-white/70 border-slate-200 opacity-80'
+                          ? 'bg-white/70 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 opacity-80'
                           : tip.type === 'reminder'
-                          ? 'bg-rose-50/80 border-rose-300 shadow-2xs'
-                          : 'bg-white border-emerald-300 shadow-2xs'
+                          ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-700 shadow-2xs'
                       }`}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2 text-xs">
                         <div className="space-y-0.5 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`font-bold ${read ? 'text-slate-600' : 'text-slate-900'}`}>
+                            <span className={`font-bold ${read ? 'text-slate-600 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                               {tip.title}
                             </span>
-                            <span className="text-slate-300">·</span>
-                            <span className={`text-[11px] font-bold ${read ? 'text-emerald-700' : 'text-rose-600'}`}>
+                            <span className="text-slate-300 dark:text-slate-700">·</span>
+                            <span className={`text-[11px] font-bold ${read ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                               {read ? `✓ ${t('Read')}` : t('Unread')}
                             </span>
                           </div>
-                          <div className="text-[11px] text-slate-500 font-mono tabular-nums">
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                             {tip.dietitianName} · {tip.createdAt}
                           </div>
                         </div>
@@ -366,7 +364,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                         )}
                       </div>
 
-                      <p className={`text-xs leading-relaxed ${read ? 'text-slate-500' : 'text-slate-700'}`}>
+                      <p className={`text-xs leading-relaxed ${read ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
                         {tip.message}
                       </p>
 
@@ -379,7 +377,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                               onClose();
                               onQuickAction('log-meal');
                             }}
-                            className="text-[11px] font-bold text-rose-700 hover:text-rose-900 underline cursor-pointer"
+                            className="text-[11px] font-bold text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-300 underline cursor-pointer"
                           >
                             {t("Log Today's Meals Now →")}
                           </button>
@@ -394,25 +392,25 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
           {/* 4. Scheduled Official Meal Notification Times */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-bold text-slate-600 flex items-center gap-1.5 px-1">
-              <Clock className="w-3.5 h-3.5 text-emerald-600" />
+            <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 px-1">
+              <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>{t('Scheduled Phone Notification Times')}</span>
             </h3>
 
-            <div className="bg-white rounded-2xl divide-y divide-slate-100 border border-slate-200 overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 overflow-hidden">
               {reminders.map((r) => (
                 <div key={r.id} className="p-3.5 flex items-center justify-between gap-3">
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 mt-0.5">
                       {mealIconForTitle(r.title, r.time)}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 text-xs">
-                        <span className="font-bold text-slate-900">{r.title}</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{r.title}</span>
                         <span className="text-slate-400">·</span>
-                        <span className="font-mono font-semibold text-emerald-700 tabular-nums">{r.time}</span>
+                        <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">{r.time}</span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5 leading-snug">{r.message}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{r.message}</p>
                     </div>
                   </div>
 
@@ -421,7 +419,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                     onClick={() => onToggleReminder(r.id)}
                     aria-label={`Toggle ${r.title}`}
                     className={`w-11 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center shrink-0 ${
-                      r.enabled ? 'bg-emerald-600 justify-end' : 'bg-slate-200 justify-start'
+                      r.enabled ? 'bg-emerald-600 justify-end' : 'bg-slate-200 dark:bg-slate-700 justify-start'
                     }`}
                   >
                     <div className="w-5 h-5 rounded-full bg-white shadow-xs" />

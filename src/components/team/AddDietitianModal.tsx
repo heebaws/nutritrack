@@ -79,23 +79,23 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs p-4">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-transparent dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-emerald-50/70">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-emerald-50/70 dark:bg-slate-800/80">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Add New Dietitian / Wellness Coach</h2>
-              <p className="text-xs text-slate-500">Register a new healthcare practitioner or admin to the team</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Add New Dietitian / Wellness Coach</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Register a new healthcare practitioner or admin to the team</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 cursor-pointer"
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -104,8 +104,8 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs flex-1">
           {/* PROFILE PICTURE FILE UPLOAD SECTION */}
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-            <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <label className="block font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">
               Dietitian Profile Picture (File Upload)
             </label>
             
@@ -119,7 +119,7 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                     className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-emerald-100 text-emerald-700 flex flex-col items-center justify-center border-2 border-dashed border-emerald-300">
+                  <div className="w-20 h-20 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex flex-col items-center justify-center border-2 border-dashed border-emerald-300 dark:border-emerald-700">
                     <Camera className="w-6 h-6" />
                     <span className="text-[10px] font-bold mt-1">No Pic</span>
                   </div>
@@ -143,7 +143,7 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
-                className="flex-1 w-full border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-3 text-center bg-white transition-colors cursor-pointer relative"
+                className="flex-1 w-full border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 rounded-xl p-3 text-center bg-white dark:bg-slate-900 transition-colors cursor-pointer relative"
               >
                 <input
                   type="file"
@@ -153,11 +153,11 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <div className="flex flex-col items-center justify-center gap-1">
-                  <Upload className="w-5 h-5 text-emerald-600" />
-                  <span className="font-bold text-slate-800">
+                  <Upload className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
                     {fileName ? fileName : 'Choose photo file or drag & drop'}
                   </span>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
                     Supports JPG, PNG, WEBP files
                   </span>
                 </div>
@@ -167,7 +167,7 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Full Name *
               </label>
               <input
@@ -175,19 +175,19 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Dr. Ayesha Rahman"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-bold text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 required
               />
             </div>
 
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Role &amp; Permissions *
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as 'admin' | 'dietitian')}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 font-semibold focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
               >
                 <option value="dietitian">Wellness Coach / Dietitian</option>
                 <option value="admin">Centre Administrator</option>
@@ -197,7 +197,7 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Professional Title *
               </label>
               <input
@@ -205,13 +205,13 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Senior Clinical Dietitian"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 required
               />
             </div>
 
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Specialization *
               </label>
               <input
@@ -219,7 +219,7 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                 value={specialization}
                 onChange={(e) => setSpecialization(e.target.value)}
                 placeholder="e.g. Metabolic &amp; PCOS Nutrition"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 required
               />
             </div>
@@ -227,7 +227,7 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Phone Number
               </label>
               <input
@@ -235,12 +235,12 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91 98470 12345"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Email Address
               </label>
               <input
@@ -248,13 +248,13 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="ayesha@wellnesscentre.com"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold uppercase text-slate-600 mb-1">
+            <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
               Professional Bio &amp; Philosophy
             </label>
             <textarea
@@ -262,23 +262,23 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
               onChange={(e) => setBio(e.target.value)}
               placeholder="Provide a brief summary of the coach's credentials, dietary approach, and patient consultation style..."
               rows={2}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden leading-relaxed"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden leading-relaxed"
             />
           </div>
 
           {/* Login Credentials Box */}
-          <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 space-y-2">
-            <div className="flex items-center gap-1.5 font-bold text-emerald-900">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <div className="bg-emerald-50/60 dark:bg-emerald-950/30 p-3.5 rounded-2xl border border-emerald-100 dark:border-emerald-900 space-y-2">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-200">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Coach Portal Login Credentials</span>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
               Set the username and password used to access the staff portal.
             </p>
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="block font-semibold uppercase text-slate-600 mb-0.5">
+                <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-0.5">
                   Portal Username
                 </label>
                 <input
@@ -286,12 +286,12 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder={name ? name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'ayesha'}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-mono text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold uppercase text-slate-600 mb-0.5">
+                <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-0.5">
                   Portal Password
                 </label>
                 <input
@@ -299,18 +299,18 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="coach123"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-mono text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-600 hover:text-slate-800 font-semibold cursor-pointer"
+              className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white font-semibold cursor-pointer"
             >
               Cancel
             </button>

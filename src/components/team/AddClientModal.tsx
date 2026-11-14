@@ -225,24 +225,24 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs p-4">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-transparent dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-50/50">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-blue-50/50 dark:bg-slate-800/80">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
               <UserPlus className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Add New Client</h2>
-              <p className="text-xs text-slate-500">Register and assign client to a dietitian</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Add New Client</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Register and assign client to a dietitian</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600"
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -252,12 +252,12 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-3.5 text-xs flex-1">
 
           {/* CLIENT PHOTO FILE UPLOAD COMPONENT */}
-          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+              <label className="block font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider text-[11px]">
                 Client Photo (File Upload)
               </label>
-              <span className="text-[10px] text-slate-400 font-medium">Optional file</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Optional file</span>
             </div>
             
             <div className="flex flex-col sm:flex-row items-center gap-3.5">
@@ -270,7 +270,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                     className="w-16 h-16 rounded-2xl object-cover border-2 border-blue-500 shadow-sm"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-2xl bg-blue-100/80 text-blue-700 flex flex-col items-center justify-center border-2 border-dashed border-blue-300">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-100/80 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex flex-col items-center justify-center border-2 border-dashed border-blue-300 dark:border-blue-700">
                     <Camera className="w-5 h-5" />
                     <span className="text-[9px] font-bold mt-0.5">No File</span>
                   </div>
@@ -294,7 +294,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handlePhotoDrop}
-                className="flex-1 w-full border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-2.5 text-center bg-white transition-colors cursor-pointer relative"
+                className="flex-1 w-full border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 rounded-xl p-2.5 text-center bg-white dark:bg-slate-900 transition-colors cursor-pointer relative"
               >
                 <input
                   type="file"
@@ -304,11 +304,11 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <div className="flex flex-col items-center justify-center gap-0.5">
-                  <Upload className="w-4 h-4 text-blue-600" />
-                  <span className="font-bold text-slate-800 text-[11px]">
+                  <Upload className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="font-bold text-slate-800 dark:text-slate-100 text-[11px]">
                     {avatarFileName ? avatarFileName : 'Upload client photo file'}
                   </span>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
                     Click to browse or drop JPG / PNG / WEBP
                   </span>
                 </div>
@@ -318,7 +318,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
           
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Full Name *
               </label>
               <input
@@ -326,13 +326,13 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="e.g. Rachel Adams"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 required
               />
             </div>
 
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Mobile Number *
               </label>
               <input
@@ -340,20 +340,20 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. 555-0199"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 required
               />
             </div>
           </div>
 
           {/* Portal Credentials Section */}
-          <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-2">
-            <div className="text-[11px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="p-3 bg-blue-50/50 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900 space-y-2">
+            <div className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
               <span>🔑 Client Portal Login Credentials</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-medium text-slate-700 mb-1">
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Portal Username *
                 </label>
                 <input
@@ -361,12 +361,12 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
                   placeholder="e.g. rachel"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   required
                 />
               </div>
               <div>
-                <label className="block font-medium text-slate-700 mb-1">
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Portal Password *
                 </label>
                 <input
@@ -374,7 +374,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="e.g. password123"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   required
                 />
               </div>
@@ -383,13 +383,13 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Gender
               </label>
               <select
                 value={gender}
                 onChange={(e) => handleGenderChange(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               >
                 <option value="Female">Female</option>
                 <option value="Male">Male</option>
@@ -398,41 +398,41 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
             </div>
 
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Age
               </label>
               <input
                 type="number"
                 value={age}
                 onChange={(e) => setAge(parseInt(e.target.value) || 0)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100"
               />
             </div>
 
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Height (cm)
               </label>
               <input
                 type="number"
                 value={heightCm}
                 onChange={(e) => setHeightCm(parseInt(e.target.value) || 0)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100"
               />
             </div>
           </div>
 
           {/* 1. WEIGHT & NEEDED WEIGHT */}
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+              <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                 ⚖️ Weight &amp; Needed Weight (Target)
               </span>
-              <span className="text-[10px] text-slate-500">kg</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">kg</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
                   Current / Starting Weight (kg) *
                 </label>
                 <input
@@ -440,13 +440,13 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   step="0.1"
                   value={startingWeightKg}
                   onChange={(e) => setStartingWeightKg(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 dark:text-slate-100"
                   required
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-emerald-700 mb-1 text-[11px]">
+                <label className="block font-semibold text-emerald-700 dark:text-emerald-400 mb-1 text-[11px]">
                   Needed / Target Weight (kg) *
                 </label>
                 <input
@@ -454,7 +454,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   step="0.1"
                   value={targetWeightKg}
                   onChange={(e) => setTargetWeightKg(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700"
+                  className="w-full bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700 dark:text-emerald-400"
                   required
                 />
               </div>
@@ -462,19 +462,19 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
           </div>
 
           {/* 2. BODY FAT % (MEN 10-20%, WOMEN 20-30%) */}
-          <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-200/80 space-y-2">
+          <div className="bg-amber-50/50 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200/80 dark:border-amber-900 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-amber-900 text-[11px] uppercase tracking-wider">
+              <span className="font-bold text-amber-900 dark:text-amber-200 text-[11px] uppercase tracking-wider">
                 💧 Body Fat % (Fat Needed Range)
               </span>
-              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-md">
                 {gender === 'Male' ? 'Men: 10 – 20%' : 'Women: 20 – 30%'}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
                   Current Body Fat (%)
                 </label>
                 <input
@@ -482,12 +482,12 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   step="0.1"
                   value={bodyFatPercentage}
                   onChange={(e) => setBodyFatPercentage(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
+                  className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 dark:text-slate-100"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-emerald-700 mb-1 text-[11px]">
+                <label className="block font-semibold text-emerald-700 dark:text-emerald-400 mb-1 text-[11px]">
                   Needed / Target Fat (%)
                 </label>
                 <input
@@ -495,30 +495,30 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   step="0.1"
                   value={targetBodyFatPercentage}
                   onChange={(e) => setTargetBodyFatPercentage(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700"
+                  className="w-full bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700 dark:text-emerald-400"
                 />
               </div>
             </div>
 
-            <p className="text-[10px] text-amber-800 bg-amber-100/70 p-2 rounded-lg leading-relaxed">
+            <p className="text-[10px] text-amber-800 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/60 p-2 rounded-lg leading-relaxed">
               💡 <strong>Clinical Norm:</strong> Man is <strong>10–20%</strong>, Woman is <strong>20–30%</strong>. Usually people's fat is higher than this range; target is set to bring them back within healthy bounds.
             </p>
           </div>
 
           {/* 3. VISCERAL FAT (V-FAT: NEEDED 0.5-9) */}
-          <div className="bg-rose-50/50 p-3 rounded-xl border border-rose-200/80 space-y-2">
+          <div className="bg-rose-50/50 dark:bg-rose-950/30 p-3 rounded-xl border border-rose-200/80 dark:border-rose-900 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-rose-900 text-[11px] uppercase tracking-wider">
+              <span className="font-bold text-rose-900 dark:text-rose-200 text-[11px] uppercase tracking-wider">
                 🫀 Visceral Fat (V-Fat: Needed is 0.5–9)
               </span>
-              <span className="text-[10px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-bold text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded-md">
                 Healthy Needed: 0.5 – 9
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
                   Current V-Fat Level
                 </label>
                 <input
@@ -526,12 +526,12 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   step="0.5"
                   value={visceralFat}
                   onChange={(e) => setVisceralFat(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-rose-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
+                  className="w-full bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 dark:text-slate-100"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-emerald-700 mb-1 text-[11px]">
+                <label className="block font-semibold text-emerald-700 dark:text-emerald-400 mb-1 text-[11px]">
                   Needed V-Fat (Target: 0.5-9)
                 </label>
                 <input
@@ -539,21 +539,21 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   step="0.5"
                   value={targetVisceralFat}
                   onChange={(e) => setTargetVisceralFat(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700"
+                  className="w-full bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700 dark:text-emerald-400"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-[10px] bg-white p-2 rounded-lg border border-rose-100">
-              <span className="text-slate-600">Current Assessment:</span>
+            <div className="flex items-center justify-between text-[10px] bg-white dark:bg-slate-900 p-2 rounded-lg border border-rose-100 dark:border-rose-900">
+              <span className="text-slate-600 dark:text-slate-400">Current Assessment:</span>
               <span className={`font-bold px-2 py-0.5 rounded-full ${
                 visceralFat > 14 
-                  ? 'bg-rose-100 text-rose-800' 
+                  ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300' 
                   : visceralFat >= 10 
-                  ? 'bg-amber-100 text-amber-800' 
+                  ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300' 
                   : visceralFat < 0.5
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-emerald-100 text-emerald-800'
+                  ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
+                  : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
               }`}>
                 {visceralFat > 14 ? '🚨 High Risk (15+)' : visceralFat >= 10 ? '⚠️ Elevated (10-14)' : visceralFat < 0.5 ? '⚠️ Low (<0.5)' : '✓ Optimal (0.5-9)'}
               </span>
@@ -561,12 +561,12 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
           </div>
 
           {/* 4. BMI (BODY MASS INDEX: NEEDED 18-23) */}
-          <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-200/80 space-y-2">
+          <div className="bg-blue-50/50 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-200/80 dark:border-blue-900 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-blue-900 text-[11px] uppercase tracking-wider">
+              <span className="font-bold text-blue-900 dark:text-blue-200 text-[11px] uppercase tracking-wider">
                 📐 BMI (Needed Range is 18–23)
               </span>
-              <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/60 px-2 py-0.5 rounded-md">
                 Standard: 18 – 23
               </span>
             </div>
@@ -574,22 +574,22 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-semibold text-slate-700 text-[11px]">
+                  <label className="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">
                     Current BMI (kg/m²)
                   </label>
-                  <span className="text-[10px] text-blue-600 font-bold">Auto: {computedBmi}</span>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">Auto: {computedBmi}</span>
                 </div>
                 <input
                   type="number"
                   step="0.1"
                   value={customBmi !== '' ? customBmi : computedBmi}
                   onChange={(e) => setCustomBmi(e.target.value)}
-                  className="w-full bg-white border border-blue-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
+                  className="w-full bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-800 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 dark:text-slate-100"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-emerald-700 mb-1 text-[11px]">
+                <label className="block font-semibold text-emerald-700 dark:text-emerald-400 mb-1 text-[11px]">
                   Needed BMI (Target: 18-23)
                 </label>
                 <input
@@ -597,28 +597,28 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   step="0.1"
                   value={targetBmi}
                   onChange={(e) => setTargetBmi(parseFloat(e.target.value) || 21.5)}
-                  className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700"
+                  className="w-full bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700 dark:text-emerald-400"
                 />
               </div>
             </div>
 
-            <p className="text-[10px] text-blue-800 bg-blue-100/70 p-2 rounded-lg">
-              ℹ️ Usually people's BMI will be higher than 23. Current status: <strong className="text-slate-900 font-black">
+            <p className="text-[10px] text-blue-800 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-950/60 p-2 rounded-lg">
+              ℹ️ Usually people's BMI will be higher than 23. Current status: <strong className="text-slate-900 dark:text-slate-100 font-black">
                 {activeBmi > 27 ? 'High Risk (>27)' : activeBmi > 23 ? 'Overweight (>23)' : activeBmi < 18 ? 'Underweight (<18)' : 'Optimal (18-23)'}
               </strong>
             </p>
           </div>
 
           {/* 5. BMR (BASAL METABOLIC RATE & WORK/ACTIVITY STATUS) */}
-          <div className="bg-purple-50/50 p-3 rounded-xl border border-purple-200/80 space-y-2">
+          <div className="bg-purple-50/50 dark:bg-purple-950/30 p-3 rounded-xl border border-purple-200/80 dark:border-purple-900 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-purple-900 text-[11px] uppercase tracking-wider">
+              <span className="font-bold text-purple-900 dark:text-purple-200 text-[11px] uppercase tracking-wider">
                 🔥 BMR &amp; Daily Required Calories (Work Status)
               </span>
               <button
                 type="button"
                 onClick={calculateAutoBmr}
-                className="text-[10px] font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/70 hover:bg-purple-200 dark:hover:bg-purple-900/70 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
               >
                 ⚡ Auto-Compute BMR
               </button>
@@ -626,7 +626,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
                   Baseline BMR (kcal/day)
                 </label>
                 <input
@@ -634,28 +634,28 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   step="10"
                   value={bmr}
                   onChange={(e) => setBmr(parseInt(e.target.value) || 0)}
-                  className="w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
+                  className="w-full bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-800 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 dark:text-slate-100"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-purple-800 mb-1 text-[11px]">
+                <label className="block font-semibold text-purple-800 dark:text-purple-300 mb-1 text-[11px]">
                   Required Calories / Status
                 </label>
-                <div className="w-full bg-purple-100/70 border border-purple-300 rounded-lg px-2.5 py-1.5 font-black text-purple-950 text-sm">
-                  {targetRequiredCalories} <span className="text-[10px] font-normal text-purple-700">kcal/day</span>
+                <div className="w-full bg-purple-100/70 dark:bg-purple-950/60 border border-purple-300 dark:border-purple-800 rounded-lg px-2.5 py-1.5 font-black text-purple-950 dark:text-purple-100 text-sm">
+                  {targetRequiredCalories} <span className="text-[10px] font-normal text-purple-700 dark:text-purple-300">kcal/day</span>
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
                 Work &amp; Physical Activity Level:
               </label>
               <select
                 value={bmrActivity}
                 onChange={(e) => setBmrActivity(e.target.value)}
-                className="w-full bg-white border border-purple-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900"
+                className="w-full bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 dark:text-slate-100"
               >
                 <option value="Sedentary Desk Job">Sedentary Desk Job (Little to no exercise: 1.2x)</option>
                 <option value="Light Activity / Standing Work">Light Activity / Standing Work (1-3 days active: 1.375x)</option>
@@ -666,15 +666,15 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
           </div>
 
           {/* USER MANDATE 1: NEEDED CALORIES (DENOMINATOR IN MAIN BAR) & GOAL REQUIREMENT */}
-          <div className="bg-amber-50/70 p-3.5 rounded-xl border-2 border-amber-300 space-y-3">
+          <div className="bg-amber-50/70 dark:bg-amber-950/30 p-3.5 rounded-xl border-2 border-amber-300 dark:border-amber-800 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-black text-amber-950 text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <span className="font-black text-amber-950 dark:text-amber-200 text-xs uppercase tracking-wider flex items-center gap-1.5">
                 🎯 Needed Daily Calories &amp; Main Bar Denominator
               </span>
               <button
                 type="button"
                 onClick={() => setNeededCalories(String(targetRequiredCalories))}
-                className="text-[10px] font-bold text-amber-800 bg-amber-200/80 hover:bg-amber-300 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                className="text-[10px] font-bold text-amber-800 dark:text-amber-200 bg-amber-200/80 dark:bg-amber-900/70 hover:bg-amber-300 dark:hover:bg-amber-800 px-2 py-0.5 rounded transition-colors cursor-pointer"
               >
                 ⚡ Use BMR ({targetRequiredCalories} kcal)
               </button>
@@ -682,10 +682,10 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-slate-800 text-xs">
+                <label className="font-bold text-slate-800 dark:text-slate-200 text-xs">
                   Needed Calories / Target Denominator (kcal/day) *
                 </label>
-                <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70 px-2 py-0.5 rounded">
                   Main Bar Denominator: {neededCalories || targetRequiredCalories} kcal
                 </span>
               </div>
@@ -697,17 +697,17 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                 value={neededCalories}
                 onChange={(e) => setNeededCalories(e.target.value)}
                 placeholder="e.g. 1500 or 2200"
-                className="w-full bg-white border-2 border-amber-400 rounded-xl px-3 py-2 text-base font-black text-slate-900 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                className="w-full bg-white dark:bg-slate-900 border-2 border-amber-400 dark:border-amber-700 rounded-xl px-3 py-2 text-base font-black text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 required
               />
-              <p className="text-[11px] text-amber-900 mt-1 leading-snug">
+              <p className="text-[11px] text-amber-900 dark:text-amber-300 mt-1 leading-snug">
                 📌 <em>As you type this amount, it will directly become this client's unique calorie denominator in their main bar!</em>
               </p>
             </div>
 
             {/* Goal Requirement Selection */}
             <div>
-              <label className="block font-bold text-slate-800 text-xs mb-1.5">
+              <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs mb-1.5">
                 Client Calorie Color Rule / Requirement:
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -715,8 +715,8 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   onClick={() => setGoalType('loss')}
                   className={`p-2.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
                     goalType === 'loss'
-                      ? 'bg-emerald-50 border-emerald-500 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-slate-300'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 shadow-xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -727,9 +727,9 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                       onChange={() => setGoalType('loss')}
                       className="text-emerald-600"
                     />
-                    <span className="font-black text-xs text-emerald-950">Weight Loss / Fat Loss</span>
+                    <span className="font-black text-xs text-emerald-950 dark:text-emerald-200">Weight Loss / Fat Loss</span>
                   </div>
-                  <p className="text-[10px] text-emerald-800 mt-1 pl-5">
+                  <p className="text-[10px] text-emerald-800 dark:text-emerald-300 mt-1 pl-5">
                     🟢 Green if calories <strong>&lt; {neededCalories || targetRequiredCalories}</strong><br />
                     🔴 Red if exceeds denominator
                   </p>
@@ -739,8 +739,8 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                   onClick={() => setGoalType('gain')}
                   className={`p-2.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
                     goalType === 'gain'
-                      ? 'bg-emerald-50 border-emerald-500 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-slate-300'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 shadow-xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -751,9 +751,9 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                       onChange={() => setGoalType('gain')}
                       className="text-emerald-600"
                     />
-                    <span className="font-black text-xs text-emerald-950">Weight Gain / Surplus</span>
+                    <span className="font-black text-xs text-emerald-950 dark:text-emerald-200">Weight Gain / Surplus</span>
                   </div>
-                  <p className="text-[10px] text-emerald-800 mt-1 pl-5">
+                  <p className="text-[10px] text-emerald-800 dark:text-emerald-300 mt-1 pl-5">
                     🟢 Green if calories <strong>&gt; {neededCalories || targetRequiredCalories}</strong><br />
                     🔴 Red if below denominator
                   </p>
@@ -763,15 +763,15 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
           </div>
 
           {/* USER MANDATE 2: OPTIONAL HUMAN BODY NEEDS & MINERALS */}
-          <div className="bg-teal-50/60 p-3.5 rounded-xl border border-teal-200 space-y-2.5">
+          <div className="bg-teal-50/60 dark:bg-teal-950/30 p-3.5 rounded-xl border border-teal-200 dark:border-teal-800 space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-teal-950 text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <span className="font-bold text-teal-950 dark:text-teal-200 text-xs uppercase tracking-wider flex items-center gap-1.5">
                 🧪 Optional Human Body Needs &amp; Minerals (Optional)
               </span>
               <button
                 type="button"
                 onClick={() => setShowOptionalBodyNeeds(!showOptionalBodyNeeds)}
-                className="text-[10px] font-bold text-teal-700 hover:text-teal-900 bg-teal-100/70 px-2 py-0.5 rounded cursor-pointer"
+                className="text-[10px] font-bold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 bg-teal-100/70 dark:bg-teal-900/60 px-2 py-0.5 rounded cursor-pointer"
               >
                 {showOptionalBodyNeeds ? '− Hide Details' : '+ Show (Optional)'}
               </button>
@@ -782,8 +782,8 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                 <div className="grid grid-cols-2 gap-3">
                   {/* Muscle Mass */}
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
-                      Muscle Mass (kg) <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                      Muscle Mass (kg) <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">(Optional)</span>
                     </label>
                     <input
                       type="number"
@@ -791,13 +791,13 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                       value={muscleMassKg}
                       onChange={(e) => setMuscleMassKg(e.target.value)}
                       placeholder="e.g. 26.5"
-                      className="w-full bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900"
+                      className="w-full bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-teal-800 mb-1 text-[11px]">
-                      Target Muscle Mass (kg) <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
+                    <label className="block font-semibold text-teal-800 dark:text-teal-300 mb-1 text-[11px]">
+                      Target Muscle Mass (kg) <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">(Optional)</span>
                     </label>
                     <input
                       type="number"
@@ -805,7 +805,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                       value={targetMuscleMassKg}
                       onChange={(e) => setTargetMuscleMassKg(e.target.value)}
                       placeholder="e.g. 29.0"
-                      className="w-full bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-teal-700"
+                      className="w-full bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-lg px-2.5 py-1.5 text-xs font-bold text-teal-700 dark:text-teal-400"
                     />
                   </div>
                 </div>
@@ -813,8 +813,8 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                 <div className="grid grid-cols-2 gap-3">
                   {/* Calcium / Bone Mass */}
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
-                      Calcium / Bone Mass (kg) <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                      Calcium / Bone Mass (kg) <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">(Optional)</span>
                     </label>
                     <input
                       type="number"
@@ -822,14 +822,14 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                       value={boneMassKg}
                       onChange={(e) => setBoneMassKg(e.target.value)}
                       placeholder="e.g. 2.4 (Norm: 2.0-3.5)"
-                      className="w-full bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900"
+                      className="w-full bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100"
                     />
                   </div>
 
                   {/* Body Water % */}
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
-                      Total Body Water (%) <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                      Total Body Water (%) <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">(Optional)</span>
                     </label>
                     <input
                       type="number"
@@ -837,7 +837,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                       value={bodyWaterPercentage}
                       onChange={(e) => setBodyWaterPercentage(e.target.value)}
                       placeholder="e.g. 55% (Norm: 50-65%)"
-                      className="w-full bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900"
+                      className="w-full bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100"
                     />
                   </div>
                 </div>
@@ -845,8 +845,8 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                 <div className="grid grid-cols-2 gap-3">
                   {/* Daily Water Intake Needed */}
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
-                      Daily Water Target (L) <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                      Daily Water Target (L) <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">(Optional)</span>
                     </label>
                     <input
                       type="number"
@@ -854,14 +854,14 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                       value={dailyWaterTargetLiters}
                       onChange={(e) => setDailyWaterTargetLiters(e.target.value)}
                       placeholder="e.g. 3.0"
-                      className="w-full bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-blue-700"
+                      className="w-full bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-lg px-2.5 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-400"
                     />
                   </div>
 
                   {/* Daily Protein Target */}
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
-                      Daily Protein Need (g) <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                      Daily Protein Need (g) <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">(Optional)</span>
                     </label>
                     <input
                       type="number"
@@ -869,7 +869,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                       value={proteinTargetGrams}
                       onChange={(e) => setProteinTargetGrams(e.target.value)}
                       placeholder="e.g. 90"
-                      className="w-full bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-purple-700"
+                      className="w-full bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-lg px-2.5 py-1.5 text-xs font-bold text-purple-700 dark:text-purple-400"
                     />
                   </div>
                 </div>
@@ -878,7 +878,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
           </div>
 
           <div>
-            <label className="block font-semibold uppercase text-slate-600 mb-1">
+            <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
               Primary Goal *
             </label>
             <input
@@ -894,20 +894,20 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                 }
               }}
               placeholder="e.g. Weight Loss & Insulin Resistance (-5kg target)"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Assign Dietitian *
               </label>
               <select
                 value={assignedDietitianId}
                 onChange={(e) => setAssignedDietitianId(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100"
               >
                 {dietitians.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -918,13 +918,13 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
             </div>
 
             <div>
-              <label className="block font-semibold uppercase text-slate-600 mb-1">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Initial Diet Plan
               </label>
               <select
                 value={dietPlanId}
                 onChange={(e) => setDietPlanId(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100"
               >
                 {dietPlans.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -936,7 +936,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
           </div>
 
           <div>
-            <label className="block font-semibold uppercase text-slate-600 mb-1">
+            <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
               Medical / Dietary Notes
             </label>
             <input
@@ -944,7 +944,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
               value={medicalNotes}
               onChange={(e) => setMedicalNotes(e.target.value)}
               placeholder="e.g. Vegetarian, lactose sensitive, mild hypertension"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100"
             />
           </div>
 
@@ -952,7 +952,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 font-semibold text-slate-600 hover:text-slate-900 rounded-xl"
+              className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl cursor-pointer"
             >
               Cancel
             </button>

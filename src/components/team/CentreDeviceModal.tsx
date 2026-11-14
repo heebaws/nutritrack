@@ -86,24 +86,24 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4">
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/70 dark:bg-slate-950/80 backdrop-blur-xs p-4">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-transparent dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-50/50">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-blue-50/50 dark:bg-slate-800/80">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">New Checking &amp; Calculations Entry</h2>
-              <p className="text-xs text-slate-500">InBody, Tanita scanner, and clinical body calculations</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">New Checking &amp; Calculations Entry</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">InBody, Tanita scanner, and clinical body calculations</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -115,14 +115,14 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
           {/* Client & Date */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="centre-client-select" className="block font-semibold uppercase text-slate-600 mb-1">
+              <label htmlFor="centre-client-select" className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Client <span className="text-rose-500">*</span>
               </label>
               <select
                 id="centre-client-select"
                 value={clientId}
                 onChange={(e) => handleClientSelect(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 required
               >
                 {clients.map((c) => (
@@ -134,7 +134,7 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
             </div>
 
             <div>
-              <label htmlFor="centre-date-input" className="block font-semibold uppercase text-slate-600 mb-1">
+              <label htmlFor="centre-date-input" className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                 Assessment Date <span className="text-rose-500">*</span>
               </label>
               <input
@@ -143,7 +143,7 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                 max={getTodayString()}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 required
               />
             </div>
@@ -151,14 +151,14 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
 
           {/* Centre Device Model */}
           <div>
-            <label htmlFor="centre-device-select" className="block font-semibold uppercase text-slate-600 mb-1">
+            <label htmlFor="centre-device-select" className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
               Centre Scanner / Device
             </label>
             <select
               id="centre-device-select"
               value={deviceModel}
               onChange={(e) => setDeviceModel(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
             >
               <option value="InBody 270 Body Composition Analyzer">InBody 270 Bio-Impedance Analyzer</option>
               <option value="Tanita MC-780 Multi Frequency Segmental">Tanita MC-780 Segmental Scanner</option>
@@ -168,9 +168,9 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
           </div>
 
           {/* Main Metrics: Weight, Height, BMI */}
-          <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div className="grid grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
             <div>
-              <label htmlFor="centre-weight-input" className="block font-semibold text-slate-700 mb-1">
+              <label htmlFor="centre-weight-input" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Weight (kg) *
               </label>
               <input
@@ -182,13 +182,13 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                 value={weightKg}
                 onChange={(e) => handleWeightChange(e.target.value)}
                 placeholder="e.g. 70.2"
-                className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="centre-height-input" className="block font-semibold text-slate-700 mb-1">
+              <label htmlFor="centre-height-input" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Height (cm)
               </label>
               <input
@@ -206,12 +206,12 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                     setBmi((w / ((h / 100) ** 2)).toFixed(1));
                   }
                 }}
-                className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label htmlFor="centre-bmi-input" className="block font-semibold text-slate-700 mb-1">
+              <label htmlFor="centre-bmi-input" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 BMI (auto)
               </label>
               <input
@@ -221,7 +221,7 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                 value={bmi}
                 onChange={(e) => setBmi(e.target.value)}
                 placeholder="25.8"
-                className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-blue-700 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-bold text-blue-700 dark:text-blue-400 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
           </div>
@@ -229,7 +229,7 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
           {/* Body Composition Details from Device */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label htmlFor="centre-fat-input" className="block font-semibold text-slate-600 mb-1">
+              <label htmlFor="centre-fat-input" className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">
                 Body Fat %
               </label>
               <input
@@ -239,12 +239,12 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                 value={bodyFatPercentage}
                 onChange={(e) => setBodyFatPercentage(e.target.value)}
                 placeholder="e.g. 29.5"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label htmlFor="centre-muscle-input" className="block font-semibold text-slate-600 mb-1">
+              <label htmlFor="centre-muscle-input" className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">
                 Muscle Mass (kg)
               </label>
               <input
@@ -254,12 +254,12 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                 value={muscleMassKg}
                 onChange={(e) => setMuscleMassKg(e.target.value)}
                 placeholder="e.g. 24.4"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label htmlFor="centre-visceral-input" className="block font-semibold text-slate-600 mb-1">
+              <label htmlFor="centre-visceral-input" className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">
                 Visceral Fat Level
               </label>
               <input
@@ -271,12 +271,12 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                 value={visceralFatLevel}
                 onChange={(e) => setVisceralFatLevel(e.target.value)}
                 placeholder="e.g. 7"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label htmlFor="centre-waist-input" className="block font-semibold text-slate-600 mb-1">
+              <label htmlFor="centre-waist-input" className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">
                 Waist (cm)
               </label>
               <input
@@ -286,16 +286,16 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                 value={waistCm}
                 onChange={(e) => setWaistCm(e.target.value)}
                 placeholder="e.g. 82"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
           </div>
 
           {/* Optional Minerals & Human Body Needs */}
-          <div className="grid grid-cols-2 gap-3 bg-teal-50/50 p-3 rounded-xl border border-teal-200/80">
+          <div className="grid grid-cols-2 gap-3 bg-teal-50/50 dark:bg-teal-950/30 p-3 rounded-xl border border-teal-200/80 dark:border-teal-800">
             <div>
-              <label htmlFor="centre-bone-input" className="block font-semibold text-slate-700 mb-1 text-[11px]">
-                Calcium / Bone Mass (kg) <span className="text-slate-400 font-normal">(Optional)</span>
+              <label htmlFor="centre-bone-input" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                Calcium / Bone Mass (kg) <span className="text-slate-400 dark:text-slate-500 font-normal">(Optional)</span>
               </label>
               <input
                 id="centre-bone-input"
@@ -304,13 +304,13 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                 value={boneMassKg}
                 onChange={(e) => setBoneMassKg(e.target.value)}
                 placeholder="e.g. 2.4 kg"
-                className="w-full bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-xs"
+                className="w-full bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-xs"
               />
             </div>
 
             <div>
-              <label htmlFor="centre-water-input" className="block font-semibold text-slate-700 mb-1 text-[11px]">
-                Total Body Water (%) <span className="text-slate-400 font-normal">(Optional)</span>
+              <label htmlFor="centre-water-input" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                Total Body Water (%) <span className="text-slate-400 dark:text-slate-500 font-normal">(Optional)</span>
               </label>
               <input
                 id="centre-water-input"
@@ -319,14 +319,14 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
                 value={bodyWaterPercentage}
                 onChange={(e) => setBodyWaterPercentage(e.target.value)}
                 placeholder="e.g. 55% (50-65% norm)"
-                className="w-full bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-xs"
+                className="w-full bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-xs"
               />
             </div>
           </div>
 
           {/* Clinical Assessment Notes */}
           <div>
-            <label htmlFor="centre-notes-input" className="block font-semibold text-slate-600 mb-1">
+            <label htmlFor="centre-notes-input" className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">
               Dietitian Assessment Notes
             </label>
             <textarea
@@ -335,13 +335,13 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. Visceral fat reduced by 1 level. Client reports high adherence to 1500 kcal plan."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
             />
           </div>
 
           {/* Clinician verification badge */}
-          <div className="bg-blue-50 p-3 rounded-xl border border-blue-200 flex items-center gap-2 text-blue-900">
-            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+          <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 flex items-center gap-2 text-blue-900 dark:text-blue-200">
+            <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
             <span>
               Recorded under <b>{activeTeamUser.name}</b>. This will appear on the client's phone with a <b>Centre Verified</b> badge.
             </span>
@@ -352,14 +352,14 @@ export const CentreDeviceModal: React.FC<CentreDeviceModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 font-semibold text-slate-600 hover:text-slate-900 rounded-xl"
+              className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaved || !weightKg}
-              className="px-5 py-2 font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+              className="px-5 py-2 font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
               {isSaved ? (
                 <>

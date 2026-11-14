@@ -61,14 +61,14 @@ export const ClientAuth: React.FC = () => {
         <div className="mb-4">
           <NutriTrackLogo size="xl" subtitle="Member Nutrition Diary & Lifestyle Tracking" />
         </div>
-        <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 px-3.5 py-1.5 rounded-full text-xs font-bold border border-emerald-200 mb-2 shadow-2xs">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+        <div className="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-3.5 py-1.5 rounded-full text-xs font-bold border border-emerald-200 dark:border-emerald-800 mb-2 shadow-2xs">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <span>Saleem Valanchery Wellness Centre • Client Nutrition &amp; Diet Portal</span>
         </div>
-        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
           Client Portal Sign In
         </h1>
-        <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-xl mx-auto">
+        <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1 max-w-xl mx-auto">
           Log your daily Kerala &amp; centre meals, review your assigned diet plan, and check real-time calories &amp; macros.
         </p>
       </div>
@@ -77,26 +77,26 @@ export const ClientAuth: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         
         {/* LOGIN COLUMN 1: Direct Credentials Sign In Form */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 sm:p-8 flex flex-col justify-between h-full">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 sm:p-8 flex flex-col justify-between h-full">
           <div>
-            <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <NutriTrackLogo size="sm" showText={false} />
                 <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 block">Column 1</span>
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Column 1</span>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                     Client Account Sign In
                   </h2>
                 </div>
               </div>
-              <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200">
+              <span className="text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
                 Member Access
               </span>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="username-input" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                <label htmlFor="username-input" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                   Username or Mobile Number
                 </label>
                 <div className="relative">
@@ -113,13 +113,13 @@ export const ClientAuth: React.FC = () => {
                     }}
                     placeholder="e.g. sarah or rajesh or 555-0192"
                     autoComplete="username"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm font-medium focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="password-input" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                <label htmlFor="password-input" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                   Portal Password
                 </label>
                 <div className="relative">
@@ -136,12 +136,12 @@ export const ClientAuth: React.FC = () => {
                     }}
                     placeholder="••••••••"
                     autoComplete="current-password"
-                    className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                    className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm font-medium focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -149,13 +149,13 @@ export const ClientAuth: React.FC = () => {
                 </div>
 
                 {error && (
-                  <p className="mt-2 text-xs text-rose-600 font-semibold flex items-center gap-1.5 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
+                  <p className="mt-2 text-xs text-rose-600 dark:text-rose-300 font-semibold flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/60 p-2.5 rounded-lg border border-rose-200 dark:border-rose-800">
                     <span>⚠️</span> {error}
                   </p>
                 )}
               </div>
 
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input type="checkbox" defaultChecked className="rounded text-emerald-600 focus:ring-emerald-500" />
                   <span>Remember my login on this device</span>
@@ -165,7 +165,7 @@ export const ClientAuth: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl text-sm transition-all shadow-sm shadow-emerald-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 mt-2"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl text-sm transition-all shadow-sm shadow-emerald-200 dark:shadow-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 mt-2"
               >
                 <span>{isSubmitting ? 'Verifying...' : 'Sign In to Client Portal'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -173,9 +173,9 @@ export const ClientAuth: React.FC = () => {
             </form>
           </div>
 
-          <div className="mt-6 pt-5 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
+          <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 flex items-center justify-between">
             <span className="flex items-center gap-1">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Encrypted Centre Portal</span>
             </span>
             <span>Coach Saleem Valanchery &amp; Team</span>
@@ -183,26 +183,26 @@ export const ClientAuth: React.FC = () => {
         </div>
 
         {/* LOGIN COLUMN 2: 1-Click Client Profiles & Staff Portal */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 sm:p-8 flex flex-col justify-between h-full">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 sm:p-8 flex flex-col justify-between h-full">
           <div>
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-amber-200">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-amber-200 dark:shadow-none">
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 block">Column 2</span>
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">Column 2</span>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                     1-Click Client Accounts
                   </h2>
                 </div>
               </div>
-              <span className="text-[11px] font-semibold bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full border border-amber-200">
+              <span className="text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
                 Instant Demo
               </span>
             </div>
 
-            <p className="text-xs text-slate-500 mb-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Tap <strong>Enter</strong> to instantly test client features, or <strong>Fill</strong> to populate the credentials form in Column 1:
             </p>
 
@@ -215,22 +215,22 @@ export const ClientAuth: React.FC = () => {
                 return (
                   <div
                     key={client.id}
-                    className="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-emerald-50/40 hover:border-emerald-300 transition-all flex items-center justify-between gap-3 text-xs"
+                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/70 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all flex items-center justify-between gap-3 text-xs"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <img
                         src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
                         alt={client.name}
-                        className="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-200 shadow-2xs"
+                        className="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700 shadow-2xs"
                       />
                       <div className="truncate">
-                        <div className="font-bold text-slate-900 truncate text-xs sm:text-sm">
+                        <div className="font-bold text-slate-900 dark:text-white truncate text-xs sm:text-sm">
                           {client.name}
                         </div>
-                        <div className="text-[11px] text-slate-500 truncate flex items-center gap-1.5">
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1.5">
                           <span>{client.goal}</span>
-                          <span className="text-slate-300">•</span>
-                          <span className="font-mono text-emerald-700 font-semibold">{uName}</span>
+                          <span className="text-slate-300 dark:text-slate-600">•</span>
+                          <span className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold">{uName}</span>
                         </div>
                       </div>
                     </div>
@@ -240,7 +240,7 @@ export const ClientAuth: React.FC = () => {
                         type="button"
                         onClick={() => fillCredentials(uName, uPass)}
                         title="Fill credentials into Column 1"
-                        className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                        className="px-2.5 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                       >
                         Fill
                       </button>
@@ -260,22 +260,22 @@ export const ClientAuth: React.FC = () => {
             </div>
 
             {/* Coach / Admin Portal Link */}
-            <div className="mt-4 p-3 bg-blue-50/70 border border-blue-200 rounded-2xl flex items-center justify-between text-xs">
+            <div className="mt-4 p-3 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <Stethoscope className="w-4 h-4 text-blue-600" />
-                <span className="font-semibold text-blue-950">Are you a Centre Coach or Staff?</span>
+                <Stethoscope className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="font-semibold text-blue-950 dark:text-blue-200">Are you a Centre Coach or Staff?</span>
               </div>
               <button
                 type="button"
                 onClick={() => setViewMode('team')}
-                className="font-bold text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                className="font-bold text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 underline cursor-pointer"
               >
                 Go to Coach Portal &rarr;
               </button>
             </div>
           </div>
 
-          <div className="mt-6 pt-5 border-t border-slate-100 text-xs text-slate-400 text-center">
+          <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 text-center">
             Need an account? Contact Wellness Coach Saleem Valanchery at the centre.
           </div>
         </div>

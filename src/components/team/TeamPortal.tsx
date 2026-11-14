@@ -54,7 +54,9 @@ import {
   BellRing,
   ArrowLeft,
   LogOut,
-  Languages
+  Languages,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 export const TeamPortal: React.FC = () => {
@@ -81,25 +83,26 @@ export const TeamPortal: React.FC = () => {
     resetAllData,
     t,
     language,
-    toggleLanguage
+    toggleLanguage,
+    theme,
+    toggleTheme
   } = useApp();
 
   const [isResetting, setIsResetting] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<
+    | null
+    | { type: 'reset' }
+    | { type: 'delete-client'; clientId: string; clientName: string }
+    | { type: 'switch-staff'; staffName: string }
+  >(null);
 
-  const handleResetData = async () => {
-    if (window.confirm('Reset all centre records (clients, meal logs, weights, diet plans, food database) back to default pristine setup?')) {
-      setIsResetting(true);
-      await resetAllData();
-      setTimeout(() => setIsResetting(false), 1000);
-    }
+  const executeResetData = async () => {
+    setIsResetting(true);
+    await resetAllData();
+    setTimeout(() => setIsResetting(false), 1000);
   };
 
-  // Enforce authentication: only logged-in coaches and admins can view the team portal
-  if (!activeTeamUser) {
-    return <LoginPortal defaultTab="coach" />;
-  }
-
-  // Safe coach reference
+  // Safe coach reference (null check enforced below after all hooks)
   const currentCoach = activeTeamUser;
 
   // Workspace launcher panel (null = clean front page showing compact Coach summary + square icons only)
@@ -209,6 +212,11 @@ export const TeamPortal: React.FC = () => {
     }, 4500);
   };
 
+  // Enforce authentication: only logged-in coaches and admins can view the team portal
+  if (!currentCoach) {
+    return <LoginPortal defaultTab="coach" />;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       
@@ -242,7 +250,7 @@ export const TeamPortal: React.FC = () => {
       )}
 
       {/* ================= 1. COMPACT COACH PROFILE HEADER & 3 METRICS ================= */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-5">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5 transition-colors">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <NutriTrackLogo size="md" showText={false} />
@@ -253,17 +261,17 @@ export const TeamPortal: React.FC = () => {
             />
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">
+                <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
                   {currentCoach?.name || 'Saleem Valanchery'}
                 </h1>
-                <span className="text-slate-300">·</span>
+                <span className="text-slate-300 dark:text-slate-600">·</span>
                 <span className={`text-xs font-bold ${
-                  currentCoach?.role === 'admin' ? 'text-purple-700' : 'text-emerald-700'
+                  currentCoach?.role === 'admin' ? 'text-purple-700 dark:text-purple-400' : 'text-emerald-700 dark:text-emerald-400'
                 }`}>
                   {currentCoach?.role === 'admin' ? t('Centre Administrator') : t('Clinical Dietitian')}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                 NutriTrack Pro · {currentCoach?.title || 'Wellness Coach & Lead Centre Admin'}
               </p>
             </div>
@@ -274,10 +282,10 @@ export const TeamPortal: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveWorkspace('clients')}
-              className="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-left transition-colors cursor-pointer"
+              className="bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-left transition-colors cursor-pointer"
             >
-              <span className="text-[11px] font-semibold text-slate-500 block">{t('Enrolled')}</span>
-              <span className="text-xl font-black text-slate-900 tabular-nums">{totalClients}</span>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">{t('Enrolled')}</span>
+              <span className="text-xl font-black text-slate-900 dark:text-white tabular-nums">{totalClients}</span>
             </button>
 
             <button
@@ -286,10 +294,10 @@ export const TeamPortal: React.FC = () => {
                 setStatusFilter('active');
                 setActiveWorkspace('clients');
               }}
-              className="bg-emerald-50/70 hover:bg-emerald-100/70 border border-emerald-200 rounded-2xl px-3.5 py-2.5 text-left transition-colors cursor-pointer"
+              className="bg-emerald-50/70 dark:bg-emerald-950/50 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-3.5 py-2.5 text-left transition-colors cursor-pointer"
             >
-              <span className="text-[11px] font-semibold text-emerald-800 block">{t('Active')}</span>
-              <span className="text-xl font-black text-emerald-700 tabular-nums">{activeClients.length}</span>
+              <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 block">{t('Active')}</span>
+              <span className="text-xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{activeClients.length}</span>
             </button>
 
             <button
@@ -297,14 +305,14 @@ export const TeamPortal: React.FC = () => {
               onClick={() => setActiveWorkspace('reports')}
               className={`border rounded-2xl px-3.5 py-2.5 text-left transition-colors cursor-pointer ${
                 inactiveClients.length > 0
-                  ? 'bg-rose-50 hover:bg-rose-100 border-rose-200'
-                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
+                  ? 'bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 border-rose-200 dark:border-rose-800'
+                  : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'
               }`}
             >
-              <span className={`text-[11px] font-semibold block ${inactiveClients.length > 0 ? 'text-rose-800' : 'text-slate-500'}`}>
+              <span className={`text-[11px] font-semibold block ${inactiveClients.length > 0 ? 'text-rose-800 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`}>
                 {t('3+ Days Away')}
               </span>
-              <span className={`text-xl font-black tabular-nums ${inactiveClients.length > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+              <span className={`text-xl font-black tabular-nums ${inactiveClients.length > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
                 {inactiveClients.length}
               </span>
             </button>
@@ -313,18 +321,18 @@ export const TeamPortal: React.FC = () => {
       </div>
 
       {/* ================= 2. SQUARE ICON WORKSPACE GRID ================= */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-5 transition-colors">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 font-semibold">
             <span>{t('Coach Workspace')}</span>
-            <span className="text-slate-300">·</span>
-            <span className="text-slate-500 font-normal">{t('Tap any square icon to open tools or client records')}</span>
+            <span className="text-slate-300 dark:text-slate-600">·</span>
+            <span className="text-slate-500 dark:text-slate-400 font-normal">{t('Tap any square icon to open tools or client records')}</span>
           </div>
           {activeWorkspace && (
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{t('Minimize Open View')}</span>
@@ -338,7 +346,7 @@ export const TeamPortal: React.FC = () => {
               key: 'clients',
               label: t('Clients'),
               icon: Users,
-              bg: 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white',
+              bg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white',
               active: activeWorkspace === 'clients',
               badge: totalClients,
               onClick: () => {
@@ -350,7 +358,7 @@ export const TeamPortal: React.FC = () => {
               key: 'reports',
               label: t('Inactive Alerts'),
               icon: AlertTriangle,
-              bg: 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white',
+              bg: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 hover:bg-rose-600 hover:text-white',
               active: activeWorkspace === 'reports',
               badge: inactiveClients.length > 0 ? inactiveClients.length : undefined,
               onClick: () => setActiveWorkspace(prev => prev === 'reports' ? null : 'reports'),
@@ -359,7 +367,7 @@ export const TeamPortal: React.FC = () => {
               key: 'live-feed',
               label: t('Live Feed'),
               icon: Smartphone,
-              bg: 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white',
+              bg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-600 hover:text-white',
               active: activeWorkspace === 'live-feed',
               onClick: () => setActiveWorkspace(prev => prev === 'live-feed' ? null : 'live-feed'),
             },
@@ -386,7 +394,7 @@ export const TeamPortal: React.FC = () => {
               key: 'plans',
               label: t('Diet Plans'),
               icon: CalendarDays,
-              bg: 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-600 hover:text-white',
+              bg: 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-600 hover:text-white',
               active: activeWorkspace === 'plans',
               onClick: () => setActiveWorkspace(prev => prev === 'plans' ? null : 'plans'),
             },
@@ -394,7 +402,7 @@ export const TeamPortal: React.FC = () => {
               key: 'foods',
               label: t('Food Library'),
               icon: UtensilsCrossed,
-              bg: 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-600 hover:text-white',
+              bg: 'bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-600 hover:text-white',
               active: activeWorkspace === 'foods',
               onClick: () => setActiveWorkspace(prev => prev === 'foods' ? null : 'foods'),
             },
@@ -402,7 +410,7 @@ export const TeamPortal: React.FC = () => {
               key: 'centre',
               label: t('Centre Scan'),
               icon: Building2,
-              bg: 'bg-slate-900 text-white hover:bg-slate-800',
+              bg: 'bg-slate-900 dark:bg-slate-800 text-white hover:bg-slate-800 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700',
               active: activeWorkspace === 'centre',
               onClick: () => setActiveWorkspace(prev => prev === 'centre' ? null : 'centre'),
             },
@@ -410,7 +418,7 @@ export const TeamPortal: React.FC = () => {
               key: 'appointments',
               label: t('Appointments'),
               icon: CalendarCheck,
-              bg: 'bg-cyan-50 text-cyan-800 border border-cyan-200 hover:bg-cyan-600 hover:text-white',
+              bg: 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 hover:bg-cyan-600 hover:text-white',
               active: false,
               onClick: () => {
                 setSelectedClientIdForAppointment(clients[0]?.id);
@@ -421,7 +429,7 @@ export const TeamPortal: React.FC = () => {
               key: 'print',
               label: t('Print Report'),
               icon: Printer,
-              bg: 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-800 hover:text-white',
+              bg: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-700',
               active: false,
               onClick: () => {
                 setSelectedClientIdForPrint(clients[0]?.id);
@@ -432,7 +440,7 @@ export const TeamPortal: React.FC = () => {
               key: 'staff',
               label: t('Staff & Roles'),
               icon: ShieldCheck,
-              bg: 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-600 hover:text-white',
+              bg: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-600 hover:text-white',
               active: activeWorkspace === 'staff',
               onClick: () => setActiveWorkspace(prev => prev === 'staff' ? null : 'staff'),
             },
@@ -440,7 +448,7 @@ export const TeamPortal: React.FC = () => {
               key: 'more',
               label: t('More & Admin'),
               icon: SlidersHorizontal,
-              bg: 'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-800 hover:text-white',
+              bg: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-700',
               active: activeWorkspace === 'more' || activeWorkspace === 'broadcast',
               onClick: () => setActiveWorkspace(prev => prev === 'more' ? null : 'more'),
             },
@@ -456,19 +464,19 @@ export const TeamPortal: React.FC = () => {
                 <div
                   className={`w-16 h-16 sm:w-20 sm:h-20 aspect-square rounded-2xl flex items-center justify-center relative transition-all duration-150 group-active:scale-95 ${
                     item.active
-                      ? 'bg-emerald-800 text-white ring-4 ring-emerald-200 shadow-sm'
+                      ? 'bg-emerald-800 text-white ring-4 ring-emerald-200 dark:ring-emerald-900 shadow-sm'
                       : item.bg
                   }`}
                 >
                   <IconComponent className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
                   {item.badge !== undefined && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center border-2 border-white tabular-nums">
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center border-2 border-white dark:border-slate-900 tabular-nums">
                       {item.badge}
                     </span>
                   )}
                 </div>
                 <span className={`text-xs font-bold text-center leading-tight transition-colors ${
-                  item.active ? 'text-emerald-900' : 'text-slate-700 group-hover:text-slate-950'
+                  item.active ? 'text-emerald-900 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300 group-hover:text-slate-950 dark:group-hover:text-white'
                 }`}>
                   {item.label}
                 </span>
@@ -480,16 +488,16 @@ export const TeamPortal: React.FC = () => {
 
       {/* ================= VIEW 0: MORE & ADMIN SQUARE DRAWER ================= */}
       {activeWorkspace === 'more' && (
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 space-y-5 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-5 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-slate-700" />
-              <h2 className="text-sm font-bold text-slate-900">{t('Additional Admin & Broadcast Controls')}</h2>
+              <SlidersHorizontal className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">{t('Additional Admin & Broadcast Controls')}</h2>
             </div>
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{t('Close')}</span>
@@ -499,20 +507,37 @@ export const TeamPortal: React.FC = () => {
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
             <button
               type="button"
+              onClick={() => toggleTheme()}
+              className="flex flex-col items-center gap-2 group cursor-pointer"
+            >
+              <div className={`w-16 h-16 aspect-square rounded-2xl border flex flex-col items-center justify-center transition-colors ${
+                theme === 'dark'
+                  ? 'bg-amber-950/60 text-amber-300 border-amber-700 group-hover:bg-amber-600 group-hover:text-white'
+                  : 'bg-slate-100 text-slate-800 border-slate-200 group-hover:bg-slate-900 group-hover:text-white'
+              }`}>
+                {theme === 'dark' ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+              </div>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">
+                {theme === 'dark' ? t('Light Mode') : t('Dark Mode')}
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => toggleLanguage()}
               className="flex flex-col items-center gap-2 group cursor-pointer"
             >
               <div className={`w-16 h-16 aspect-square rounded-2xl border flex flex-col items-center justify-center transition-colors ${
                 language === 'ml'
                   ? 'bg-emerald-800 text-white border-emerald-900'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 group-hover:bg-emerald-700 group-hover:text-white'
+                  : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 group-hover:bg-emerald-700 group-hover:text-white'
               }`}>
                 <Languages className="w-5 h-5" />
                 <span className="text-[10px] font-bold mt-0.5">
                   {language === 'ml' ? 'EN' : 'മലയാളം'}
                 </span>
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">
                 {language === 'ml' ? t('Switch to English') : t('Switch to Malayalam')}
               </span>
             </button>
@@ -522,10 +547,10 @@ export const TeamPortal: React.FC = () => {
               onClick={() => setActiveWorkspace('broadcast')}
               className="flex flex-col items-center gap-2 group cursor-pointer"
             >
-              <div className="w-16 h-16 aspect-square rounded-2xl bg-blue-50 text-blue-700 border border-blue-200 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-colors">
+              <div className="w-16 h-16 aspect-square rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-colors">
                 <Send className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight tabular-nums">Broadcast ({tips.length})</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight tabular-nums">Broadcast ({tips.length})</span>
             </button>
 
             <button
@@ -533,10 +558,10 @@ export const TeamPortal: React.FC = () => {
               onClick={() => currentCoach && setEditingCoach(currentCoach)}
               className="flex flex-col items-center gap-2 group cursor-pointer"
             >
-              <div className="w-16 h-16 aspect-square rounded-2xl bg-purple-50 text-purple-700 border border-purple-200 group-hover:bg-purple-600 group-hover:text-white flex items-center justify-center transition-colors">
+              <div className="w-16 h-16 aspect-square rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 group-hover:bg-purple-600 group-hover:text-white flex items-center justify-center transition-colors">
                 <Edit3 className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Edit Profile')}</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Edit Profile')}</span>
             </button>
 
             {currentCoach?.role === 'admin' && (
@@ -545,10 +570,10 @@ export const TeamPortal: React.FC = () => {
                 onClick={() => setIsAddDietitianOpen(true)}
                 className="flex flex-col items-center gap-2 group cursor-pointer"
               >
-                <div className="w-16 h-16 aspect-square rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center transition-colors">
+                <div className="w-16 h-16 aspect-square rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center transition-colors">
                   <UserPlus className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Add Coach')}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Add Coach')}</span>
               </button>
             )}
 
@@ -560,22 +585,22 @@ export const TeamPortal: React.FC = () => {
               }}
               className="flex flex-col items-center gap-2 group cursor-pointer"
             >
-              <div className="w-16 h-16 aspect-square rounded-2xl bg-slate-100 text-slate-800 border border-slate-200 group-hover:bg-slate-800 group-hover:text-white flex items-center justify-center transition-colors">
+              <div className="w-16 h-16 aspect-square rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 group-hover:bg-slate-800 dark:group-hover:bg-slate-700 group-hover:text-white flex items-center justify-center transition-colors">
                 <Building2 className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('New Scan')}</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('New Scan')}</span>
             </button>
 
             <button
               type="button"
-              onClick={handleResetData}
+              onClick={() => setConfirmAction({ type: 'reset' })}
               disabled={isResetting}
               className="flex flex-col items-center gap-2 group cursor-pointer disabled:opacity-50"
             >
-              <div className="w-16 h-16 aspect-square rounded-2xl bg-amber-50 text-amber-700 border border-amber-200 group-hover:bg-amber-600 group-hover:text-white flex items-center justify-center transition-colors">
+              <div className="w-16 h-16 aspect-square rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 group-hover:bg-amber-600 group-hover:text-white flex items-center justify-center transition-colors">
                 <RotateCcw className={`w-6 h-6 ${isResetting ? 'animate-spin' : ''}`} />
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">
                 {isResetting ? 'Restoring...' : t('Reset Centre')}
               </span>
             </button>
@@ -585,10 +610,10 @@ export const TeamPortal: React.FC = () => {
               onClick={() => staffSignOut()}
               className="flex flex-col items-center gap-2 group cursor-pointer"
             >
-              <div className="w-16 h-16 aspect-square rounded-2xl bg-rose-50 text-rose-700 border border-rose-200 group-hover:bg-rose-600 group-hover:text-white flex items-center justify-center transition-colors">
+              <div className="w-16 h-16 aspect-square rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 group-hover:bg-rose-600 group-hover:text-white flex items-center justify-center transition-colors">
                 <LogOut className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Sign Out')}</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Sign Out')}</span>
             </button>
           </div>
         </div>
@@ -598,14 +623,14 @@ export const TeamPortal: React.FC = () => {
       {activeWorkspace === 'reports' && (
         <div className="space-y-6 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-600" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
               <span>Active &amp; Inactive Client Alerts</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Icons</span>
@@ -614,51 +639,51 @@ export const TeamPortal: React.FC = () => {
           
           {/* Top Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
                 <span>Total Enrolled Clients</span>
-                <Users className="w-4 h-4 text-blue-600" />
+                <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <div className="text-3xl font-black text-slate-900 mt-2">{totalClients}</div>
-              <p className="text-xs text-slate-500 mt-1">Across all assigned centre dietitians</p>
+              <div className="text-3xl font-black text-slate-900 dark:text-white mt-2 tabular-nums">{totalClients}</div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all assigned centre dietitians</p>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-linear-to-b from-emerald-50/30 to-white shadow-xs">
-              <div className="flex items-center justify-between text-emerald-800 text-xs font-semibold">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-200 dark:border-emerald-800/80 bg-linear-to-b from-emerald-50/30 dark:from-emerald-950/30 to-white dark:to-slate-900 shadow-xs">
+              <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
                 <span>Active Clients</span>
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="text-3xl font-black text-emerald-700 mt-2">{activeClients.length}</div>
-              <p className="text-xs text-emerald-700 mt-1">
+              <div className="text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-2 tabular-nums">{activeClients.length}</div>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
                 {totalClients > 0 ? Math.round((activeClients.length / totalClients) * 100) : 0}% active logging meals &amp; measurements
               </p>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-rose-200 bg-linear-to-b from-rose-50/30 to-white shadow-xs">
-              <div className="flex items-center justify-between text-rose-800 text-xs font-semibold">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-rose-200 dark:border-rose-800/80 bg-linear-to-b from-rose-50/30 dark:from-rose-950/30 to-white dark:to-slate-900 shadow-xs">
+              <div className="flex items-center justify-between text-rose-800 dark:text-rose-300 text-xs font-semibold">
                 <span>Inactive / At-Risk Clients</span>
-                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
               </div>
-              <div className="text-3xl font-black text-rose-600 mt-2">{inactiveClients.length}</div>
-              <p className="text-xs text-rose-600 mt-1">No logs recorded in the last 3+ days</p>
+              <div className="text-3xl font-black text-rose-600 dark:text-rose-400 mt-2 tabular-nums">{inactiveClients.length}</div>
+              <p className="text-xs text-rose-600 dark:text-rose-300 mt-1">No logs recorded in the last 3+ days</p>
             </div>
           </div>
 
           {/* Simple Report: Inactive Clients Requiring Attention */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-rose-500" />
                   Client Activity &amp; Inactivity Report
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Identifies clients who have stopped logging so dietitians can follow up early.
                 </p>
               </div>
 
               {inactiveClients.length > 0 && (
-                <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg self-start sm:self-auto">
+                <span className="text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 px-2.5 py-1 rounded-lg self-start sm:self-auto">
                   {inactiveClients.length} clients need follow-up
                 </span>
               )}
@@ -666,7 +691,7 @@ export const TeamPortal: React.FC = () => {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-4">Client</th>
                     <th className="py-3 px-4">Assigned Dietitian</th>
@@ -676,7 +701,7 @@ export const TeamPortal: React.FC = () => {
                     <th className="py-3 px-4 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {validClients.map((client) => {
                     const dietitian = dietitians.find(d => d.id === client.assignedDietitianId) || dietitians[0];
                     const inactive = isClientInactive(client);
@@ -690,7 +715,9 @@ export const TeamPortal: React.FC = () => {
                       <tr 
                         key={client.id} 
                         className={`transition-colors ${
-                          inactive ? 'bg-rose-50/70 border-l-4 border-l-rose-600 hover:bg-rose-100/50' : 'hover:bg-slate-50/80'
+                          inactive
+                            ? 'bg-rose-50/70 dark:bg-rose-950/30 border-l-4 border-l-rose-600 hover:bg-rose-100/50 dark:hover:bg-rose-950/45'
+                            : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/60'
                         }`}
                       >
                         <td className="py-3 px-4">
@@ -700,34 +727,34 @@ export const TeamPortal: React.FC = () => {
                                 src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
                                 alt={clientDisplayName}
                                 className={`w-9 h-9 rounded-full object-cover shrink-0 border-2 ${
-                                  inactive ? 'border-rose-500 ring-2 ring-rose-200' : 'border-emerald-400'
+                                  inactive ? 'border-rose-500 ring-2 ring-rose-200 dark:ring-rose-900' : 'border-emerald-400'
                                 }`}
                               />
                               {inactive && (
-                                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-600 border-2 border-white animate-pulse" title="Inactive for 3+ days" />
+                                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-600 border-2 border-white dark:border-slate-900 animate-pulse" title="Inactive for 3+ days" />
                               )}
                             </div>
                             <div>
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className={`font-bold block ${inactive ? 'text-rose-950' : 'text-slate-900'}`}>{clientDisplayName}</span>
+                                <span className={`font-bold block ${inactive ? 'text-rose-950 dark:text-rose-200' : 'text-slate-900 dark:text-slate-100'}`}>{clientDisplayName}</span>
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
                                   inactive 
                                     ? 'bg-rose-600 text-white shadow-xs animate-pulse' 
-                                    : 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
                                 }`}>
                                   {inactive ? `Inactive (${daysAway}d no food logs)` : 'Active'}
                                 </span>
                               </div>
-                              <span className="text-[11px] text-slate-500 font-mono block">Phone: {clientPhoneDisplay}</span>
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block">Phone: {clientPhoneDisplay}</span>
                             </div>
                           </div>
                         </td>
 
-                        <td className="py-3 px-4 font-medium text-slate-700">
+                        <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
                           {coachDisplayName}
                         </td>
 
-                        <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400 max-w-xs truncate">
                           {clientGoalDisplay}
                         </td>
 
@@ -735,19 +762,19 @@ export const TeamPortal: React.FC = () => {
                           <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide inline-flex items-center gap-1 ${
                             inactive 
                               ? 'bg-rose-600 text-white shadow-xs' 
-                              : 'bg-emerald-100 text-emerald-800'
+                              : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
                           }`}>
                             {inactive ? <AlertTriangle className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
                             <span>{inactive ? 'INACTIVE (3+ DAYS)' : 'ACTIVE'}</span>
                           </span>
                         </td>
 
-                        <td className="py-3 px-4 text-slate-600">
-                          <div className={`flex items-center gap-1 font-mono text-[11px] ${inactive ? 'text-rose-700 font-bold' : ''}`}>
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                          <div className={`flex items-center gap-1 font-mono text-[11px] ${inactive ? 'text-rose-700 dark:text-rose-300 font-bold' : ''}`}>
                             <Clock className={`w-3 h-3 ${inactive ? 'text-rose-500' : 'text-slate-400'}`} />
                             <span>{client.lastActiveDate || 'No food logs'}</span>
                             {inactive && (
-                              <span className="text-[10px] bg-rose-100 text-rose-800 px-1.5 rounded-sm font-sans font-bold">
+                              <span className="text-[10px] bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-200 px-1.5 rounded-sm font-sans font-bold">
                                 {daysAway} days ago
                               </span>
                             )}
@@ -781,7 +808,7 @@ export const TeamPortal: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setViewingClientDossier(client)}
-                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
+                              className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold px-2.5 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
                             >
                               <Eye className="w-3 h-3" />
                               <span>View Dossier</span>
@@ -797,20 +824,20 @@ export const TeamPortal: React.FC = () => {
           </div>
 
           {/* Live Mobile Updates Preview in Reports Tab */}
-          <div className="bg-white rounded-2xl border border-emerald-200/80 p-5 shadow-xs bg-linear-to-r from-emerald-50/40 via-white to-blue-50/30">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/70 p-5 shadow-xs bg-linear-to-r from-emerald-50/40 via-white to-blue-50/30 dark:from-emerald-950/30 dark:via-slate-900 dark:to-blue-950/20">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <Smartphone className="w-4 h-4 text-emerald-600" />
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     Live Mobile Updates from Clients
                   </h3>
-                  <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300">
                     Real-Time Cloud Storage
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Updates entered by clients on their smartphones (meals, fasting weight, water, habits) reflect here immediately via Firestore.
                 </p>
               </div>
@@ -818,7 +845,7 @@ export const TeamPortal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveWorkspace('live-feed')}
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-white border border-emerald-200 hover:bg-emerald-50 px-3 py-1.5 rounded-xl shadow-2xs transition-colors flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                className="text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-slate-700 px-3 py-1.5 rounded-xl shadow-2xs transition-colors flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
               >
                 <span>Open Full Mobile Feed ({mealLogs.length + measurements.length + waterLogs.length} updates)</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -830,25 +857,25 @@ export const TeamPortal: React.FC = () => {
               {mealLogs.slice(0, 2).map((m) => {
                 const client = clients.find(c => c.id === m.clientId);
                 return (
-                  <div key={m.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+                  <div key={m.id} className="bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col justify-between">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-base">🥗</span>
                         <div>
-                          <span className="font-bold text-xs text-slate-900 block truncate max-w-[120px]">
+                          <span className="font-bold text-xs text-slate-900 dark:text-white block truncate max-w-[120px]">
                             {client?.name || 'Client'}
                           </span>
-                          <span className="text-[10px] text-emerald-700 font-semibold">{m.mealType}</span>
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">{m.mealType}</span>
                         </div>
                       </div>
-                      <span className="font-mono text-[10px] text-slate-400">{m.timeLogged || m.date}</span>
+                      <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">{m.timeLogged || m.date}</span>
                     </div>
-                    <div className="mt-2 text-xs text-slate-700 truncate font-medium">
+                    <div className="mt-2 text-xs text-slate-700 dark:text-slate-200 truncate font-medium">
                       {m.foodName}
                     </div>
-                    <div className="mt-1 flex items-center justify-between text-[11px] font-bold text-slate-900">
+                    <div className="mt-1 flex items-center justify-between text-[11px] font-bold text-slate-900 dark:text-white tabular-nums">
                       <span>{m.calories} kcal</span>
-                      <span className="text-[10px] font-medium text-slate-500">P:{m.protein}g • C:{m.carbs}g • F:{m.fat}g</span>
+                      <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">P:{m.protein}g • C:{m.carbs}g • F:{m.fat}g</span>
                     </div>
                   </div>
                 );
@@ -857,23 +884,23 @@ export const TeamPortal: React.FC = () => {
               {measurements.slice(0, 1).map((w) => {
                 const client = clients.find(c => c.id === w.clientId);
                 return (
-                  <div key={w.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+                  <div key={w.id} className="bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col justify-between">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <Scale className="w-4 h-4 text-blue-600" />
+                        <Scale className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         <div>
-                          <span className="font-bold text-xs text-slate-900 block truncate max-w-[120px]">
+                          <span className="font-bold text-xs text-slate-900 dark:text-white block truncate max-w-[120px]">
                             {client?.name || 'Client'}
                           </span>
-                          <span className="text-[10px] text-blue-700 font-semibold">Morning Weigh-in</span>
+                          <span className="text-[10px] text-blue-700 dark:text-blue-400 font-semibold">Morning Weigh-in</span>
                         </div>
                       </div>
-                      <span className="font-mono text-[10px] text-slate-400">{w.date}</span>
+                      <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">{w.date}</span>
                     </div>
-                    <div className="mt-2 text-base font-extrabold text-blue-700">
+                    <div className="mt-2 text-base font-extrabold text-blue-700 dark:text-blue-400 tabular-nums">
                       {w.weightKg} kg
                     </div>
-                    <div className="mt-1 text-[10px] text-slate-500 truncate">
+                    <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 truncate">
                       {w.source === 'centre_device' ? 'Centre InBody Scan' : 'Mobile Fasting Weight'}
                     </div>
                   </div>
@@ -883,23 +910,23 @@ export const TeamPortal: React.FC = () => {
               {waterLogs.slice(0, 1).map((wat) => {
                 const client = clients.find(c => c.id === wat.clientId);
                 return (
-                  <div key={wat.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+                  <div key={wat.id} className="bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col justify-between">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <Droplets className="w-4 h-4 text-cyan-600" />
+                        <Droplets className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                         <div>
-                          <span className="font-bold text-xs text-slate-900 block truncate max-w-[120px]">
+                          <span className="font-bold text-xs text-slate-900 dark:text-white block truncate max-w-[120px]">
                             {client?.name || 'Client'}
                           </span>
-                          <span className="text-[10px] text-cyan-700 font-semibold">Hydration Log</span>
+                          <span className="text-[10px] text-cyan-700 dark:text-cyan-400 font-semibold">Hydration Log</span>
                         </div>
                       </div>
-                      <span className="font-mono text-[10px] text-slate-400">{wat.timeLogged || wat.date}</span>
+                      <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">{wat.timeLogged || wat.date}</span>
                     </div>
-                    <div className="mt-2 text-base font-extrabold text-cyan-700">
+                    <div className="mt-2 text-base font-extrabold text-cyan-700 dark:text-cyan-400 tabular-nums">
                       +{wat.amountMl} ml
                     </div>
-                    <div className="mt-1 text-[10px] text-slate-500 truncate">
+                    <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 truncate">
                       Logged from mobile phone
                     </div>
                   </div>
@@ -915,14 +942,14 @@ export const TeamPortal: React.FC = () => {
       {activeWorkspace === 'live-feed' && (
         <div className="space-y-6 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-emerald-600" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Live Client Mobile Feed</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Icons</span>
@@ -930,7 +957,7 @@ export const TeamPortal: React.FC = () => {
           </div>
           
           {/* Header Banner */}
-          <div className="bg-white rounded-2xl border border-emerald-200 p-5 shadow-xs bg-linear-to-r from-emerald-50/50 via-white to-blue-50/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-200 dark:border-emerald-800/70 p-5 shadow-xs bg-linear-to-r from-emerald-50/50 via-white to-blue-50/40 dark:from-emerald-950/30 dark:via-slate-900 dark:to-blue-950/20">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2.5">
@@ -938,11 +965,11 @@ export const TeamPortal: React.FC = () => {
                     <Smartphone className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       Live Client Mobile Feed
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                     </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Real-time cloud stream: Any food logged, weight recorded, or habit checked on a client's phone immediately appears here.
                     </p>
                   </div>
@@ -950,9 +977,9 @@ export const TeamPortal: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="text-xs px-3 py-1.5 rounded-xl bg-white border border-emerald-200 shadow-2xs flex items-center gap-2">
-                  <Cloud className="w-4 h-4 text-emerald-600" />
-                  <span className="font-bold text-slate-800">Firestore Cloud Sync</span>
+                <div className="text-xs px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 shadow-2xs flex items-center gap-2">
+                  <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="font-bold text-slate-800 dark:text-slate-200">Firestore Cloud Sync</span>
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
               </div>
@@ -960,46 +987,46 @@ export const TeamPortal: React.FC = () => {
           </div>
 
           {/* Activity Timeline List */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Latest Client Actions (Chronological)
               </h3>
-              <div className="text-xs text-slate-500">
-                Total Logs: <span className="font-bold text-slate-800">{mealLogs.length + measurements.length + waterLogs.length + activities.length}</span> items
+              <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                Total Logs: <span className="font-bold text-slate-800 dark:text-white">{mealLogs.length + measurements.length + waterLogs.length + activities.length}</span> items
               </div>
             </div>
 
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {/* Combine and sort recent logs */}
               {mealLogs.length === 0 && measurements.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 text-xs">
+                <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
                   No mobile logs recorded yet. When clients log on their phone, they will stream here in real time.
                 </div>
               ) : (
                 mealLogs.slice(0, 20).map((meal) => {
                   const client = clients.find(c => c.id === meal.clientId);
                   return (
-                    <div key={meal.id} className="p-4 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div key={meal.id} className="p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-lg shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center text-lg shrink-0">
                           🥗
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-slate-900">{client?.name || 'Client'}</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs text-slate-900 dark:text-white">{client?.name || 'Client'}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                               {meal.mealType}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                               {meal.timeLogged} • {meal.date}
                             </span>
                           </div>
-                          <div className="text-xs text-slate-700 mt-1 font-medium">
+                          <div className="text-xs text-slate-700 dark:text-slate-300 mt-1 font-medium">
                             {meal.foodName} ({meal.quantity}x {meal.servingUnit})
                           </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-3">
-                            <span className="font-semibold text-slate-800">🔥 {meal.calories} kcal</span>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-3 tabular-nums">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">🔥 {meal.calories} kcal</span>
                             <span>Protein: {meal.protein}g</span>
                             <span>Carbs: {meal.carbs}g</span>
                             <span>Fat: {meal.fat}g</span>
@@ -1012,7 +1039,7 @@ export const TeamPortal: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setViewingClientDossier(client)}
-                            className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 transition-colors cursor-pointer"
+                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors cursor-pointer"
                           >
                             View Client
                           </button>
@@ -1032,14 +1059,14 @@ export const TeamPortal: React.FC = () => {
       {activeWorkspace === 'clients' && (
         <div className="space-y-4 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-600" />
-              <span>Clients Directory ({filteredClients.length})</span>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="tabular-nums">Clients Directory ({filteredClients.length})</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Icons</span>
@@ -1047,7 +1074,7 @@ export const TeamPortal: React.FC = () => {
           </div>
           
           {/* Search and Filters Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
                 <div className="relative flex-1 max-w-sm">
@@ -1057,7 +1084,7 @@ export const TeamPortal: React.FC = () => {
                     value={clientSearch}
                     onChange={(e) => setClientSearch(e.target.value)}
                     placeholder="Search client by name, username or phone..."
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   />
                 </div>
 
@@ -1065,7 +1092,7 @@ export const TeamPortal: React.FC = () => {
                 <select
                   value={dietitianFilter}
                   onChange={(e) => setDietitianFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900"
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white"
                 >
                   <option value="all">All Wellness Coaches</option>
                   {dietitians.map((d) => (
@@ -1077,7 +1104,7 @@ export const TeamPortal: React.FC = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900"
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white"
                 >
                   <option value="all">All Statuses</option>
                   <option value="active">Active Only</option>
@@ -1087,14 +1114,14 @@ export const TeamPortal: React.FC = () => {
 
               <div className="flex items-center gap-2">
                 {/* View switcher: Table vs Cards */}
-                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold">
                   <button
                     type="button"
                     onClick={() => setClientViewMode('table')}
                     className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                       clientViewMode === 'table'
-                        ? 'bg-white text-blue-700 shadow-2xs font-bold'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-2xs font-bold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <span>📊 All Columns Table</span>
@@ -1104,8 +1131,8 @@ export const TeamPortal: React.FC = () => {
                     onClick={() => setClientViewMode('cards')}
                     className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                       clientViewMode === 'cards'
-                        ? 'bg-white text-blue-700 shadow-2xs font-bold'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-2xs font-bold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <span>🗂️ Cards View</span>
@@ -1124,8 +1151,8 @@ export const TeamPortal: React.FC = () => {
             </div>
 
             {/* Quick Coach Filter Shortcuts */}
-            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-slate-400 dark:text-slate-500 font-semibold text-[11px] uppercase tracking-wider">
                 Check People Under:
               </span>
               <button
@@ -1133,8 +1160,8 @@ export const TeamPortal: React.FC = () => {
                 onClick={() => setDietitianFilter('all')}
                 className={`px-3 py-1 rounded-lg font-semibold transition-colors cursor-pointer text-xs ${
                   dietitianFilter === 'all'
-                    ? 'bg-slate-900 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-slate-900 dark:bg-emerald-700 text-white shadow-2xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 All People ({clients.length})
@@ -1152,12 +1179,12 @@ export const TeamPortal: React.FC = () => {
                     className={`px-3 py-1 rounded-lg font-semibold transition-colors cursor-pointer text-xs flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>{d.name}</span>
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      isSelected ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-600'
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums ${
+                      isSelected ? 'bg-blue-700 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                     }`}>
                       {count}
                     </span>
@@ -1169,11 +1196,11 @@ export const TeamPortal: React.FC = () => {
 
           {/* ================= CLIENTS DISPLAY: TABLE OR CARDS ================= */}
           {clientViewMode === 'table' ? (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
+                    <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold text-[10px]">
                       <th className="py-3 px-3.5">Client &amp; Contact</th>
                       <th className="py-3 px-3">
                         <div className="flex items-center gap-1">
@@ -1204,7 +1231,7 @@ export const TeamPortal: React.FC = () => {
                       <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredClients.map((client) => {
                       const dietitian = dietitians.find(d => d.id === client.assignedDietitianId) || dietitians[0];
                       const plan = dietPlans.find(p => p.id === client.dietPlanId) || dietPlans[0];
@@ -1221,9 +1248,11 @@ export const TeamPortal: React.FC = () => {
 
                       return (
                         <tr 
-                          key={client.id}
+                          key={client.id} 
                           className={`transition-colors ${
-                            inactive ? 'bg-rose-50/70 border-l-4 border-l-rose-600 hover:bg-rose-100/50' : 'hover:bg-slate-50/90'
+                            inactive
+                              ? 'bg-rose-50/70 dark:bg-rose-950/30 border-l-4 border-l-rose-600 hover:bg-rose-100/50 dark:hover:bg-rose-950/45'
+                              : 'hover:bg-slate-50/90 dark:hover:bg-slate-800/50'
                           }`}
                         >
                           {/* 1. Client & Contact */}
@@ -1234,24 +1263,24 @@ export const TeamPortal: React.FC = () => {
                                   src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
                                   alt={clientDisplayName}
                                   className={`w-9 h-9 rounded-full object-cover shrink-0 border-2 ${
-                                    inactive ? 'border-rose-500 ring-2 ring-rose-200' : 'border-emerald-400'
+                                    inactive ? 'border-rose-500 ring-2 ring-rose-200 dark:ring-rose-900' : 'border-emerald-400'
                                   }`}
                                 />
                                 {inactive && (
-                                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-600 border-2 border-white animate-pulse" title="Inactive for 3+ days" />
+                                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-600 border-2 border-white dark:border-slate-900 animate-pulse" title="Inactive for 3+ days" />
                                 )}
                               </div>
                               <div>
-                                <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                                  <span className={inactive ? 'text-rose-950 font-black' : 'text-slate-900'}>{clientDisplayName}</span>
-                                  <span className="text-[10px] text-slate-400 font-normal">
+                                <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                                  <span className={inactive ? 'text-rose-950 dark:text-rose-200 font-black' : 'text-slate-900 dark:text-slate-100'}>{clientDisplayName}</span>
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
                                     ({client.gender || 'Client'}, {client.age || 30}y)
                                   </span>
                                 </div>
-                                <div className="text-[11px] text-slate-500 font-mono flex items-center gap-2 mt-0.5">
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono flex items-center gap-2 mt-0.5">
                                   <span>{clientPhoneDisplay}</span>
                                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                    inactive ? 'bg-rose-600 text-white shadow-2xs animate-pulse' : 'bg-emerald-100 text-emerald-800'
+                                    inactive ? 'bg-rose-600 text-white shadow-2xs animate-pulse' : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
                                   }`}>
                                     {inactive ? `Inactive (${daysAway}d)` : 'Active'}
                                   </span>
@@ -1261,89 +1290,89 @@ export const TeamPortal: React.FC = () => {
                           </td>
 
                           {/* 2. Weight & Needed Weight */}
-                          <td className="py-3 px-3">
+                          <td className="py-3 px-3 tabular-nums">
                             <div className="space-y-0.5">
                               <div className="flex items-baseline gap-1.5">
-                                <span className="font-black text-slate-900 text-sm">{client.currentWeightKg}</span>
-                                <span className="text-[10px] text-slate-400">kg</span>
+                                <span className="font-black text-slate-900 dark:text-white text-sm">{client.currentWeightKg}</span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500">kg</span>
                               </div>
-                              <div className="text-[11px] text-emerald-700 font-medium">
+                              <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
                                 Needed: <b className="font-bold">{client.targetWeightKg} kg</b>
                               </div>
                             </div>
                           </td>
 
                           {/* 3. Fat % (Men 10-20, Women 20-30) */}
-                          <td className="py-3 px-3">
+                          <td className="py-3 px-3 tabular-nums">
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-black text-slate-900 text-sm">
+                                <span className="font-black text-slate-900 dark:text-white text-sm">
                                   {client.bodyFatPercentage ?? '--'}%
                                 </span>
                                 {isFatHigh && (
-                                  <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 rounded-sm">
+                                  <span className="text-[9px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 px-1 rounded-sm">
                                     High
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[10px] text-slate-500">
-                                Needed: <strong className="text-emerald-700">{client.targetBodyFatPercentage ?? '--'}%</strong> <span className="text-slate-400">({fatNormLabel})</span>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                Needed: <strong className="text-emerald-700 dark:text-emerald-400">{client.targetBodyFatPercentage ?? '--'}%</strong> <span className="text-slate-400 dark:text-slate-500">({fatNormLabel})</span>
                               </div>
                             </div>
                           </td>
 
                           {/* 4. Visceral Fat (V-Fat: 0.5-9) */}
-                          <td className="py-3 px-3">
+                          <td className="py-3 px-3 tabular-nums">
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-black text-slate-900 text-sm">
+                                <span className="font-black text-slate-900 dark:text-white text-sm">
                                   {client.visceralFat ?? '--'}
                                 </span>
                                 <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
                                   (client.visceralFat ?? 0) > 14 
-                                    ? 'bg-rose-100 text-rose-800' 
+                                    ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300' 
                                     : (client.visceralFat ?? 0) >= 10 
-                                    ? 'bg-amber-100 text-amber-800' 
+                                    ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300' 
                                     : (client.visceralFat ?? 0) < 0.5
-                                    ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-emerald-100 text-emerald-800'
+                                    ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
+                                    : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
                                 }`}>
                                   {(client.visceralFat ?? 0) > 14 ? 'High' : (client.visceralFat ?? 0) >= 10 ? 'Elevated' : (client.visceralFat ?? 0) < 0.5 ? 'Low' : 'Optimal'}
                                 </span>
                               </div>
-                              <div className="text-[10px] text-slate-500">
-                                Needed: <strong className="text-emerald-700">0.5 – 9</strong>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                Needed: <strong className="text-emerald-700 dark:text-emerald-400">0.5 – 9</strong>
                               </div>
                             </div>
                           </td>
 
                           {/* 5. BMI (18-23) */}
-                          <td className="py-3 px-3">
+                          <td className="py-3 px-3 tabular-nums">
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-black text-slate-900 text-sm">
+                                <span className="font-black text-slate-900 dark:text-white text-sm">
                                   {client.bmi ?? '--'}
                                 </span>
                                 <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
-                                  (client.bmi ?? 0) > 23 ? 'bg-amber-100 text-amber-800' : (client.bmi ?? 0) < 18 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                                  (client.bmi ?? 0) > 23 ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300' : (client.bmi ?? 0) < 18 ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300' : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
                                 }`}>
                                   {(client.bmi ?? 0) > 23 ? 'Higher' : (client.bmi ?? 0) < 18 ? 'Underweight' : 'Optimal'}
                                 </span>
                               </div>
-                              <div className="text-[10px] text-slate-500">
-                                Needed: <strong className="text-emerald-700">{client.targetBmi ?? '18–23'}</strong>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                Needed: <strong className="text-emerald-700 dark:text-emerald-400">{client.targetBmi ?? '18–23'}</strong>
                               </div>
                             </div>
                           </td>
 
                           {/* 6. BMR & Work Status */}
-                          <td className="py-3 px-3">
+                          <td className="py-3 px-3 tabular-nums">
                             <div className="space-y-0.5 max-w-[150px]">
                               <div className="flex items-baseline gap-1">
-                                <span className="font-bold text-slate-900">{client.bmr ?? '--'}</span>
-                                <span className="text-[10px] text-slate-400">kcal (Base)</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{client.bmr ?? '--'}</span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500">kcal (Base)</span>
                               </div>
-                              <div className="text-[10px] text-purple-800 font-medium truncate" title={client.bmrStatus}>
+                              <div className="text-[10px] text-purple-800 dark:text-purple-300 font-medium truncate" title={client.bmrStatus}>
                                 {client.bmrStatus || `Req: ${client.targetBmr || '--'} kcal`}
                               </div>
                             </div>
@@ -1351,8 +1380,8 @@ export const TeamPortal: React.FC = () => {
 
                           {/* Coach & Plan */}
                           <td className="py-3 px-3">
-                            <div className="text-slate-800 font-medium">{coachDisplayName}</div>
-                            <div className="text-[10px] text-slate-500 truncate max-w-[120px]">{planTitleDisplay}</div>
+                            <div className="text-slate-800 dark:text-slate-200 font-medium">{coachDisplayName}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{planTitleDisplay}</div>
                           </td>
 
                           {/* Actions */}
@@ -1386,27 +1415,27 @@ export const TeamPortal: React.FC = () => {
                                   setSelectedClientIdForCentre(client.id);
                                   setIsCentreModalOpen(true);
                                 }}
-                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
+                                className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold px-2 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
                                 title="InBody / Device Scan"
                               >
-                                <Building2 className="w-3 h-3 text-blue-600" />
+                                <Building2 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 <span>Scan</span>
                               </button>
 
                               <button
                                 type="button"
                                 onClick={() => setEditingClient(client)}
-                                className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-2 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
+                                className="bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold px-2 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
                                 title="Edit client photo & data"
                               >
-                                <Edit3 className="w-3 h-3 text-purple-600" />
+                                <Edit3 className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                                 <span>Edit</span>
                               </button>
 
                               <button
                                 type="button"
                                 onClick={() => setViewingClientDossier(client)}
-                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
+                                className="bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold px-2.5 py-1 rounded-lg text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
                               >
                                 <Eye className="w-3 h-3" />
                                 <span>Dossier</span>
@@ -1414,12 +1443,12 @@ export const TeamPortal: React.FC = () => {
 
                               <button
                                 type="button"
-                                onClick={() => {
-                                  if (window.confirm(`Are you sure you want to remove ${client.name}?`)) {
-                                    deleteClient(client.id);
-                                  }
-                                }}
-                                className="p-1 text-slate-400 hover:text-rose-600 rounded-md transition-colors cursor-pointer"
+                                onClick={() => setConfirmAction({
+                                  type: 'delete-client',
+                                  clientId: client.id,
+                                  clientName: client.name || 'Registered Client',
+                                })}
+                                className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-md transition-colors cursor-pointer"
                                 title="Delete"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1442,17 +1471,16 @@ export const TeamPortal: React.FC = () => {
                 const clientDisplayName = (client.name && client.name.trim().length > 0) ? client.name.trim() : 'Registered Client';
                 const clientPhoneDisplay = client.phone || '5550199';
                 const uName = client.username || (clientDisplayName.split(' ')[0].toLowerCase()) || 'client';
-                const uPass = client.password || 'password123';
                 const inactive = isClientInactive(client);
                 const daysAway = getDaysInactiveCount(client);
 
                 return (
                   <div 
                     key={client.id}
-                    className={`bg-white rounded-2xl p-4 border transition-all flex flex-col justify-between ${
+                    className={`bg-white dark:bg-slate-900 rounded-2xl p-4 border transition-all flex flex-col justify-between ${
                       inactive 
-                        ? 'border-rose-400 bg-linear-to-b from-rose-50/40 via-white to-white ring-2 ring-rose-200 shadow-sm' 
-                        : 'border-slate-200 shadow-xs hover:border-blue-300'
+                        ? 'border-rose-400 dark:border-rose-700 bg-linear-to-b from-rose-50/40 via-white to-white dark:from-rose-950/35 dark:via-slate-900 dark:to-slate-900 ring-2 ring-rose-200 dark:ring-rose-900/60 shadow-sm' 
+                        : 'border-slate-200 dark:border-slate-800 shadow-xs hover:border-blue-300 dark:hover:border-blue-700'
                     }`}
                   >
                     <div>
@@ -1464,28 +1492,28 @@ export const TeamPortal: React.FC = () => {
                               src={client.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
                               alt={clientDisplayName}
                               className={`w-11 h-11 rounded-full object-cover border-2 ${
-                                inactive ? 'border-rose-500 ring-2 ring-rose-200' : 'border-slate-100'
+                                inactive ? 'border-rose-500 ring-2 ring-rose-200 dark:ring-rose-900' : 'border-slate-100 dark:border-slate-800'
                               }`}
                             />
                             {inactive && (
-                              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-600 border-2 border-white animate-pulse" title="Inactive for 3+ days" />
+                              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-600 border-2 border-white dark:border-slate-900 animate-pulse" title="Inactive for 3+ days" />
                             )}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <h3 className={`font-bold text-sm leading-tight ${inactive ? 'text-rose-950 font-black' : 'text-slate-900'}`}>{clientDisplayName}</h3>
+                              <h3 className={`font-bold text-sm leading-tight ${inactive ? 'text-rose-950 dark:text-rose-200 font-black' : 'text-slate-900 dark:text-white'}`}>{clientDisplayName}</h3>
                               <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                                inactive ? 'bg-rose-600 text-white shadow-xs animate-pulse' : 'bg-emerald-100 text-emerald-800'
+                                inactive ? 'bg-rose-600 text-white shadow-xs animate-pulse' : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
                               }`}>
                                 {inactive ? `Inactive (${daysAway}d)` : 'Active'}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-0.5 font-mono">Phone: {clientPhoneDisplay}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-mono">Phone: {clientPhoneDisplay}</p>
                           </div>
                         </div>
 
                         <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1 ${
-                          inactive ? 'bg-rose-600 text-white shadow-xs' : 'bg-emerald-100 text-emerald-800'
+                          inactive ? 'bg-rose-600 text-white shadow-xs' : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
                         }`}>
                           {inactive ? <AlertTriangle className="w-3 h-3 text-white" /> : <CheckCircle2 className="w-3 h-3" />}
                           <span>{inactive ? 'INACTIVE (3+ DAYS)' : 'ACTIVE'}</span>
@@ -1493,92 +1521,92 @@ export const TeamPortal: React.FC = () => {
                       </div>
 
                       {/* Portal Credentials Pill */}
-                      <div className="mt-2.5 px-2.5 py-1.5 bg-emerald-50/80 rounded-xl border border-emerald-100 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1 text-emerald-900 font-medium truncate">
-                          <KeyRound className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="truncate">Username: <b className="font-mono text-emerald-800">{uName}</b></span>
+                      <div className="mt-2.5 px-2.5 py-1.5 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-800/60 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1 text-emerald-900 dark:text-emerald-300 font-medium truncate">
+                          <KeyRound className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="truncate">Username: <b className="font-mono text-emerald-800 dark:text-emerald-200">{uName}</b></span>
                         </div>
-                        <div className="text-[11px] font-mono text-slate-400 shrink-0">
-                          Password: <span className="text-slate-500 font-sans tracking-widest">••••••••</span>
+                        <div className="text-[11px] font-mono text-slate-400 dark:text-slate-500 shrink-0">
+                          Password: <span className="text-slate-500 dark:text-slate-400 font-sans tracking-widest">••••••••</span>
                         </div>
                       </div>
 
                       {/* Primary Goal */}
                       <div className="mt-2 text-xs">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Primary Goal</span>
-                        <p className="text-xs font-semibold text-slate-800 line-clamp-1">{client.goal}</p>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block mb-0.5">Primary Goal</span>
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">{client.goal}</p>
                       </div>
 
                       {/* Clinical Health & Body Composition Grid */}
-                      <div className="mt-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-2">
+                      <div className="mt-2.5 bg-slate-50 dark:bg-slate-800/70 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 tabular-nums">
                         {/* Weight Row */}
                         <div className="grid grid-cols-3 gap-1 text-center text-xs">
                           <div>
-                            <span className="text-[9px] text-slate-400 block">Start</span>
-                            <span className="font-bold text-slate-700">{client.startingWeightKg} kg</span>
+                            <span className="text-[9px] text-slate-400 dark:text-slate-500 block">Start</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{client.startingWeightKg} kg</span>
                           </div>
                           <div>
-                            <span className="text-[9px] text-blue-600 block">Current</span>
-                            <span className="font-bold text-blue-700">{client.currentWeightKg} kg</span>
+                            <span className="text-[9px] text-blue-600 dark:text-blue-400 block">Current</span>
+                            <span className="font-bold text-blue-700 dark:text-blue-300">{client.currentWeightKg} kg</span>
                           </div>
                           <div>
-                            <span className="text-[9px] text-emerald-600 block">Needed</span>
-                            <span className="font-bold text-emerald-700">{client.targetWeightKg} kg</span>
+                            <span className="text-[9px] text-emerald-600 dark:text-emerald-400 block">Needed</span>
+                            <span className="font-bold text-emerald-700 dark:text-emerald-300">{client.targetWeightKg} kg</span>
                           </div>
                         </div>
 
                         {/* Extended Body Composition Metrics */}
-                        <div className="pt-2 border-t border-slate-200/70 grid grid-cols-3 gap-1 text-center text-[11px]">
-                          <div className="bg-white p-1 rounded-md border border-slate-100">
-                            <span className="text-[9px] text-amber-700 block font-semibold">Fat %</span>
-                            <span className="font-bold text-slate-800">{client.bodyFatPercentage ?? '--'}%</span>
-                            <span className="text-[8px] text-slate-400 block">Ned: {client.targetBodyFatPercentage ?? '--'}%</span>
+                        <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700 grid grid-cols-3 gap-1 text-center text-[11px]">
+                          <div className="bg-white dark:bg-slate-900 p-1 rounded-md border border-slate-100 dark:border-slate-800">
+                            <span className="text-[9px] text-amber-700 dark:text-amber-400 block font-semibold">Fat %</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{client.bodyFatPercentage ?? '--'}%</span>
+                            <span className="text-[8px] text-slate-400 dark:text-slate-500 block">Ned: {client.targetBodyFatPercentage ?? '--'}%</span>
                           </div>
-                          <div className="bg-white p-1 rounded-md border border-slate-100">
-                            <span className="text-[9px] text-rose-700 block font-semibold">V-Fat</span>
-                            <span className="font-bold text-slate-800">{client.visceralFat ?? '--'}</span>
-                            <span className="text-[8px] text-emerald-600 block">Ned: 0.5-9</span>
+                          <div className="bg-white dark:bg-slate-900 p-1 rounded-md border border-slate-100 dark:border-slate-800">
+                            <span className="text-[9px] text-rose-700 dark:text-rose-400 block font-semibold">V-Fat</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{client.visceralFat ?? '--'}</span>
+                            <span className="text-[8px] text-emerald-600 dark:text-emerald-400 block">Ned: 0.5-9</span>
                           </div>
-                          <div className="bg-white p-1 rounded-md border border-slate-100">
-                            <span className="text-[9px] text-blue-700 block font-semibold">BMI</span>
-                            <span className="font-bold text-slate-800">{client.bmi ?? '--'}</span>
-                            <span className="text-[8px] text-emerald-600 block">Ned: 18-23</span>
+                          <div className="bg-white dark:bg-slate-900 p-1 rounded-md border border-slate-100 dark:border-slate-800">
+                            <span className="text-[9px] text-blue-700 dark:text-blue-400 block font-semibold">BMI</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{client.bmi ?? '--'}</span>
+                            <span className="text-[8px] text-emerald-600 dark:text-emerald-400 block">Ned: 18-23</span>
                           </div>
                         </div>
 
                         {/* BMR & Status Footer */}
-                        <div className="text-[10px] text-purple-900 bg-purple-50/80 px-2 py-1 rounded-md flex items-center justify-between">
+                        <div className="text-[10px] text-purple-900 dark:text-purple-200 bg-purple-50/80 dark:bg-purple-950/50 px-2 py-1 rounded-md flex items-center justify-between">
                           <span className="font-semibold">BMR: {client.bmr || '--'} kcal</span>
-                          <span className="text-[9px] text-purple-700 truncate max-w-[130px]">{client.bmrStatus || `Req: ${client.targetBmr || '--'} kcal`}</span>
+                          <span className="text-[9px] text-purple-700 dark:text-purple-300 truncate max-w-[130px]">{client.bmrStatus || `Req: ${client.targetBmr || '--'} kcal`}</span>
                         </div>
                       </div>
 
                       {/* Assigned Dietitian & Plan */}
-                      <div className="mt-2.5 space-y-1 text-xs text-slate-600">
+                      <div className="mt-2.5 space-y-1 text-xs text-slate-600 dark:text-slate-400">
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-400">Coach:</span>
-                          <span className="font-semibold text-slate-800">{dietitian?.name || 'Saleem Valanchery (Lead)'}</span>
+                          <span className="text-slate-400 dark:text-slate-500">Coach:</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{dietitian?.name || 'Saleem Valanchery (Lead)'}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-400">Plan:</span>
-                          <span className="font-medium text-slate-800 truncate max-w-[150px]">{plan?.title || 'Metabolic Plan'}</span>
+                          <span className="text-slate-400 dark:text-slate-500">Plan:</span>
+                          <span className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[150px]">{plan?.title || 'Metabolic Plan'}</span>
                         </div>
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-400">Last Active:</span>
-                          <span className="font-mono text-slate-600">{client.lastActiveDate}</span>
+                          <span className="text-slate-400 dark:text-slate-500">Last Active:</span>
+                          <span className="font-mono text-slate-600 dark:text-slate-300">{client.lastActiveDate}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Actions Footer */}
-                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                       <button
                         type="button"
                         onClick={() => {
                           setSelectedClientIdForCentre(client.id);
                           setIsCentreModalOpen(true);
                         }}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                       >
                         <Building2 className="w-3.5 h-3.5" />
                         <span>+ Scan</span>
@@ -1609,12 +1637,12 @@ export const TeamPortal: React.FC = () => {
 
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`Are you sure you want to remove ${client.name} from the centre system?`)) {
-                              deleteClient(client.id);
-                            }
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          onClick={() => setConfirmAction({
+                            type: 'delete-client',
+                            clientId: client.id,
+                            clientName: client.name || 'Registered Client',
+                          })}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                           title="Delete client"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1623,7 +1651,7 @@ export const TeamPortal: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setEditingClient(client)}
-                          className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-lg text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 py-1 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold rounded-lg text-xs transition-colors flex items-center gap-1 cursor-pointer"
                           title="Edit client photo, credentials & clinical data"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -1633,7 +1661,7 @@ export const TeamPortal: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setViewingClientDossier(client)}
-                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-lg text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                          className="bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold px-3 py-1 rounded-lg text-xs transition-colors flex items-center gap-1 cursor-pointer"
                         >
                           <span>Open Dossier</span>
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -1653,14 +1681,14 @@ export const TeamPortal: React.FC = () => {
       {activeWorkspace === 'foods' && (
         <div className="space-y-4 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <UtensilsCrossed className="w-4 h-4 text-teal-700" />
-              <span>Clinical Food Library ({foods.length} foods)</span>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <UtensilsCrossed className="w-4 h-4 text-teal-700 dark:text-teal-400" />
+              <span className="tabular-nums">Clinical Food Library ({foods.length} foods)</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Icons</span>
@@ -1674,26 +1702,26 @@ export const TeamPortal: React.FC = () => {
       {activeWorkspace === 'plans' && (
         <div className="space-y-4 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-amber-600" />
-              <span>Clinical Diet Plans ({dietPlans.length})</span>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="tabular-nums">Clinical Diet Plans ({dietPlans.length})</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Icons</span>
             </button>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-blue-600" />
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 Diet Plans Repository
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Build meal plans with macro targets and assign them to clients
               </p>
             </div>
@@ -1716,58 +1744,58 @@ export const TeamPortal: React.FC = () => {
               const assignedCount = clients.filter(c => c.dietPlanId === plan.id).length;
 
               return (
-                <div key={plan.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3 flex flex-col justify-between">
+                <div key={plan.id} className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 flex flex-col justify-between">
                   <div>
                     <div className="flex items-start justify-between">
                       <div>
-                        <span className="text-[10px] uppercase font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                        <span className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 tabular-nums">
                           {assignedCount} Clients Assigned
                         </span>
-                        <h3 className="font-bold text-slate-900 text-base mt-2">{plan.title}</h3>
-                        <p className="text-xs text-slate-600 mt-1">{plan.description}</p>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-base mt-2">{plan.title}</h3>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{plan.description}</p>
                       </div>
                     </div>
 
                     {/* Macro pill summary */}
-                    <div className="grid grid-cols-4 gap-2 mt-4 text-center">
-                      <div className="bg-amber-50 p-2 rounded-xl">
-                        <span className="text-[10px] text-slate-400 block">Calories</span>
-                        <span className="text-xs font-black text-amber-800">{plan.targetCalories}</span>
+                    <div className="grid grid-cols-4 gap-2 mt-4 text-center tabular-nums">
+                      <div className="bg-amber-50 dark:bg-amber-950/50 p-2 rounded-xl border border-amber-100 dark:border-amber-900/60">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block">Calories</span>
+                        <span className="text-xs font-black text-amber-800 dark:text-amber-300">{plan.targetCalories}</span>
                       </div>
-                      <div className="bg-emerald-50 p-2 rounded-xl">
-                        <span className="text-[10px] text-slate-400 block">Protein</span>
-                        <span className="text-xs font-black text-emerald-800">{plan.targetProtein}g</span>
+                      <div className="bg-emerald-50 dark:bg-emerald-950/50 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/60">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block">Protein</span>
+                        <span className="text-xs font-black text-emerald-800 dark:text-emerald-300">{plan.targetProtein}g</span>
                       </div>
-                      <div className="bg-blue-50 p-2 rounded-xl">
-                        <span className="text-[10px] text-slate-400 block">Carbs</span>
-                        <span className="text-xs font-black text-blue-800">{plan.targetCarbs}g</span>
+                      <div className="bg-blue-50 dark:bg-blue-950/50 p-2 rounded-xl border border-blue-100 dark:border-blue-900/60">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block">Carbs</span>
+                        <span className="text-xs font-black text-blue-800 dark:text-blue-300">{plan.targetCarbs}g</span>
                       </div>
-                      <div className="bg-purple-50 p-2 rounded-xl">
-                        <span className="text-[10px] text-slate-400 block">Fat</span>
-                        <span className="text-xs font-black text-purple-800">{plan.targetFat}g</span>
+                      <div className="bg-purple-50 dark:bg-purple-950/50 p-2 rounded-xl border border-purple-100 dark:border-purple-900/60">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block">Fat</span>
+                        <span className="text-xs font-black text-purple-800 dark:text-purple-300">{plan.targetFat}g</span>
                       </div>
                     </div>
 
                     {/* Meal slots summary */}
-                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
-                      <span className="text-[11px] font-bold text-slate-700 block">Included Meal Slots:</span>
+                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Included Meal Slots:</span>
                       {plan.meals.map(m => (
-                        <div key={m.mealType} className="text-xs text-slate-600 flex items-center justify-between">
-                          <span className="font-medium text-slate-800">• {m.mealType} ({m.timeGuideline})</span>
-                          <span className="text-[11px] text-slate-400">{m.recommendedFoods.length} foods recommended</span>
+                        <div key={m.mealType} className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                          <span className="font-medium text-slate-800 dark:text-slate-200">• {m.mealType} ({m.timeGuideline})</span>
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">{m.recommendedFoods.length} foods recommended</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         setEditingPlan(plan);
                         setIsPlanBuilderOpen(true);
                       }}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-xl text-xs transition-colors cursor-pointer"
+                      className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold px-3 py-1.5 rounded-xl text-xs transition-colors cursor-pointer"
                     >
                       Edit Plan &amp; Portions
                     </button>
@@ -1783,26 +1811,26 @@ export const TeamPortal: React.FC = () => {
       {activeWorkspace === 'centre' && (
         <div className="space-y-4 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-slate-800" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-slate-800 dark:text-slate-300" />
               <span>Centre InBody &amp; Device Scans</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Icons</span>
             </button>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-600" />
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 Centre Device Readings (Entered by Hand)
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Official clinical assessments from InBody 270, Tanita, or centre stadiometers
               </p>
             </div>
@@ -1820,10 +1848,10 @@ export const TeamPortal: React.FC = () => {
             </button>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-4">Date</th>
                     <th className="py-3 px-4">Client</th>
@@ -1836,25 +1864,25 @@ export const TeamPortal: React.FC = () => {
                     <th className="py-3 px-4">Recorded By</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 tabular-nums">
                   {centreReadings.map((reading) => {
                     const client = clients.find(c => c.id === reading.clientId);
 
                     return (
-                      <tr key={reading.id} className="hover:bg-blue-50/30 transition-colors">
-                        <td className="py-3 px-4 font-mono text-slate-700">{reading.date}</td>
-                        <td className="py-3 px-4 font-bold text-slate-900">
+                      <tr key={reading.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="py-3 px-4 font-mono text-slate-700 dark:text-slate-300">{reading.date}</td>
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
                           {client?.name || 'Unknown'}
                         </td>
-                        <td className="py-3 px-4 text-blue-700 font-medium">
+                        <td className="py-3 px-4 text-blue-700 dark:text-blue-400 font-medium">
                           {reading.deviceModel}
                         </td>
-                        <td className="py-3 px-4 font-black text-slate-900">{reading.weightKg} kg</td>
-                        <td className="py-3 px-4 font-semibold text-slate-700">{reading.bmi || '-'}</td>
-                        <td className="py-3 px-4 text-emerald-700 font-bold">{reading.bodyFatPercentage ? `${reading.bodyFatPercentage}%` : '-'}</td>
-                        <td className="py-3 px-4 text-slate-700">{reading.muscleMassKg ? `${reading.muscleMassKg} kg` : '-'}</td>
-                        <td className="py-3 px-4 text-slate-700">{reading.visceralFatLevel ? `Level ${reading.visceralFatLevel}` : '-'}</td>
-                        <td className="py-3 px-4 text-slate-500">{reading.enteredBy}</td>
+                        <td className="py-3 px-4 font-black text-slate-900 dark:text-white">{reading.weightKg} kg</td>
+                        <td className="py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">{reading.bmi || '-'}</td>
+                        <td className="py-3 px-4 text-emerald-700 dark:text-emerald-400 font-bold">{reading.bodyFatPercentage ? `${reading.bodyFatPercentage}%` : '-'}</td>
+                        <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{reading.muscleMassKg ? `${reading.muscleMassKg} kg` : '-'}</td>
+                        <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{reading.visceralFatLevel ? `Level ${reading.visceralFatLevel}` : '-'}</td>
+                        <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{reading.enteredBy}</td>
                       </tr>
                     );
                   })}
@@ -1869,26 +1897,26 @@ export const TeamPortal: React.FC = () => {
       {activeWorkspace === 'broadcast' && (
         <div className="space-y-4 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Send className="w-4 h-4 text-blue-600" />
-              <span>Broadcast Alerts Sent ({tips.length})</span>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Send className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="tabular-nums">Broadcast Alerts Sent ({tips.length})</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Icons</span>
             </button>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Send className="w-5 h-5 text-blue-600" />
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Send className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 Tips &amp; Reminders Broadcast
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Send dietary advice, personalized clinical notes, or logging reminders to clients' phones
               </p>
             </div>
@@ -1911,32 +1939,32 @@ export const TeamPortal: React.FC = () => {
               const client = tip.clientId ? clients.find(c => c.id === tip.clientId) : null;
 
               return (
-                <div key={tip.id} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2">
+                <div key={tip.id} className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                          tip.type === 'note' ? 'bg-purple-100 text-purple-800' :
-                          tip.type === 'reminder' ? 'bg-amber-100 text-amber-800' :
-                          'bg-emerald-100 text-emerald-800'
+                          tip.type === 'note' ? 'bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300' :
+                          tip.type === 'reminder' ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300' :
+                          'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
                         }`}>
                           {tip.type}
                         </span>
-                        <span className="text-xs text-slate-500">
-                          Recipient: <b className="text-slate-800">{tip.targetAudience === 'all' ? 'All Clients' : client?.name || 'Targeted'}</b>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          Recipient: <b className="text-slate-800 dark:text-slate-200">{tip.targetAudience === 'all' ? 'All Clients' : client?.name || 'Targeted'}</b>
                         </span>
                       </div>
-                      <h3 className="font-bold text-slate-900 text-sm mt-1">{tip.title}</h3>
+                      <h3 className="font-bold text-slate-900 dark:text-white text-sm mt-1">{tip.title}</h3>
                     </div>
-                    <span className="text-[11px] text-slate-400 font-mono">{tip.createdAt}</span>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">{tip.createdAt}</span>
                   </div>
 
-                  <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/70 p-3 rounded-xl leading-relaxed">
                     {tip.message}
                   </p>
 
-                  <div className="text-[11px] text-slate-400 pt-1">
-                    Sent by: <span className="font-medium text-slate-600">{tip.dietitianName}</span>
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+                    Sent by: <span className="font-medium text-slate-600 dark:text-slate-300">{tip.dietitianName}</span>
                   </div>
                 </div>
               );
@@ -1949,26 +1977,26 @@ export const TeamPortal: React.FC = () => {
       {activeWorkspace === 'staff' && (
         <div className="space-y-4 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-purple-600" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span>Team Roles &amp; Staff Logins</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveWorkspace(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Icons</span>
             </button>
           </div>
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-blue-600" />
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 Team Logins &amp; Wellness Coach Management
               </h2>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                 Main Admin Saleem Valanchery and Wellness Coach Faseela Saleem oversee clients, diet plans, daily calorie intakes, and device scans. Admins can edit coach profiles, credentials, and manage all assigned clients.
               </p>
             </div>
@@ -1999,13 +2027,12 @@ export const TeamPortal: React.FC = () => {
               const isCurrent = currentCoach?.id === staff.id;
               const assignedClients = clients.filter(c => c.assignedDietitianId === staff.id).length;
               const staffUser = staff.username || staff.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-              const staffPass = staff.password || 'password123';
 
               return (
                 <div 
                   key={staff.id} 
-                  className={`bg-white rounded-2xl p-5 border transition-all flex flex-col justify-between ${
-                    isCurrent ? 'border-purple-500 ring-2 ring-purple-100 shadow-md' : 'border-slate-200 shadow-xs'
+                  className={`bg-white dark:bg-slate-900 rounded-2xl p-5 border transition-all flex flex-col justify-between ${
+                    isCurrent ? 'border-purple-500 ring-2 ring-purple-100 dark:ring-purple-900/60 shadow-md' : 'border-slate-200 dark:border-slate-800 shadow-xs'
                   }`}
                 >
                   <div>
@@ -2013,11 +2040,11 @@ export const TeamPortal: React.FC = () => {
                       <img
                         src={staff.avatarUrl || 'https://images.unsplash.com/photo-1594824813637-27a3a93d4895?auto=format&fit=crop&q=80&w=250'}
                         alt={staff.name}
-                        className="w-14 h-14 rounded-2xl object-cover border-2 border-slate-100"
+                        className="w-14 h-14 rounded-2xl object-cover border-2 border-slate-100 dark:border-slate-800"
                       />
                       <div className="flex items-center gap-1.5">
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                          staff.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                          staff.role === 'admin' ? 'bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300'
                         }`}>
                           {staff.role === 'admin' ? 'Main Admin' : 'Wellness Coach'}
                         </span>
@@ -2026,50 +2053,50 @@ export const TeamPortal: React.FC = () => {
 
                     <div className="mt-3 flex items-start justify-between">
                       <div>
-                        <h3 className="font-bold text-slate-900 text-base">{staff.name}</h3>
-                        <p className="text-xs text-purple-700 font-semibold">{staff.title}</p>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-base">{staff.name}</h3>
+                        <p className="text-xs text-purple-700 dark:text-purple-400 font-semibold">{staff.title}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setEditingCoach(staff)}
-                        className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/50 rounded-lg transition-colors cursor-pointer"
                         title="Edit this coach / admin profile"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{staff.bio}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">{staff.bio}</p>
 
                     {/* Staff Login Credentials Box */}
-                    <div className="mt-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1">
-                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                        <KeyRound className="w-3 h-3 text-purple-600" />
+                    <div className="mt-3 p-2.5 bg-slate-50 dark:bg-slate-800/70 rounded-xl border border-slate-100 dark:border-slate-800 text-xs space-y-1">
+                      <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <KeyRound className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                         <span>Portal Credentials</span>
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500">Username:</span>
-                        <span className="font-mono font-bold text-slate-800">{staffUser}</span>
+                        <span className="text-slate-500 dark:text-slate-400">Username:</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{staffUser}</span>
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500">Password:</span>
-                        <span className="font-mono text-slate-400 tracking-wider">••••••••</span>
+                        <span className="text-slate-500 dark:text-slate-400">Password:</span>
+                        <span className="font-mono text-slate-400 dark:text-slate-500 tracking-wider">••••••••</span>
                       </div>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-slate-100 text-xs space-y-1 text-slate-600">
-                      <div>Email: <span className="font-mono text-slate-800">{staff.email}</span></div>
-                      <div>Phone: <span className="font-mono text-slate-800">{staff.phone}</span></div>
+                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs space-y-1 text-slate-600 dark:text-slate-400">
+                      <div>Email: <span className="font-mono text-slate-800 dark:text-slate-200">{staff.email}</span></div>
+                      <div>Phone: <span className="font-mono text-slate-800 dark:text-slate-200">{staff.phone}</span></div>
                       <div className="flex items-center justify-between pt-1">
                         <span>Clients Under Coach:</span>
-                        <span className="font-bold bg-blue-50 text-blue-800 px-2 py-0.5 rounded-full text-xs">
+                        <span className="font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full text-xs tabular-nums">
                           {assignedClients} people
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -2077,7 +2104,7 @@ export const TeamPortal: React.FC = () => {
                           setDietitianFilter(staff.id);
                           setActiveWorkspace('clients');
                         }}
-                        className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer text-center"
+                        className="flex-1 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl transition-colors cursor-pointer text-center tabular-nums"
                       >
                         Check Clients Under ({assignedClients})
                       </button>
@@ -2085,7 +2112,7 @@ export const TeamPortal: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setEditingCoach(staff)}
-                        className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                        className="px-3 py-1.5 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
                         title="Edit Admin / Coach"
                       >
                         Edit
@@ -2093,23 +2120,18 @@ export const TeamPortal: React.FC = () => {
                     </div>
 
                     {isCurrent ? (
-                      <div className="w-full py-2 bg-emerald-50 text-emerald-800 text-center font-bold text-xs rounded-xl border border-emerald-200 flex items-center justify-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <div className="w-full py-2 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-center font-bold text-xs rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>Currently Active Admin Session</span>
                       </div>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => {
-                          const conf = window.confirm(`Sign out of ${currentCoach.name} to sign in as ${staff.name} using username and password?`);
-                          if (conf) {
-                            staffSignOut();
-                          }
-                        }}
-                        className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        onClick={() => setConfirmAction({ type: 'switch-staff', staffName: staff.name })}
+                        className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                         title="Sign out and enter username and password to log in as this coach"
                       >
-                        <Lock className="w-3.5 h-3.5 text-slate-500" />
+                        <Lock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                         <span>Sign In as {(staff.name || 'Coach').split(' ')[0]}</span>
                       </button>
                     )}
@@ -2121,18 +2143,18 @@ export const TeamPortal: React.FC = () => {
             {/* Add Dietitian Card in Grid */}
             <div
               onClick={() => setIsAddDietitianOpen(true)}
-              className="bg-slate-50/70 hover:bg-emerald-50/50 rounded-2xl p-5 border-2 border-dashed border-slate-300 hover:border-emerald-400 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[260px] group"
+              className="bg-slate-50/70 dark:bg-slate-900/50 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 rounded-2xl p-5 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[260px] group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 group-hover:bg-emerald-200 text-emerald-700 flex items-center justify-center mb-3 transition-colors">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 flex items-center justify-center mb-3 transition-colors">
                 <UserPlus className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-slate-800 group-hover:text-emerald-900 text-sm">
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-900 dark:group-hover:text-emerald-300 text-sm">
                 Add New Dietitian
               </h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-[200px]">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[200px]">
                 Register a new wellness coach or admin with profile photo file
               </p>
-              <span className="mt-3 text-xs font-bold text-emerald-700 bg-emerald-100/70 px-3 py-1 rounded-lg">
+              <span className="mt-3 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 px-3 py-1 rounded-lg">
                 + Register Coach
               </span>
             </div>
@@ -2218,6 +2240,74 @@ export const TeamPortal: React.FC = () => {
         onClose={() => setIsAppointmentsModalOpen(false)}
         clientId={selectedClientIdForAppointment}
       />
+
+      {/* Inline Confirmation Dialog (Replaces window.confirm across TeamPortal) */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                confirmAction.type === 'delete-client' || confirmAction.type === 'reset'
+                  ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400'
+                  : 'bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400'
+              }`}>
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {confirmAction.type === 'reset'
+                    ? 'Reset Centre Records?'
+                    : confirmAction.type === 'delete-client'
+                    ? 'Remove Client?'
+                    : 'Switch Coach Session?'}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                  {confirmAction.type === 'reset'
+                    ? 'Reset all centre records (clients, meal logs, weights, diet plans, food database) back to default pristine setup?'
+                    : confirmAction.type === 'delete-client'
+                    ? `Are you sure you want to remove ${confirmAction.clientName} from the centre system?`
+                    : `Sign out of ${currentCoach.name} to sign in as ${confirmAction.staffName} using username and password?`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const action = confirmAction;
+                  setConfirmAction(null);
+                  if (action.type === 'reset') {
+                    await executeResetData();
+                  } else if (action.type === 'delete-client') {
+                    deleteClient(action.clientId);
+                  } else if (action.type === 'switch-staff') {
+                    staffSignOut();
+                  }
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-colors cursor-pointer ${
+                  confirmAction.type === 'switch-staff'
+                    ? 'bg-purple-600 hover:bg-purple-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {confirmAction.type === 'reset'
+                  ? 'Confirm Reset'
+                  : confirmAction.type === 'delete-client'
+                  ? 'Remove Client'
+                  : 'Sign Out & Switch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -1,3 +1,5 @@
+import { formatToLocalIsoDate } from './dateUtils';
+
 export type ClientPhoneOS = 'android' | 'ios' | 'desktop';
 
 export interface DetectedOSInfo {
@@ -26,9 +28,11 @@ export function detectClientOS(): DetectedOSInfo {
     (/Mac/i.test(platform) && typeof document !== 'undefined' && 'ontouchend' in document);
   const isAndroid = /Android/i.test(ua);
 
-  const supportsMotionSensor = typeof window !== 'undefined' && 'DeviceMotionEvent' in window;
+  const hasDeviceMotion = typeof window !== 'undefined' && 'DeviceMotionEvent' in window;
+  const hasGenericAccelerometer = typeof window !== 'undefined' && 'Accelerometer' in window;
+  const supportsMotionSensor = hasDeviceMotion || hasGenericAccelerometer;
   const requiresPermissionPrompt =
-    supportsMotionSensor &&
+    hasDeviceMotion &&
     typeof (window as any).DeviceMotionEvent?.requestPermission === 'function';
 
   if (isIOS) {
@@ -74,7 +78,7 @@ export function recordDeviceActivityTimestamp(): void {
 
 /**
  * Estimates overnight sleep duration when a client opens the app after an overnight gap.
- * Rounds to nearest 0.5h within clinically plausible sleep bounds (4.0h – 11.0h).
+ * Uses local calendar date comparison (not UTC) and bounds to 4.0h – 11.0h.
  */
 export function estimateOvernightSleepHours(todayIso: string): number | null {
   try {
@@ -93,11 +97,10 @@ export function estimateOvernightSleepHours(todayIso: string): number | null {
     if (!prevMs || Number.isNaN(prevMs)) return null;
 
     const prevDate = new Date(prevMs);
-    const nowDate = new Date(now);
-    const prevIso = prevDate.toISOString().split('T')[0];
+    const prevIso = formatToLocalIsoDate(prevDate);
 
     const diffHours = (now - prevMs) / (1000 * 60 * 60);
-    // Genuine overnight rest gap: previous activity was on an earlier day and gap is 4..12 hrs
+    // Genuine overnight rest gap: previous activity was on an earlier local calendar day and gap is 4..12 hrs
     if (prevIso < todayIso && diffHours >= 4 && diffHours <= 12) {
       const roundedHalfHour = Math.min(11, Math.max(4, Math.round(diffHours * 2) / 2));
       localStorage.setItem(SLEEP_SYNC_DATE_KEY, todayIso);
@@ -113,11 +116,9 @@ export function estimateOvernightSleepHours(todayIso: string): number | null {
 }
 
 export async function requestMotionSensorPermission(): Promise<'granted' | 'denied' | 'unsupported'> {
-  if (typeof window === 'undefined' || !('DeviceMotionEvent' in window)) {
-    return 'unsupported';
-  }
+  if (typeof window === 'undefined') return 'unsupported';
   const DME = (window as any).DeviceMotionEvent;
-  if (typeof DME?.requestPermission === 'function') {
+  if (DME && typeof DME.requestPermission === 'function') {
     try {
       const res = await DME.requestPermission();
       return res === 'granted' ? 'granted' : 'denied';
@@ -125,27 +126,25 @@ export async function requestMotionSensorPermission(): Promise<'granted' | 'deni
       return 'denied';
     }
   }
-  return 'granted';
+  if ('DeviceMotionEvent' in window || 'Accelerometer' in window) {
+    return 'granted';
+  }
+  return 'unsupported';
 }
 
 /**
- * Starts a lightweight Web DeviceMotion accelerometer step detector.
+ * Starts a lightweight Web DeviceMotion / Generic Accelerometer step detector.
  * Returns a cleanup function to stop listening.
  */
 export function startStepPedometer(onStep: () => void): () => void {
-  if (typeof window === 'undefined' || !('DeviceMotionEvent' in window)) {
+  if (typeof window === 'undefined') {
     return () => {};
   }
 
   let lastMagnitude = 9.81;
   let lastStepTime = 0;
 
-  const handleMotion = (event: DeviceMotionEvent) => {
-    const acc = event.accelerationIncludingGravity || event.acceleration;
-    if (!acc) return;
-    const x = acc.x ?? 0;
-    const y = acc.y ?? 0;
-    const z = acc.z ?? 0;
+  const processAccelSample = (x: number, y: number, z: number) => {
     const mag = Math.sqrt(x * x + y * y + z * z);
     const delta = Math.abs(mag - lastMagnitude);
     lastMagnitude = mag;
@@ -158,8 +157,39 @@ export function startStepPedometer(onStep: () => void): () => void {
     }
   };
 
-  window.addEventListener('devicemotion', handleMotion);
-  return () => window.removeEventListener('devicemotion', handleMotion);
+  if ('DeviceMotionEvent' in window) {
+    const handleMotion = (event: DeviceMotionEvent) => {
+      const acc = event.accelerationIncludingGravity || event.acceleration;
+      if (!acc) return;
+      processAccelSample(acc.x ?? 0, acc.y ?? 0, acc.z ?? 0);
+    };
+
+    window.addEventListener('devicemotion', handleMotion);
+    return () => window.removeEventListener('devicemotion', handleMotion);
+  }
+
+  // Fallback to W3C Generic Sensor API Accelerometer on supported Android browsers
+  if ('Accelerometer' in window) {
+    try {
+      const AccelerometerCtor = (window as any).Accelerometer;
+      const sensor = new AccelerometerCtor({ frequency: 20 });
+      const handleReading = () => {
+        processAccelSample(sensor.x ?? 0, sensor.y ?? 0, sensor.z ?? 0);
+      };
+      sensor.addEventListener('reading', handleReading);
+      sensor.start();
+      return () => {
+        try {
+          sensor.removeEventListener('reading', handleReading);
+          sensor.stop();
+        } catch {}
+      };
+    } catch {
+      return () => {};
+    }
+  }
+
+  return () => {};
 }
 
 /**

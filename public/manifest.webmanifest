@@ -1,0 +1,25 @@
+{
+  "name": "NutriTrack Pro — Saleem Valanchery Wellness Centre",
+  "short_name": "NutriTrack Pro",
+  "description": "Clinical nutrition diary, Kerala food calorie intelligence, mobile steps & sleep sync, and coach reminders.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#064e3b",
+  "theme_color": "#064e3b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/apple-touch-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

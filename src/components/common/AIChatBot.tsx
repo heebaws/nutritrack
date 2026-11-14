@@ -391,7 +391,8 @@ export const AIChatBot: React.FC = () => {
 
     } catch (err: any) {
       console.error('Microphone access failed:', err);
-      alert('Could not access microphone. Please enable microphone permissions in your browser.');
+      setSavedFoodNotice('⚠️ Could not access microphone. Please enable microphone permissions in your browser.');
+      setTimeout(() => setSavedFoodNotice(null), 5000);
     }
   };
 
@@ -1303,7 +1304,8 @@ What food or snack would you like to check?`
   // Handle logging food directly from the chat card to the client column with all details
   const handleLogFoodFromChat = (msgId: string, food: FoodData, targetSlot?: MealType) => {
     if (!activeClient) {
-      alert("Please select a client from Column 2 or sign in to log this food into the daily diary.");
+      setSavedFoodNotice("⚠️ Please select a client from Column 2 or sign in to log this food into the daily diary.");
+      setTimeout(() => setSavedFoodNotice(null), 4500);
       return;
     }
 
@@ -1348,7 +1350,8 @@ What food or snack would you like to check?`
   // Handle logging whole suggested meal from chat card
   const handleLogSuggestedMealFromChat = (msgId: string, mealLogData: NonNullable<ChatMessage['mealLogData']>) => {
     if (!activeClient) {
-      alert("Please sign in or select a client to log this meal into the daily diary.");
+      setSavedFoodNotice("⚠️ Please sign in or select a client to log this meal into the daily diary.");
+      setTimeout(() => setSavedFoodNotice(null), 4500);
       return;
     }
 
@@ -1383,7 +1386,7 @@ What food or snack would you like to check?`
     const lines = content.split('\n');
 
     return (
-      <div className={`space-y-1.5 text-xs sm:text-sm leading-relaxed ${isWarning ? 'p-3 bg-amber-50/90 border border-amber-300 rounded-2xl' : ''}`}>
+      <div className={`space-y-1.5 text-xs sm:text-sm leading-relaxed ${isWarning ? 'p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-2xl' : ''}`}>
         {lines.map((line, idx) => {
           const trimmed = line.trim();
           if (!trimmed) return <div key={idx} className="h-1" />;
@@ -1391,10 +1394,10 @@ What food or snack would you like to check?`
           // Prominent Hero Calories Line
           if (trimmed.startsWith('🔥 **Calories:**') || trimmed.startsWith('🔥 **കാലറി (Calories):**') || trimmed.startsWith('🔥 **Each Food\'s Calories')) {
             return (
-              <div key={idx} className="my-2 p-2.5 bg-linear-to-r from-amber-100 via-amber-50 to-orange-100 border-2 border-amber-300 rounded-xl flex items-center justify-between shadow-2xs">
+              <div key={idx} className="my-2 p-2.5 bg-linear-to-r from-amber-100 via-amber-50 to-orange-100 dark:from-amber-950/60 dark:via-amber-900/40 dark:to-orange-950/50 border-2 border-amber-300 dark:border-amber-700 rounded-xl flex items-center justify-between shadow-2xs">
                 <div className="flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-amber-600 shrink-0 animate-pulse" />
-                  <span className="font-extrabold text-amber-950 text-xs sm:text-sm">
+                  <Flame className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 animate-pulse" />
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 text-xs sm:text-sm">
                     {formatInlineBolds(trimmed.replace('🔥 ', ''))}
                   </span>
                 </div>
@@ -1406,9 +1409,9 @@ What food or snack would you like to check?`
           if (trimmed.startsWith('### ')) {
             const headingText = trimmed.replace('### ', '');
             return (
-              <div key={idx} className="pt-2 pb-1 border-b border-slate-100">
-                <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
-                  <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full inline-block" />
+              <div key={idx} className="pt-2 pb-1 border-b border-slate-100 dark:border-slate-700">
+                <h4 className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm flex items-center gap-1.5">
+                  <span className="w-1.5 h-3.5 bg-emerald-600 dark:bg-emerald-400 rounded-full inline-block" />
                   <span>{formatInlineBolds(headingText)}</span>
                 </h4>
               </div>
@@ -1424,10 +1427,10 @@ What food or snack would you like to check?`
                 key={idx}
                 className={`flex items-center justify-between p-2 rounded-xl text-xs font-semibold my-1 border ${
                   isGreen
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200'
                     : isYellow
-                    ? 'bg-amber-50 border-amber-200 text-amber-950'
-                    : 'bg-red-50 border-red-200 text-red-950'
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-950 dark:text-amber-200'
+                    : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-950 dark:text-red-200'
                 }`}
               >
                 <span>{formatInlineBolds(trimmed.substring(2))}</span>
@@ -1439,8 +1442,8 @@ What food or snack would you like to check?`
           if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
             return (
               <div key={idx} className="flex items-start gap-2 pl-1 py-0.5">
-                <span className="text-emerald-600 font-bold text-xs mt-0.5">•</span>
-                <span className="text-slate-800 leading-normal">{formatInlineBolds(trimmed.substring(2))}</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs mt-0.5">•</span>
+                <span className="text-slate-800 dark:text-slate-200 leading-normal">{formatInlineBolds(trimmed.substring(2))}</span>
               </div>
             );
           }
@@ -1448,15 +1451,15 @@ What food or snack would you like to check?`
           // Warning block detection
           if (trimmed.startsWith('⚠️')) {
             return (
-              <div key={idx} className="flex items-center gap-2 p-2 bg-amber-100/80 border border-amber-300 rounded-xl text-amber-950 font-bold">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <div key={idx} className="flex items-center gap-2 p-2 bg-amber-100/80 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 rounded-xl text-amber-950 dark:text-amber-200 font-bold">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                 <span>{formatInlineBolds(trimmed.replace('⚠️', ''))}</span>
               </div>
             );
           }
 
           return (
-            <p key={idx} className="text-slate-800 leading-relaxed font-normal">
+            <p key={idx} className="text-slate-800 dark:text-slate-200 leading-relaxed font-normal">
               {formatInlineBolds(trimmed)}
             </p>
           );
@@ -1470,7 +1473,7 @@ What food or snack would you like to check?`
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return (
-          <strong key={i} className="font-black text-slate-950">
+          <strong key={i} className="font-black text-slate-950 dark:text-white">
             {part.slice(2, -2)}
           </strong>
         );
@@ -1509,7 +1512,7 @@ What food or snack would you like to check?`
         <div
           id="nutribot-window-container"
           style={!isExpanded && modalPos ? { position: 'fixed', left: `${modalPos.x}px`, top: `${modalPos.y}px`, bottom: 'auto', right: 'auto' } : undefined}
-          className={`fixed z-[9999] transition-all duration-150 flex flex-col bg-white rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden ${
+          className={`fixed z-[9999] transition-all duration-150 flex flex-col bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/30 dark:border-slate-700 overflow-hidden ${
             isExpanded
               ? 'inset-4 sm:inset-8'
               : modalPos
@@ -1624,47 +1627,55 @@ What food or snack would you like to check?`
 
           {/* Active Client Strip (Only shown when client is signed in) */}
           {activeClient && (
-            <div className="bg-emerald-50/90 px-4 py-1.5 border-b border-emerald-100 flex items-center justify-between text-xs text-emerald-900 shrink-0">
+            <div className="bg-emerald-50/90 dark:bg-slate-800/90 px-4 py-1.5 border-b border-emerald-100 dark:border-slate-700 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200 shrink-0">
               <div className="flex items-center gap-2 truncate">
-                <User className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                <User className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
                 <span className="font-semibold truncate">{activeClient.name}</span>
                 <span className="text-emerald-500">·</span>
-                <span className="text-slate-600 truncate text-[11px]">{activeClient.goal}</span>
+                <span className="text-slate-600 dark:text-slate-300 truncate text-[11px]">{activeClient.goal}</span>
               </div>
-              <div className="font-mono font-bold text-[11px] text-emerald-800 shrink-0 tabular-nums">
+              <div className="font-mono font-bold text-[11px] text-emerald-800 dark:text-emerald-300 shrink-0 tabular-nums">
                 {clientContext.remainingCalories} kcal left
               </div>
             </div>
           )}
 
-          {/* Saved Notification Banner */}
+          {/* Saved Notification / Warning Banner */}
           {savedFoodNotice && (
-            <div className="bg-emerald-100 text-emerald-900 text-xs px-4 py-2 border-b border-emerald-200 flex items-center gap-2 shrink-0 animate-fadeIn">
-              <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+            <div className={`text-xs px-4 py-2 border-b flex items-center gap-2 shrink-0 animate-fadeIn ${
+              savedFoodNotice.startsWith('⚠️')
+                ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-950 dark:text-amber-100 border-amber-300 dark:border-amber-700'
+                : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800'
+            }`}>
+              {savedFoodNotice.startsWith('⚠️') ? (
+                <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+              )}
               <span className="font-bold">{savedFoodNotice}</span>
             </div>
           )}
 
           {/* Kerala Snacks Referral Drawer (Mandate: "add snacks and its calories in referal") */}
           {showReferralGuide && (
-            <div className="bg-linear-to-b from-amber-50 to-orange-50/40 p-3.5 border-b-2 border-amber-300 max-h-56 overflow-y-auto shrink-0 shadow-inner space-y-2">
+            <div className="bg-linear-to-b from-amber-50 to-orange-50/40 dark:from-amber-950/40 dark:to-slate-900 p-3.5 border-b-2 border-amber-300 dark:border-amber-800 max-h-56 overflow-y-auto shrink-0 shadow-inner space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <span className="text-base">🌴</span>
-                  <span className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                  <span className="text-xs font-black text-amber-950 dark:text-amber-200 uppercase tracking-wider">
                     Kerala Snacks &amp; Calories Referral Guide
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowReferralGuide(false)}
-                  className="text-slate-400 hover:text-slate-700 text-xs p-1"
+                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs p-1 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <p className="text-[11px] text-slate-600">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300">
                 Official reference values from Saleem Valanchery Wellness Centre. Tap <strong>Check</strong> to inspect oil options &amp; auto-add to centre library:
               </p>
 
@@ -1672,12 +1683,12 @@ What food or snack would you like to check?`
                 {KERALA_SNACKS_REFERRAL.map((snack, idx) => (
                   <div
                     key={idx}
-                    className="p-2 bg-white rounded-xl border border-amber-200/80 shadow-2xs flex items-center justify-between gap-2"
+                    className="p-2 bg-white dark:bg-slate-800 rounded-xl border border-amber-200/80 dark:border-amber-800/60 shadow-2xs flex items-center justify-between gap-2"
                   >
                     <div className="min-w-0">
-                      <div className="font-bold text-slate-900 text-xs truncate">{snack.name}</div>
-                      <div className="text-[10px] text-slate-500">{snack.servingUnit}</div>
-                      <div className="text-[10px] font-black text-amber-900 mt-0.5">
+                      <div className="font-bold text-slate-900 dark:text-white text-xs truncate">{snack.name}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">{snack.servingUnit}</div>
+                      <div className="text-[10px] font-black text-amber-900 dark:text-amber-300 mt-0.5">
                         🔥 {snack.steamedCal} kcal (Base) • Fried: {snack.friedCal} kcal
                       </div>
                     </div>
@@ -1698,7 +1709,7 @@ What food or snack would you like to check?`
           )}
 
           {/* Message List - Maximum vertical space and high visibility */}
-          <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-slate-50/50">
+          <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-slate-50/50 dark:bg-slate-950/60">
             {messages.map((msg) => {
               // Extract oil adjustment calculations if food object is present
               const adjusted = msg.food ? getAdjustedNutrition(msg.id, msg.food) : null;
@@ -1712,30 +1723,30 @@ What food or snack would you like to check?`
                     className={`max-w-[92%] sm:max-w-[88%] rounded-2xl p-3.5 text-xs sm:text-sm shadow-2xs leading-relaxed ${
                       msg.sender === 'user'
                         ? 'bg-emerald-700 text-white rounded-br-none'
-                        : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
+                        : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-bl-none'
                     }`}
                   >
                     {/* Badge: Automatically Added to Clinic Food Library */}
                     {msg.autoSavedToLibrary && (
-                      <div className="mb-2.5 inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-300 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-2xs">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <div className="mb-2.5 inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-2xs">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                         <span>✨ Automatically Saved to Centre Food Library</span>
                       </div>
                     )}
 
                     {/* SUGGESTED MEAL CARD (When reporting meal eaten with time) */}
                     {msg.mealLogData && (
-                      <div className="mb-3.5 p-3.5 bg-linear-to-br from-emerald-50 via-teal-50 to-amber-50/40 rounded-2xl border-2 border-emerald-300 text-slate-900 space-y-3 shadow-xs">
-                        <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-emerald-200">
+                      <div className="mb-3.5 p-3.5 bg-linear-to-br from-emerald-50 via-teal-50 to-amber-50/40 dark:from-emerald-950/50 dark:via-teal-950/40 dark:to-amber-950/30 rounded-2xl border-2 border-emerald-300 dark:border-emerald-700 text-slate-900 dark:text-slate-100 space-y-3 shadow-xs">
+                        <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-emerald-200 dark:border-emerald-800">
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
-                              <span className="font-black text-slate-900 text-sm">Suggested for Your Meals Section</span>
+                              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-pulse" />
+                              <span className="font-black text-slate-900 dark:text-white text-sm">Suggested for Your Meals Section</span>
                             </div>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-slate-600">
-                              <span className="flex items-center gap-1 font-semibold text-slate-700">
-                                <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                                Eaten at: <strong className="text-slate-900 font-extrabold">{msg.mealLogData.timeGiven}</strong>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-slate-600 dark:text-slate-300">
+                              <span className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-200">
+                                <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                Eaten at: <strong className="text-slate-900 dark:text-white font-extrabold">{msg.mealLogData.timeGiven}</strong>
                               </span>
                               <span>•</span>
                               <span className="bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-md text-[11px]">
@@ -1744,20 +1755,20 @@ What food or snack would you like to check?`
                             </div>
                           </div>
 
-                          <div className="text-right shrink-0 bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-xl shadow-2xs">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block flex items-center justify-end gap-1">
-                              <Flame className="w-3 h-3 text-amber-600" />
+                          <div className="text-right shrink-0 bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-xl shadow-2xs">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 block flex items-center justify-end gap-1">
+                              <Flame className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                               Total Calories
                             </span>
-                            <span className="text-base font-black text-amber-950">
-                              {msg.mealLogData.totalCalories} <span className="text-xs font-bold text-amber-700">kcal</span>
+                            <span className="text-base font-black text-amber-950 dark:text-amber-100">
+                              {msg.mealLogData.totalCalories} <span className="text-xs font-bold text-amber-700 dark:text-amber-300">kcal</span>
                             </span>
                           </div>
                         </div>
 
                         {/* Each Food's Calories Stated FIRST */}
                         <div className="space-y-1.5">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
                             <Flame className="w-3.5 h-3.5 text-amber-500" />
                             Each Food's Calories (Check First):
                           </span>
@@ -1766,23 +1777,23 @@ What food or snack would you like to check?`
                             {msg.mealLogData.foods.map((food, fIdx) => (
                               <div
                                 key={fIdx}
-                                className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs"
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs"
                               >
                                 <div className="flex-1 mr-2">
-                                  <span className="font-extrabold text-slate-900 text-xs sm:text-sm block">
+                                  <span className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm block">
                                     {food.name}
                                   </span>
-                                  <span className="text-[11px] text-slate-500 font-medium">
-                                    Portion: <strong className="text-slate-700">{food.quantity}x ({food.servingUnit})</strong>
+                                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                    Portion: <strong className="text-slate-700 dark:text-slate-200">{food.quantity}x ({food.servingUnit})</strong>
                                   </span>
                                 </div>
 
                                 <div className="text-right shrink-0">
-                                  <span className="font-black text-amber-950 text-xs sm:text-sm bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg inline-flex items-center gap-1">
-                                    <Flame className="w-3 h-3 text-amber-600" />
+                                  <span className="font-black text-amber-950 dark:text-amber-200 text-xs sm:text-sm bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-700 px-2.5 py-1 rounded-lg inline-flex items-center gap-1">
+                                    <Flame className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                                     <strong>{food.calories} kcal</strong>
                                   </span>
-                                  <div className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                                  <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
                                     P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
                                   </div>
                                 </div>
@@ -1792,9 +1803,9 @@ What food or snack would you like to check?`
                         </div>
 
                         {/* Was it oily? 3 Options for this suggested meal */}
-                        <div className="p-2.5 bg-white rounded-xl border border-amber-200 space-y-1.5">
-                          <span className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1">
-                            <Droplets className="w-3.5 h-3.5 text-amber-600" />
+                        <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-amber-200 dark:border-amber-800/60 space-y-1.5">
+                          <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+                            <Droplets className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                             Was this meal oily? (Select cooking style):
                           </span>
                           <div className="grid grid-cols-3 gap-1.5">
@@ -1809,12 +1820,12 @@ What food or snack would you like to check?`
                                 onClick={() => setSelectedOilOptions(prev => ({ ...prev, [msg.id]: opt.id as any }))}
                                 className={`p-1.5 rounded-lg text-center border transition-all cursor-pointer ${
                                   (selectedOilOptions[msg.id] || 'steamed') === opt.id
-                                    ? 'bg-amber-100 border-amber-400 text-amber-950 font-black shadow-2xs'
-                                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                    ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black shadow-2xs'
+                                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                                 }`}
                               >
                                 <div className="text-[10px] font-bold leading-tight">{opt.label}</div>
-                                <div className="text-[9px] text-slate-500 font-semibold">{opt.sub}</div>
+                                <div className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold">{opt.sub}</div>
                               </button>
                             ))}
                           </div>
@@ -1828,13 +1839,13 @@ What food or snack would you like to check?`
                             disabled={msg.loggedSuccess}
                             className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
                               msg.loggedSuccess
-                                ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
+                                ? 'bg-emerald-200 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'
                                 : 'bg-emerald-700 hover:bg-emerald-800 text-white'
                             }`}
                           >
                             {msg.loggedSuccess ? (
                               <>
-                                <Check className="w-4 h-4 text-emerald-800" />
+                                <Check className="w-4 h-4 text-emerald-800 dark:text-emerald-300" />
                                 <span>Added to Daily Meal Diary!</span>
                               </>
                             ) : (
@@ -1850,10 +1861,10 @@ What food or snack would you like to check?`
 
                     {/* FOOD INQUIRY CARD: Calories First + "Was it oily? 3 Options" + Auto-Added Library */}
                     {msg.food && adjusted && (
-                      <div className="mb-3.5 p-3.5 bg-emerald-50/70 rounded-2xl border-2 border-emerald-200 text-slate-900 space-y-3">
+                      <div className="mb-3.5 p-3.5 bg-emerald-50/70 dark:bg-emerald-950/35 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-slate-100 space-y-3">
                         
                         {/* 1. Food Header with Photo */}
-                        <div className="flex items-start justify-between gap-2.5 pb-2 border-b border-emerald-200/80">
+                        <div className="flex items-start justify-between gap-2.5 pb-2 border-b border-emerald-200/80 dark:border-emerald-800/60">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <img
                               src={getFoodImageUrl(msg.food.name, msg.food.category)}
@@ -1862,49 +1873,49 @@ What food or snack would you like to check?`
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src = FOOD_FALLBACK_SVG;
                               }}
-                              className="w-12 h-12 rounded-xl object-cover shrink-0 border border-emerald-200 bg-white"
+                              className="w-12 h-12 rounded-xl object-cover shrink-0 border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-slate-800"
                             />
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-black text-slate-900 text-base truncate">{tf(msg.food.name)}</span>
-                                <span className="text-[11px] font-semibold text-emerald-800">
+                                <span className="font-black text-slate-900 dark:text-white text-base truncate">{tf(msg.food.name)}</span>
+                                <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-400">
                                   · {t(msg.food.category)}
                                 </span>
                               </div>
-                              <span className="text-xs text-slate-600 font-bold block mt-0.5">
-                                {t('Serving Unit')}: <strong className="text-slate-900">{msg.food.servingUnit}</strong>
+                              <span className="text-xs text-slate-600 dark:text-slate-300 font-bold block mt-0.5">
+                                {t('Serving Unit')}: <strong className="text-slate-900 dark:text-white">{msg.food.servingUnit}</strong>
                               </span>
                             </div>
                           </div>
 
-                          <span className="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-xl border border-emerald-200 shadow-2xs shrink-0">
+                          <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-xl border border-emerald-200 dark:border-emerald-700 shadow-2xs shrink-0">
                             {msg.food.glycemicIndex || 'GI: Balanced'}
                           </span>
                         </div>
 
                         {/* 2. PROMINENT CALORIES FIRST BANNER (Dynamic recalculation with oil) */}
-                        <div className="p-3 bg-amber-100 border-2 border-amber-300 rounded-xl flex items-center justify-between shadow-2xs">
+                        <div className="p-3 bg-amber-100 dark:bg-amber-950/60 border-2 border-amber-300 dark:border-amber-700 rounded-xl flex items-center justify-between shadow-2xs">
                           <div className="flex items-center gap-2">
-                            <Flame className="w-5 h-5 text-amber-600 shrink-0" />
+                            <Flame className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
                             <div>
-                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
                                 Calories First Check
                               </span>
-                              <span className="text-xs font-semibold text-amber-900">
+                              <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
                                 {adjusted.portion}x portion ({adjusted.oilOption === 'fried' ? 'Deep Fried' : adjusted.oilOption === 'medium' ? 'Medium Sauté' : 'Steamed / No Oil'})
                               </span>
                             </div>
                           </div>
-                          <span className="text-xl font-black text-amber-950">
-                            {adjusted.adjustedCalories} <span className="text-xs font-bold text-amber-700">kcal</span>
+                          <span className="text-xl font-black text-amber-950 dark:text-amber-100">
+                            {adjusted.adjustedCalories} <span className="text-xs font-bold text-amber-700 dark:text-amber-300">kcal</span>
                           </span>
                         </div>
 
                         {/* 3. CRITICAL MANDATE: "Was it oily? 3 options and calculate the calories accordingly" */}
-                        <div className="bg-white p-3 rounded-xl border border-emerald-200 space-y-2 shadow-2xs">
+                        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800/60 space-y-2 shadow-2xs">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-                              <Droplets className="w-3.5 h-3.5 text-amber-600" />
+                            <span className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <Droplets className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                               Was it oily? (3 Cooking Options):
                             </span>
                             <span className="text-[10px] font-bold text-slate-400">
@@ -1941,21 +1952,21 @@ What food or snack would you like to check?`
                                   onClick={() => setSelectedOilOptions(prev => ({ ...prev, [msg.id]: opt.id as any }))}
                                   className={`p-2 rounded-xl text-center border transition-all cursor-pointer ${
                                     isSelected
-                                      ? 'bg-amber-100 border-amber-400 text-amber-950 font-black shadow-xs ring-2 ring-amber-300'
-                                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                      ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black shadow-xs ring-2 ring-amber-300 dark:ring-amber-700'
+                                      : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                                   }`}
                                 >
                                   <div className="text-[11px] font-bold leading-tight">{opt.title}</div>
-                                  <div className="text-xs font-black text-amber-900 mt-0.5">{opt.calText}</div>
-                                  <div className="text-[9px] text-slate-500">{opt.subText}</div>
+                                  <div className="text-xs font-black text-amber-900 dark:text-amber-300 mt-0.5">{opt.calText}</div>
+                                  <div className="text-[9px] text-slate-500 dark:text-slate-400">{opt.subText}</div>
                                 </button>
                               );
                             })}
                           </div>
 
-                          <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between">
-                            <span>Selected preparation: <strong className="text-slate-900">{adjusted.oilOption === 'fried' ? 'Deep Fried' : adjusted.oilOption === 'medium' ? 'Medium Sauté' : 'No Oil / Steamed'}</strong></span>
-                            <span className="font-bold text-amber-800">
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                            <span>Selected preparation: <strong className="text-slate-900 dark:text-white">{adjusted.oilOption === 'fried' ? 'Deep Fried' : adjusted.oilOption === 'medium' ? 'Medium Sauté' : 'No Oil / Steamed'}</strong></span>
+                            <span className="font-bold text-amber-800 dark:text-amber-300">
                               {adjusted.oilCal > 0 ? `+${adjusted.oilCal} kcal from oil` : 'Zero added oil calories'}
                             </span>
                           </div>
@@ -1963,62 +1974,62 @@ What food or snack would you like to check?`
 
                         {/* 4. Core Macronutrients Grid (Calories, Protein, Carbs, Fat) */}
                         <div className="grid grid-cols-4 gap-2 text-center">
-                          <div className="bg-amber-50/80 p-2 rounded-xl border border-amber-200">
-                            <span className="text-[10px] font-black text-amber-800 block flex items-center justify-center gap-0.5">
-                              <Flame className="w-3 h-3 text-amber-600 inline" />
+                          <div className="bg-amber-50/80 dark:bg-amber-950/40 p-2 rounded-xl border border-amber-200 dark:border-amber-800/60">
+                            <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 block flex items-center justify-center gap-0.5">
+                              <Flame className="w-3 h-3 text-amber-600 dark:text-amber-400 inline" />
                               Calories
                             </span>
-                            <span className="text-sm font-black text-amber-950 mt-0.5 block">
-                              {adjusted.adjustedCalories} <span className="text-[9px] font-normal text-amber-700">kcal</span>
+                            <span className="text-sm font-black text-amber-950 dark:text-amber-100 mt-0.5 block">
+                              {adjusted.adjustedCalories} <span className="text-[9px] font-normal text-amber-700 dark:text-amber-300">kcal</span>
                             </span>
                           </div>
 
-                          <div className="bg-emerald-50/90 p-2 rounded-xl border border-emerald-200">
-                            <span className="text-[10px] font-black text-emerald-800 block flex items-center justify-center gap-0.5">
-                              <Dumbbell className="w-3 h-3 text-emerald-600 inline" />
+                          <div className="bg-emerald-50/90 dark:bg-emerald-950/40 p-2 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
+                            <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-300 block flex items-center justify-center gap-0.5">
+                              <Dumbbell className="w-3 h-3 text-emerald-600 dark:text-emerald-400 inline" />
                               Protein
                             </span>
-                            <span className="text-sm font-black text-emerald-950 mt-0.5 block">
-                              {adjusted.adjustedProtein} <span className="text-[9px] font-normal text-emerald-700">g</span>
+                            <span className="text-sm font-black text-emerald-950 dark:text-emerald-100 mt-0.5 block">
+                              {adjusted.adjustedProtein} <span className="text-[9px] font-normal text-emerald-700 dark:text-emerald-300">g</span>
                             </span>
                           </div>
 
-                          <div className="bg-blue-50/80 p-2 rounded-xl border border-blue-200">
-                            <span className="text-[10px] font-black text-blue-800 block flex items-center justify-center gap-0.5">
-                              <Wheat className="w-3 h-3 text-blue-600 inline" />
+                          <div className="bg-blue-50/80 dark:bg-blue-950/40 p-2 rounded-xl border border-blue-200 dark:border-blue-800/60">
+                            <span className="text-[10px] font-black text-blue-800 dark:text-blue-300 block flex items-center justify-center gap-0.5">
+                              <Wheat className="w-3 h-3 text-blue-600 dark:text-blue-400 inline" />
                               Carbs
                             </span>
-                            <span className="text-sm font-black text-blue-950 mt-0.5 block">
-                              {adjusted.adjustedCarbs} <span className="text-[9px] font-normal text-blue-700">g</span>
+                            <span className="text-sm font-black text-blue-950 dark:text-blue-100 mt-0.5 block">
+                              {adjusted.adjustedCarbs} <span className="text-[9px] font-normal text-blue-700 dark:text-blue-300">g</span>
                             </span>
                           </div>
 
-                          <div className="bg-orange-50/80 p-2 rounded-xl border border-orange-200">
-                            <span className="text-[10px] font-black text-orange-800 block flex items-center justify-center gap-0.5">
-                              <Droplets className="w-3 h-3 text-orange-600 inline" />
+                          <div className="bg-orange-50/80 dark:bg-orange-950/40 p-2 rounded-xl border border-orange-200 dark:border-orange-800/60">
+                            <span className="text-[10px] font-black text-orange-800 dark:text-orange-300 block flex items-center justify-center gap-0.5">
+                              <Droplets className="w-3 h-3 text-orange-600 dark:text-orange-400 inline" />
                               Fat
                             </span>
-                            <span className="text-sm font-black text-orange-950 mt-0.5 block">
-                              {adjusted.adjustedFat} <span className="text-[9px] font-normal text-orange-700">g</span>
+                            <span className="text-sm font-black text-orange-950 dark:text-orange-100 mt-0.5 block">
+                              {adjusted.adjustedFat} <span className="text-[9px] font-normal text-orange-700 dark:text-orange-300">g</span>
                             </span>
                           </div>
                         </div>
 
                         {/* 5. Options of Qty & One Food Measure */}
-                        <div className="bg-white p-3 rounded-2xl border border-emerald-100 shadow-2xs space-y-2.5">
-                          <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-100">
-                            <span className="text-slate-800 font-extrabold text-[11px] flex items-center gap-1">
+                        <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-800/60 shadow-2xs space-y-2.5">
+                          <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-100 dark:border-slate-700">
+                            <span className="text-slate-800 dark:text-slate-100 font-extrabold text-[11px] flex items-center gap-1">
                               <span>📏</span>
                               <span>Options of Qty &amp; Measure:</span>
                             </span>
-                            <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            <span className="text-[11px] font-mono font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
                               {adjusted.portion}x • {adjusted.adjustedCalories} kcal
                             </span>
                           </div>
 
                           {/* Measure of One Food Selector */}
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 block">
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">
                               Measure of 1 Food Unit:
                             </label>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
@@ -2031,8 +2042,8 @@ What food or snack would you like to check?`
                                     onClick={() => setSelectedMeasures(prev => ({ ...prev, [msg.id]: u.id }))}
                                     className={`px-2 py-1 rounded-lg text-left text-[10px] font-bold border transition-all cursor-pointer ${
                                       isSelected
-                                        ? 'bg-emerald-100/90 border-emerald-400 text-emerald-950 ring-1 ring-emerald-400'
-                                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                                        ? 'bg-emerald-100/90 dark:bg-emerald-950/60 border-emerald-400 dark:border-emerald-600 text-emerald-950 dark:text-emerald-200 ring-1 ring-emerald-400 dark:ring-emerald-700'
+                                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                                     }`}
                                   >
                                     <div className="truncate">{u.label}</div>
@@ -2043,9 +2054,9 @@ What food or snack would you like to check?`
                           </div>
 
                           {/* Quantity Selector: Quick multipliers + Stepper */}
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-700">
                             <div className="flex items-center gap-1">
-                              <span className="text-[10px] font-bold text-slate-500">Qty:</span>
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Qty:</span>
                               {[0.5, 1, 1.5, 2, 3, 4].map((p) => (
                                 <button
                                   key={p}
@@ -2054,7 +2065,7 @@ What food or snack would you like to check?`
                                   className={`px-1.5 py-0.5 text-[11px] font-black rounded-md transition-colors cursor-pointer ${
                                     (selectedPortions[msg.id] ?? 1) === p
                                       ? 'bg-emerald-700 text-white shadow-2xs'
-                                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
                                   }`}
                                 >
                                   {p}x
@@ -2063,18 +2074,18 @@ What food or snack would you like to check?`
                             </div>
 
                             {/* Stepper buttons */}
-                            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                               <button
                                 type="button"
                                 onClick={() => {
                                   const cur = selectedPortions[msg.id] ?? 1;
                                   if (cur > 0.5) setSelectedPortions(prev => ({ ...prev, [msg.id]: Number((cur - 0.5).toFixed(1)) }));
                                 }}
-                                className="w-5 h-5 flex items-center justify-center font-bold text-slate-700 hover:bg-white rounded cursor-pointer text-xs"
+                                className="w-5 h-5 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded cursor-pointer text-xs"
                               >
                                 -
                               </button>
-                              <span className="text-xs font-mono font-bold px-1 text-slate-900">
+                              <span className="text-xs font-mono font-bold px-1 text-slate-900 dark:text-white">
                                 {selectedPortions[msg.id] ?? 1}x
                               </span>
                               <button
@@ -2083,7 +2094,7 @@ What food or snack would you like to check?`
                                   const cur = selectedPortions[msg.id] ?? 1;
                                   setSelectedPortions(prev => ({ ...prev, [msg.id]: Number((cur + 0.5).toFixed(1)) }));
                                 }}
-                                className="w-5 h-5 flex items-center justify-center font-bold text-slate-700 hover:bg-white rounded cursor-pointer text-xs"
+                                className="w-5 h-5 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded cursor-pointer text-xs"
                               >
                                 +
                               </button>
@@ -2092,13 +2103,13 @@ What food or snack would you like to check?`
                         </div>
 
                         {/* 6. Add Direct to Food Menu on Each Section (In Chronological Order) */}
-                        <div className="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200 space-y-2">
+                        <div className="bg-emerald-50/70 dark:bg-emerald-950/40 p-3 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-2">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-emerald-950 font-black text-[11px] flex items-center gap-1">
+                            <span className="text-emerald-950 dark:text-emerald-200 font-black text-[11px] flex items-center gap-1">
                               <span>🍽️</span>
                               <span>Add Direct to Food Menu by Section:</span>
                             </span>
-                            <span className="text-[10px] text-emerald-800 font-bold">In Daily Order</span>
+                            <span className="text-[10px] text-emerald-800 dark:text-emerald-400 font-bold">In Daily Order</span>
                           </div>
 
                           {/* 5 Ordered Sections: Morning, Morning Snack, Lunch, Evening, Night */}
@@ -2113,7 +2124,7 @@ What food or snack would you like to check?`
                                   className={`p-1.5 rounded-xl text-center border transition-all cursor-pointer ${
                                     isSelected
                                       ? 'bg-emerald-700 border-emerald-800 text-white font-black shadow-xs ring-2 ring-emerald-400'
-                                      : 'bg-white border-slate-200 text-slate-700 hover:bg-emerald-50'
+                                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
                                   }`}
                                 >
                                   <div className="text-sm">{sec.icon}</div>
@@ -2136,13 +2147,13 @@ What food or snack would you like to check?`
                               disabled={msg.loggedSuccess}
                               className={`w-full py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
                                 msg.loggedSuccess
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'
                                   : 'bg-linear-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white'
                               }`}
                             >
                               {msg.loggedSuccess ? (
                                 <>
-                                  <Check className="w-4 h-4 text-emerald-700" />
+                                  <Check className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
                                   <span>✓ Directly Added to {selectedSlots[msg.id] || 'Evening Snack'} Column!</span>
                                 </>
                               ) : (
@@ -2155,8 +2166,8 @@ What food or snack would you like to check?`
                               )}
                             </button>
                           ) : (
-                            <div className="p-2 bg-amber-50 rounded-xl border border-amber-200 text-center">
-                              <p className="text-[11px] text-amber-900 font-bold mb-1">
+                            <div className="p-2 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-center">
+                              <p className="text-[11px] text-amber-900 dark:text-amber-200 font-bold mb-1">
                                 🔒 Bot Column Access is paused.
                               </p>
                               <button
@@ -2170,15 +2181,15 @@ What food or snack would you like to check?`
                           )}
 
                           {/* Quick 1-Click Direct Add to ANY Section */}
-                          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
-                            <span className="font-bold text-slate-600">Quick 1-click add to column:</span>
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1">
+                            <span className="font-bold text-slate-600 dark:text-slate-300">Quick 1-click add to column:</span>
                             <div className="flex items-center gap-1 flex-wrap">
                               {ORDERED_MEAL_SECTIONS.map((sec) => (
                                 <button
                                   key={sec.id}
                                   type="button"
                                   onClick={() => handleLogFoodFromChat(msg.id, msg.food!, sec.id)}
-                                  className="px-1.5 py-0.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded text-[10px] font-bold text-slate-700 transition-colors cursor-pointer"
+                                  className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-emerald-600 hover:text-white rounded text-[10px] font-bold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
                                   title={`Directly add to ${sec.label} column`}
                                 >
                                   +{sec.short}
@@ -2205,9 +2216,9 @@ What food or snack would you like to check?`
             })}
 
             {isLoading && (
-              <div className="flex items-center gap-2 p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs max-w-[80%]">
-                <Bot className="w-4 h-4 text-emerald-600 animate-spin" />
-                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+              <div className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs max-w-[80%]">
+                <Bot className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-spin" />
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-300 font-medium">
                   <span>NutriBot is calculating calories &amp; oil preparation...</span>
                   <span className="flex gap-0.5">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" />
@@ -2222,7 +2233,7 @@ What food or snack would you like to check?`
           </div>
 
           {/* Compact Wrapped Quick Prompts (No Horizontal Scrollbar) */}
-          <div className="px-3 py-2 bg-white border-t border-slate-100 flex flex-wrap items-center gap-1.5 shrink-0">
+          <div className="px-3 py-2 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-1.5 shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-0.5 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-amber-500" />
               {t('Quick:')}
@@ -2232,7 +2243,7 @@ What food or snack would you like to check?`
                 key={idx}
                 type="button"
                 onClick={() => handleSendMessage(qp.query)}
-                className="px-2.5 py-1 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 border border-slate-200 rounded-lg text-[11px] font-medium text-slate-600 transition-colors cursor-pointer"
+                className="px-2.5 py-1 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-800 dark:hover:text-emerald-300 hover:border-emerald-300 dark:hover:border-emerald-700 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-medium text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
               >
                 {qp.label}
               </button>
@@ -2241,12 +2252,12 @@ What food or snack would you like to check?`
 
           {/* Image Attachment Preview */}
           {selectedImage && (
-            <div className="px-3 py-1.5 bg-emerald-50 border-t border-emerald-200 flex items-center justify-between text-xs shrink-0">
+            <div className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/50 border-t border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs shrink-0">
               <div className="flex items-center gap-2">
-                <img src={selectedImage.preview} alt="Meal preview" className="w-9 h-9 rounded-lg object-cover border border-emerald-300 shadow-2xs" />
+                <img src={selectedImage.preview} alt="Meal preview" className="w-9 h-9 rounded-lg object-cover border border-emerald-300 dark:border-emerald-700 shadow-2xs" />
                 <div>
-                  <span className="font-bold text-emerald-900 block text-xs">📸 Meal Photo Attached</span>
-                  <span className="text-[10px] text-emerald-700">Gemini 3.8 Flash will analyze plate & calories</span>
+                  <span className="font-bold text-emerald-900 dark:text-emerald-200 block text-xs">📸 Meal Photo Attached</span>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400">Gemini 3.8 Flash will analyze plate & calories</span>
                 </div>
               </div>
               <button
@@ -2271,7 +2282,7 @@ What food or snack would you like to check?`
 
           {/* Active Voice Recording / Transcribing Indicator Banner */}
           {isRecordingVoice && (
-            <div className="px-3.5 py-2 bg-rose-50 border-t border-rose-200 flex items-center justify-between text-xs text-rose-950 shrink-0 animate-fadeIn">
+            <div className="px-3.5 py-2 bg-rose-50 dark:bg-rose-950/60 border-t border-rose-200 dark:border-rose-800 flex items-center justify-between text-xs text-rose-950 dark:text-rose-100 shrink-0 animate-fadeIn">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -2280,7 +2291,7 @@ What food or snack would you like to check?`
                 <span className="font-black text-xs">
                   🎙️ Recording Voice Note... ({voiceSeconds}s)
                 </span>
-                <span className="text-[10px] text-rose-700 hidden sm:inline font-medium">
+                <span className="text-[10px] text-rose-700 dark:text-rose-300 hidden sm:inline font-medium">
                   Speak in Malayalam or English (e.g. "Pazham Pori calories", "2 appam kazhichu")
                 </span>
               </div>
@@ -2295,8 +2306,8 @@ What food or snack would you like to check?`
           )}
 
           {isTranscribingVoice && (
-            <div className="px-3.5 py-2 bg-emerald-50 border-t border-emerald-200 flex items-center gap-2 text-xs text-emerald-900 shrink-0">
-              <Bot className="w-4 h-4 text-emerald-600 animate-spin" />
+            <div className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/50 border-t border-emerald-200 dark:border-emerald-800 flex items-center gap-2 text-xs text-emerald-900 dark:text-emerald-100 shrink-0">
+              <Bot className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-spin" />
               <span className="font-bold">NutriAI is transcribing Malayalam / English audio...</span>
             </div>
           )}
@@ -2307,7 +2318,7 @@ What food or snack would you like to check?`
               e.preventDefault();
               handleSendMessage();
             }}
-            className="p-3 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0"
+            className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 shrink-0"
           >
             {/* Camera / Photo Button */}
             <button
@@ -2315,8 +2326,8 @@ What food or snack would you like to check?`
               onClick={() => fileInputRef.current?.click()}
               className={`p-2.5 rounded-2xl border transition-colors cursor-pointer shrink-0 ${
                 selectedImage 
-                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 ring-2 ring-emerald-400' 
-                  : 'bg-slate-50 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 text-slate-500'
+                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 ring-2 ring-emerald-400' 
+                  : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 text-slate-500 dark:text-slate-300'
               }`}
               title="Upload or snap meal photo for Gemini 3.8 Flash AI analysis"
             >
@@ -2331,7 +2342,7 @@ What food or snack would you like to check?`
               className={`p-2.5 rounded-2xl border transition-all cursor-pointer shrink-0 ${
                 isRecordingVoice
                   ? 'bg-rose-600 text-white border-rose-700 ring-2 ring-rose-400 animate-pulse'
-                  : 'bg-slate-50 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 text-slate-500'
+                  : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 text-slate-500 dark:text-slate-300'
               }`}
               title={isRecordingVoice ? "Stop recording & transcribe" : "Record voice note in Malayalam or English"}
             >
@@ -2351,7 +2362,7 @@ What food or snack would you like to check?`
                     : t('Ask in English or Malayalam, speak with mic, or snap plate photo...')
               }
               disabled={isLoading || isRecordingVoice}
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
+              className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
             />
 
             {/* Send Button */}
@@ -2366,9 +2377,9 @@ What food or snack would you like to check?`
           </form>
 
           {/* Footer Subtext */}
-          <div className="px-4 py-1.5 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between shrink-0">
+          <div className="px-4 py-1.5 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 flex items-center justify-between shrink-0">
             <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+              <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               Saleem Valanchery Centre
             </span>
             <span>{t('All foods auto-saved to library')}</span>

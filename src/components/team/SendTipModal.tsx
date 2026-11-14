@@ -80,22 +80,22 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/70 dark:bg-slate-950/80 backdrop-blur-xs p-4">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-transparent dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-50/50">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-blue-50/50 dark:bg-slate-800/80">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-500" />
             <div>
-              <h2 className="text-base font-bold text-slate-900">Send Tip or Reminder</h2>
-              <p className="text-xs text-slate-500">Delivered directly to client's phone app</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Send Tip or Reminder</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Delivered directly to client's phone app</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
+            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -106,17 +106,17 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
           
           {/* Target Audience */}
           <div>
-            <label className="block font-semibold uppercase text-slate-600 mb-1">
+            <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
               Recipient
             </label>
             <div className="grid grid-cols-3 gap-1.5 mb-2">
               <button
                 type="button"
                 onClick={() => setTargetAudience('all')}
-                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors ${
+                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors cursor-pointer ${
                   targetAudience === 'all'
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 All Clients
@@ -124,10 +124,10 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
               <button
                 type="button"
                 onClick={() => setTargetAudience('specific')}
-                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors ${
+                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors cursor-pointer ${
                   targetAudience === 'specific'
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 Specific Client
@@ -135,10 +135,10 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
               <button
                 type="button"
                 onClick={() => setTargetAudience('inactive')}
-                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors ${
+                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors cursor-pointer ${
                   targetAudience === 'inactive'
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 Inactive Clients
@@ -149,7 +149,7 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
               <select
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               >
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -162,17 +162,17 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
 
           {/* Type Selector */}
           <div>
-            <label className="block font-semibold uppercase text-slate-600 mb-1">
+            <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
               Communication Type
             </label>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setType('tip')}
-                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors ${
+                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors cursor-pointer ${
                   type === 'tip'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'
-                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-bold'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                 }`}
               >
                 💡 Nutrition Tip
@@ -180,10 +180,10 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
               <button
                 type="button"
                 onClick={() => setType('note')}
-                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors ${
+                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors cursor-pointer ${
                   type === 'note'
-                    ? 'bg-purple-50 text-purple-800 border-purple-300 font-bold'
-                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                    ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700 font-bold'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                 }`}
               >
                 📝 Clinician Note
@@ -191,10 +191,10 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
               <button
                 type="button"
                 onClick={() => setType('reminder')}
-                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors ${
+                className={`py-1.5 px-2 rounded-lg font-medium border text-center transition-colors cursor-pointer ${
                   type === 'reminder'
-                    ? 'bg-amber-50 text-amber-800 border-amber-300 font-bold'
-                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-bold'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                 }`}
               >
                 🔔 Reminder
@@ -205,14 +205,14 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
           {/* Title */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block font-semibold uppercase text-slate-600">
+              <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400">
                 Subject / Title *
               </label>
               <button
                 type="button"
                 onClick={handleGenerateAiTip}
                 disabled={isGeneratingAi}
-                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer transition-colors"
+                className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
                 title="Use Gemini 3.8 Flash to write personalized clinical tip"
               >
                 <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
@@ -224,14 +224,14 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Remember to drink 500ml water with lunch"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               required
             />
           </div>
 
           {/* Message Content */}
           <div>
-            <label className="block font-semibold uppercase text-slate-600 mb-1">
+            <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
               Message Content *
             </label>
             <textarea
@@ -239,7 +239,7 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Write your note or advice..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               required
             />
           </div>
@@ -249,7 +249,7 @@ export const SendTipModal: React.FC<SendTipModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 font-semibold text-slate-600 hover:text-slate-900 rounded-xl"
+              className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl cursor-pointer"
             >
               Cancel
             </button>

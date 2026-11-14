@@ -22,7 +22,7 @@ export interface NutriTrackLogoProps {
  */
 export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
   size = 'md',
-  variant = 'light',
+  variant = 'auto',
   showText = true,
   badge = 'PRO',
   subtitle,
@@ -37,7 +37,17 @@ export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
     xl: { icon: 64, fontSize: 'text-3xl', subSize: 'text-sm' },
   }[size];
 
-  const isDark = variant === 'dark';
+  const isDarkSurface = variant === 'dark';
+  const titleColorClass = isDarkSurface
+    ? 'text-white'
+    : variant === 'light'
+    ? 'text-slate-900'
+    : 'text-slate-900 dark:text-white';
+  const subColorClass = isDarkSurface
+    ? 'text-emerald-200/80'
+    : variant === 'light'
+    ? 'text-slate-500'
+    : 'text-slate-500 dark:text-emerald-200/80';
 
   return (
     <div className={`inline-flex items-center gap-3 select-none ${className}`}>
@@ -56,9 +66,9 @@ export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
         >
           <defs>
             <linearGradient id={`nt-bg-${size}-${variant}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={isDark ? "#064e3b" : "#043d2e"} />
-              <stop offset="60%" stopColor={isDark ? "#065f46" : "#064e3b"} />
-              <stop offset="100%" stopColor={isDark ? "#047857" : "#065f46"} />
+              <stop offset="0%" stopColor={isDarkSurface ? "#064e3b" : "#043d2e"} />
+              <stop offset="60%" stopColor={isDarkSurface ? "#065f46" : "#064e3b"} />
+              <stop offset="100%" stopColor={isDarkSurface ? "#047857" : "#065f46"} />
             </linearGradient>
 
             <linearGradient id={`nt-leaf-${size}-${variant}`} x1="0%" y1="100%" x2="100%" y2="0%">
@@ -127,21 +137,21 @@ export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
       {showText && (
         <div className="flex flex-col leading-tight">
           <div className="flex items-center gap-1.5">
-            <span className={`font-black tracking-tight ${dimensions.fontSize} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <span className={`font-black tracking-tight ${dimensions.fontSize} ${titleColorClass}`}>
               Nutri<span className="text-emerald-500 font-extrabold">Track</span>
             </span>
             {badge && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 uppercase tracking-wider">
                 {badge}
               </span>
             )}
           </div>
           {subtitle !== undefined ? (
-            <p className={`font-medium tracking-normal ${dimensions.subSize} ${isDark ? 'text-emerald-200/80' : 'text-slate-500'}`}>
+            <p className={`font-medium tracking-normal ${dimensions.subSize} ${subColorClass}`}>
               {subtitle}
             </p>
           ) : (
-            <p className={`font-medium tracking-normal ${dimensions.subSize} ${isDark ? 'text-emerald-200/80' : 'text-slate-500'}`}>
+            <p className={`font-medium tracking-normal ${dimensions.subSize} ${subColorClass}`}>
               Diet &amp; Nutrition Management
             </p>
           )}

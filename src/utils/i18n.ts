@@ -337,6 +337,30 @@ const EN_TO_ML: Record<string, string> = {
   'Record Measurements': 'ശരീര അളവുകൾ രേഖപ്പെടുത്തുക',
   'Save Reading': 'റീഡിംഗ് സേവ് ചെയ്യുക',
   'Saved!': 'സേവ് ചെയ്തു!',
+
+  // Dark / Light Mode & Theme
+  'Dark Mode': 'ഡാർക്ക് മോഡ്',
+  'Light Mode': 'ലൈറ്റ് മോഡ്',
+  'Theme': 'തീം',
+
+  // Mobile OS Auto-Sync (Home & Habits)
+  'Enable iPhone Step Sensor': 'iPhone സ്റ്റെപ്പ് സെൻസർ ഓൺ ചെയ്യുക',
+  'Tap once to let your iPhone auto-count walking steps & add calorie burn':
+    'നടക്കുമ്പോൾ ചുവടുകളും കലോറിയും താനേ കണക്കാക്കാൻ ഒരിക്കൽ തൊടുക',
+  'Phone OS Auto-Sync Active': 'ഫോൺ OS ഓട്ടോ-സിങ്ക് സജീവം',
+  'Steps & Sleep Synced': 'ചുവടുകളും ഉറക്കവും സിങ്ക് ചെയ്തു',
+
+  // NutriBot Redesigned Bento Grid
+  'Kerala Food AI · Vision': 'കേരള ഫുഡ് AI · വിഷൻ',
+  'Kerala Food Guide': 'കേരള ഫുഡ് ഗൈഡ്',
+  'Snacks & calorie chart': 'പലഹാരങ്ങളും കലോറിയും',
+  'Oil & Prep Calc': 'എണ്ണ & പാചക കണക്ക്',
+  'Steamed vs Fried fat': 'ആവി vs വറുത്ത കൊഴുപ്പ്',
+  'Quick Meal Log': 'ഭക്ഷണം വേഗം ചേർക്കുക',
+  'Log with meal time': 'സമയത്തോടെ ചേർക്കുക',
+  'Centre Library': 'സെന്റർ ഫുഡ് ലൈബ്രറി',
+  'Auto-synced foods': 'ഓട്ടോ-സേവ് ചെയ്തവ',
+  'Type, speak, or snap a meal (EN / മലയാളം)...': 'ഭക്ഷണം ടൈപ്പ് ചെയ്യുക, പറയുക അല്ലെങ്കിൽ ഫോട്ടോ എടുക്കുക...',
 };
 
 const FOOD_KEYWORD_ML: Array<[RegExp, string]> = [

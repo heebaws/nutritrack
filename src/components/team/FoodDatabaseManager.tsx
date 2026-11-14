@@ -15,6 +15,7 @@ export const FoodDatabaseManager: React.FC = () => {
   const [cleanMessage, setCleanMessage] = useState<string | null>(null);
   const [isAiVerifying, setIsAiVerifying] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<{ id: string; name: string } | null>(null);
 
   // Form states for add/edit
   const [name, setName] = useState('');
@@ -160,23 +161,21 @@ export const FoodDatabaseManager: React.FC = () => {
   };
 
   const handleDelete = (id: string, foodName: string) => {
-    if (window.confirm(`Are you sure you want to remove "${foodName}" from the centre food database?\n\nNote: Deleting from this library will NOT delete meals already logged by clients. All historical client logs remain preserved and safe.`)) {
-      deleteFoodItem(id);
-    }
+    setConfirmDeleteItem({ id, name: foodName });
   };
 
   return (
     <div className="space-y-4">
       
       {/* Top action bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <UtensilsCrossed className="w-5 h-5 text-blue-600" />
+          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <UtensilsCrossed className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Food List &amp; Nutrition Values
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Maintain accurate calorie and macro values ({foods.length} items). <span className="text-emerald-700 font-medium">Safe deletion guaranteed: deleting an item from this library never deletes meals already logged by clients.</span>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Maintain accurate calorie and macro values ({foods.length} items). <span className="text-emerald-700 dark:text-emerald-400 font-medium">Safe deletion guaranteed: deleting an item from this library never deletes meals already logged by clients.</span>
           </p>
         </div>
 
@@ -185,13 +184,13 @@ export const FoodDatabaseManager: React.FC = () => {
             type="button"
             onClick={handleCleanDuplicates}
             disabled={isCleaningDuplicates}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2 px-3 rounded-xl border border-slate-300 shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             title="Scan library and delete duplicate food entries"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isCleaningDuplicates ? 'animate-spin text-blue-600' : 'text-slate-500'}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isCleaningDuplicates ? 'animate-spin text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
             <span>Clean Double Entries</span>
             {duplicateCount > 0 && (
-              <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-amber-300">
+              <span className="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-amber-300 dark:border-amber-800">
                 {duplicateCount} dupes
               </span>
             )}
@@ -208,16 +207,49 @@ export const FoodDatabaseManager: React.FC = () => {
         </div>
       </div>
 
+      {/* Inline Delete Confirmation Banner */}
+      {confirmDeleteItem && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-rose-900 dark:text-rose-200">
+              Remove &ldquo;{confirmDeleteItem.name}&rdquo; from the centre food database?
+            </p>
+            <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-0.5">
+              All historical meals already logged by clients remain preserved and safe.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteItem(null)}
+              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                deleteFoodItem(confirmDeleteItem.id);
+                setConfirmDeleteItem(null);
+              }}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+            >
+              Confirm Remove
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Clean Feedback Toast Banner */}
       {cleanMessage && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>{cleanMessage}</span>
         </div>
       )}
 
       {/* Search and category filters */}
-      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+      <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -226,7 +258,7 @@ export const FoodDatabaseManager: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search food by name..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
             />
           </div>
 
@@ -236,10 +268,10 @@ export const FoodDatabaseManager: React.FC = () => {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl font-medium whitespace-nowrap transition-colors ${
+                className={`px-3 py-1.5 rounded-xl font-medium whitespace-nowrap transition-colors cursor-pointer ${
                   selectedCategory === cat
                     ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 {cat}
@@ -249,9 +281,9 @@ export const FoodDatabaseManager: React.FC = () => {
         </div>
 
         {/* Food Table */}
-        <div className="overflow-x-auto border border-slate-100 rounded-xl">
+        <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
               <tr>
                 <th className="py-2.5 px-3">Food Name</th>
                 <th className="py-2.5 px-3">Category</th>
@@ -263,30 +295,30 @@ export const FoodDatabaseManager: React.FC = () => {
                 <th className="py-2.5 px-3 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredFoods.length > 0 ? (
                 filteredFoods.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-2.5 px-3 font-semibold text-slate-900">
+                  <tr key={item.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">
                       {item.name}
                       {item.isCustom && (
-                        <span className="ml-1.5 text-[10px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded border border-blue-200">
+                        <span className="ml-1.5 text-[10px] font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-1.5 py-0.2 rounded border border-blue-200 dark:border-blue-800">
                           Custom
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-600">{item.category}</td>
-                    <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">{item.servingUnit}</td>
-                    <td className="py-2.5 px-3 text-right font-bold text-amber-700">{item.calories} kcal</td>
-                    <td className="py-2.5 px-3 text-right text-emerald-700 font-medium">{item.protein}g</td>
-                    <td className="py-2.5 px-3 text-right text-blue-700 font-medium">{item.carbs}g</td>
-                    <td className="py-2.5 px-3 text-right text-slate-700 font-medium">{item.fat}g</td>
+                    <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{item.category}</td>
+                    <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">{item.servingUnit}</td>
+                    <td className="py-2.5 px-3 text-right font-bold text-amber-700 dark:text-amber-400 tabular-nums">{item.calories} kcal</td>
+                    <td className="py-2.5 px-3 text-right text-emerald-700 dark:text-emerald-400 font-medium tabular-nums">{item.protein}g</td>
+                    <td className="py-2.5 px-3 text-right text-blue-700 dark:text-blue-400 font-medium tabular-nums">{item.carbs}g</td>
+                    <td className="py-2.5 px-3 text-right text-slate-700 dark:text-slate-300 font-medium tabular-nums">{item.fat}g</td>
                     <td className="py-2.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           type="button"
                           onClick={() => openEditModal(item)}
-                          className="p-1 text-slate-400 hover:text-blue-600 rounded-md transition-colors"
+                          className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md transition-colors cursor-pointer"
                           title="Edit Nutrition Values"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -294,7 +326,7 @@ export const FoodDatabaseManager: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleDelete(item.id, item.name)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded-md transition-colors"
+                          className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-md transition-colors cursor-pointer"
                           title="Delete Food"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -305,7 +337,7 @@ export const FoodDatabaseManager: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                  <td colSpan={8} className="py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                     No foods found matching "{searchQuery}". Click "Add New Food" above to add one.
                   </td>
                 </tr>
@@ -317,17 +349,17 @@ export const FoodDatabaseManager: React.FC = () => {
 
       {/* Add / Edit Food Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-transparent dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                 {editingFood ? 'Edit Food Item' : 'Add New Food Item'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -337,17 +369,17 @@ export const FoodDatabaseManager: React.FC = () => {
               
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block font-semibold uppercase text-slate-600">
+                  <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400">
                     Food Name *
                   </label>
                   <button
                     type="button"
                     onClick={handleAiVerify}
                     disabled={!name.trim() || isAiVerifying}
-                    className="flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-lg border border-blue-200 transition-colors disabled:opacity-40 cursor-pointer"
+                    className="flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2 py-0.5 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors disabled:opacity-40 cursor-pointer"
                     title="Calibrate accurate calories and macros with AI"
                   >
-                    <Sparkles className="w-3 h-3 text-blue-600" />
+                    <Sparkles className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     <span>{isAiVerifying ? 'Checking...' : 'AI Verify & Calibrate'}</span>
                   </button>
                 </div>
@@ -359,12 +391,12 @@ export const FoodDatabaseManager: React.FC = () => {
                     if (aiNote) setAiNote(null);
                   }}
                   placeholder="e.g. Grilled Paneer Tikka or Sulaimani"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   required
                 />
                 {aiNote && (
-                  <p className="text-[11px] text-emerald-700 font-medium mt-1 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>{aiNote}</span>
                   </p>
                 )}
@@ -372,13 +404,13 @@ export const FoodDatabaseManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold uppercase text-slate-600 mb-1">
+                  <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                     Category
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as FoodCategory)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   >
                     <option value="Proteins">Proteins</option>
                     <option value="Grains & Breads">Grains &amp; Breads</option>
@@ -391,7 +423,7 @@ export const FoodDatabaseManager: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold uppercase text-slate-600 mb-1">
+                  <label className="block font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
                     Serving Unit *
                   </label>
                   <input
@@ -399,54 +431,54 @@ export const FoodDatabaseManager: React.FC = () => {
                     value={servingUnit}
                     onChange={(e) => setServingUnit(e.target.value)}
                     placeholder="e.g. 1 bowl (150g)"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                     required
                   />
                 </div>
               </div>
 
               {/* Nutrition Inputs */}
-              <div className="grid grid-cols-4 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <div className="grid grid-cols-4 gap-2 bg-slate-50 dark:bg-slate-800/70 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Calories</label>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Calories</label>
                   <input
                     type="number"
                     value={calories}
                     onChange={(e) => setCalories(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-bold text-amber-700"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-bold text-amber-700 dark:text-amber-400"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Protein (g)</label>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Protein (g)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={protein}
                     onChange={(e) => setProtein(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-medium text-emerald-700"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-medium text-emerald-700 dark:text-emerald-400"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Carbs (g)</label>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Carbs (g)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={carbs}
                     onChange={(e) => setCarbs(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-medium text-blue-700"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-medium text-blue-700 dark:text-blue-400"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Fat (g)</label>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Fat (g)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={fat}
                     onChange={(e) => setFat(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-medium text-slate-700"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-medium text-slate-700 dark:text-slate-200"
                     required
                   />
                 </div>
@@ -456,13 +488,13 @@ export const FoodDatabaseManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 font-semibold text-slate-600 hover:text-slate-900 rounded-xl"
+                  className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                  className="px-5 py-2 font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
                   <span>Save Food</span>

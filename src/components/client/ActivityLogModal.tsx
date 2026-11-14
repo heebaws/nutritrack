@@ -70,11 +70,11 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-orange-500 to-amber-500 text-white">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center font-bold">
               <Flame className="w-5 h-5 text-white" />
@@ -100,7 +100,7 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
           
           {/* Preset Activity Selector */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
               {t('Select Activity Type')}
             </label>
             <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
@@ -111,8 +111,8 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
                   onClick={() => setActivityName(item.name)}
                   className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2 cursor-pointer text-xs font-semibold ${
                     activityName === item.name
-                      ? 'bg-orange-50 border-orange-400 text-orange-900 font-bold shadow-2xs'
-                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-400 dark:border-orange-600 text-orange-900 dark:text-orange-200 font-bold shadow-2xs'
+                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                 >
                   <span className="text-base shrink-0">{item.icon}</span>
@@ -125,7 +125,7 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
           {/* Duration & Intensity */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                 {t('Duration (Minutes)')}
               </label>
               <div className="relative">
@@ -136,7 +136,7 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
                   step="5"
                   value={durationMinutes}
                   onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10) || 0)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 focus:outline-orange-500"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-orange-500"
                   required
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">
@@ -146,13 +146,13 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                 {t('Workout Intensity')}
               </label>
               <select
                 value={intensity}
                 onChange={(e) => setIntensity(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 focus:outline-orange-500 cursor-pointer"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-orange-500 cursor-pointer"
               >
                 <option value="light">{isMl ? 'ലഘുവായ വേഗം (0.8x)' : 'Light Pace (0.8x)'}</option>
                 <option value="moderate">{isMl ? 'മിതമായത് (1.0x)' : 'Moderate / Normal (1.0x)'}</option>
@@ -162,16 +162,16 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
           </div>
 
           {/* Computed Calories Burned Card */}
-          <div className="bg-orange-50 rounded-2xl p-4 border border-orange-200/80 flex items-center justify-between">
+          <div className="bg-orange-50 dark:bg-orange-950/50 rounded-2xl p-4 border border-orange-200/80 dark:border-orange-800 flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase font-bold text-orange-800 tracking-wider">
+              <span className="text-[10px] uppercase font-bold text-orange-800 dark:text-orange-300 tracking-wider">
                 {t('Estimated Energy Burned')}
               </span>
               <div className="flex items-baseline gap-1 mt-0.5 tabular-nums">
-                <span className="text-2xl font-black text-orange-600">
+                <span className="text-2xl font-black text-orange-600 dark:text-orange-400">
                   {customCalories ? customCalories : calculatedKcal}
                 </span>
-                <span className="text-xs font-bold text-orange-800">kcal</span>
+                <span className="text-xs font-bold text-orange-800 dark:text-orange-300">kcal</span>
               </div>
             </div>
 
@@ -184,21 +184,21 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
                 placeholder={isMl ? 'കലോറി (kcal)' : 'Custom kcal'}
                 value={customCalories}
                 onChange={(e) => setCustomCalories(e.target.value)}
-                className="w-28 bg-white border border-orange-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 placeholder-slate-400 mt-1"
+                className="w-28 bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder-slate-400 mt-1"
               />
             </div>
           </div>
 
           {/* Today's Already Logged Activities */}
           {dayActivities.length > 0 && (
-            <div className="pt-2 border-t border-slate-100">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-600">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
                   {isMl
                     ? `ഇന്ന് ചെയ്ത വ്യായാമങ്ങൾ (${dayActivities.length})`
                     : `Logged Workouts for Today (${dayActivities.length})`}
                 </span>
-                <span className="text-xs font-black text-orange-600 tabular-nums">
+                <span className="text-xs font-black text-orange-600 dark:text-orange-400 tabular-nums">
                   {isMl ? `ആകെ കുറഞ്ഞത്: ${totalCaloriesBurnedToday} kcal` : `Total Burned: ${totalCaloriesBurnedToday} kcal`}
                 </span>
               </div>
@@ -208,11 +208,11 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
                   return (
                     <div
                       key={act.id}
-                      className="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 text-xs"
+                      className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <Flame className="w-3.5 h-3.5 text-orange-500" />
-                        <span className="font-semibold text-slate-800">
+                        <span className="font-semibold text-slate-800 dark:text-slate-100">
                           {isMl && matchedPreset ? matchedPreset.mlName : act.activityName}
                         </span>
                         <span className="text-slate-400">
@@ -220,11 +220,11 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-orange-700 tabular-nums">-{act.caloriesBurned} kcal</span>
+                        <span className="font-bold text-orange-700 dark:text-orange-400 tabular-nums">-{act.caloriesBurned} kcal</span>
                         <button
                           type="button"
                           onClick={() => deleteActivity(act.id)}
-                          className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                          className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
                           title={isMl ? 'വ്യായാമം നീക്കം ചെയ്യുക' : 'Remove workout'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -242,7 +242,7 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               {t('Cancel')}
             </button>

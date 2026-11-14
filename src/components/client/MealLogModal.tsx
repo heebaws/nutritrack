@@ -507,17 +507,17 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-[#FAF8F4] w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#E7E0D3] flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden animate-in fade-in slide-in-from-bottom duration-200"
+        className="bg-[#FAF8F4] dark:bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#E7E0D3] dark:border-slate-800 flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden animate-in fade-in slide-in-from-bottom duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         
         {/* Warm Editorial Header */}
-        <div className="px-5 py-4 bg-[#F5F1E8] border-b border-[#E7E0D3] flex items-center justify-between gap-2 shrink-0">
+        <div className="px-5 py-4 bg-[#F5F1E8] dark:bg-slate-800/90 border-b border-[#E7E0D3] dark:border-slate-700 flex items-center justify-between gap-2 shrink-0">
           <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight truncate">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
               {t("Add Day's Calories & Meals")}
             </h2>
-            <p className="text-xs text-slate-600 truncate">
+            <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
               {t('Pick from food database or add a new food with calories')}
             </p>
           </div>
@@ -528,17 +528,17 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                 onClose();
                 window.dispatchEvent(new CustomEvent('open-nutribot', { detail: { query: searchQuery || customName || '' } }));
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl border border-[#DFD8C8] transition-colors cursor-pointer shadow-2xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-900 text-emerald-900 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 rounded-xl border border-[#DFD8C8] dark:border-slate-600 transition-colors cursor-pointer shadow-2xs"
               title={t('Open NutriBot AI Assistant chat')}
             >
-              <Bot className="w-3.5 h-3.5 text-emerald-700" />
+              <Bot className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
               <span>{t('Ask NutriBot')}</span>
             </button>
             <button
               type="button"
               onClick={onClose}
               aria-label={t('Close')}
-              className="w-9 h-9 rounded-xl bg-white hover:bg-rose-50 border border-[#DFD8C8] text-slate-700 hover:text-rose-700 flex items-center justify-center transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/60 border border-[#DFD8C8] dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -546,14 +546,14 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         </div>
 
         {/* Tab Selector: Library vs Custom Food */}
-        <div className="px-5 pt-2.5 pb-0 flex border-b border-[#E7E0D3] bg-[#F5F1E8]/60 shrink-0">
+        <div className="px-5 pt-2.5 pb-0 flex border-b border-[#E7E0D3] dark:border-slate-700 bg-[#F5F1E8]/60 dark:bg-slate-800/50 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('library')}
             className={`pb-2.5 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'library'
-                ? 'border-emerald-700 text-emerald-900 bg-white rounded-t-xl'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-emerald-700 dark:border-emerald-400 text-emerald-900 dark:text-emerald-300 bg-white dark:bg-slate-900 rounded-t-xl'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -564,8 +564,8 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
             onClick={() => setActiveTab('custom')}
             className={`pb-2.5 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'custom'
-                ? 'border-emerald-700 text-emerald-900 bg-white rounded-t-xl'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-emerald-700 dark:border-emerald-400 text-emerald-900 dark:text-emerald-300 bg-white dark:bg-slate-900 rounded-t-xl'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -577,7 +577,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4">
           
           {/* Visual 5-Slot Meal Selector (Icons + Full Non-Truncated Labels) */}
-          <div className="bg-white rounded-2xl p-2 border border-[#E7E0D3] shadow-2xs">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-2 border border-[#E7E0D3] dark:border-slate-700 shadow-2xs">
             <div className="grid grid-cols-5 gap-1">
               {MEAL_SLOT_CONFIG.map((slot) => {
                 const IconComp = slot.icon;
@@ -589,11 +589,11 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     onClick={() => setMealType(slot.id)}
                     className={`py-2 px-1 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 text-center cursor-pointer ${
                       isSelected
-                        ? 'bg-amber-50 border-amber-400 text-amber-950 ring-1 ring-amber-300 font-bold shadow-2xs'
-                        : 'bg-transparent border-transparent text-slate-600 hover:bg-slate-50'
+                        ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 ring-1 ring-amber-300 dark:ring-amber-700 font-bold shadow-2xs'
+                        : 'bg-transparent border-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60'
                     }`}
                   >
-                    <IconComp className={`w-5 h-5 ${isSelected ? 'text-amber-700' : 'text-emerald-800'}`} />
+                    <IconComp className={`w-5 h-5 ${isSelected ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-800 dark:text-emerald-400'}`} />
                     <span className="text-[10px] sm:text-[11px] font-bold leading-tight">
                       {t(slot.shortLabel)}
                     </span>
@@ -605,35 +605,35 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
 
           {/* Pending AI Chat Suggestions for this Slot */}
           {relevantSuggestions.length > 0 && (
-            <div className="p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl space-y-2.5">
+            <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-300 dark:border-emerald-700 rounded-2xl space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
-                  <span className="text-xs font-black text-emerald-950">
+                  <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-pulse" />
+                  <span className="text-xs font-black text-emerald-950 dark:text-emerald-200">
                     Suggested from NutriBot Chat ({mealType})
                   </span>
                 </div>
-                <span className="text-[11px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
+                <span className="text-[11px] font-extrabold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700">
                   🔥 {relevantSuggestions[0].totalCalories} kcal Total
                 </span>
               </div>
 
-              <p className="text-[11px] text-slate-600">
-                You reported eating this at <strong className="text-slate-900">{relevantSuggestions[0].timeGiven}</strong>. Each food's calories are verified below:
+              <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                You reported eating this at <strong className="text-slate-900 dark:text-white">{relevantSuggestions[0].timeGiven}</strong>. Each food's calories are verified below:
               </p>
 
               <div className="space-y-1.5">
                 {relevantSuggestions[0].foods.map((food, fIdx) => (
                   <div
                     key={fIdx}
-                    className="p-2 bg-white rounded-xl border border-emerald-200 flex items-center justify-between text-xs"
+                    className="p-2 bg-white dark:bg-slate-800 rounded-xl border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between text-xs"
                   >
                     <div>
-                      <span className="font-extrabold text-slate-900 block">{food.name}</span>
-                      <span className="text-[10px] text-slate-500">{food.quantity}x ({food.servingUnit})</span>
+                      <span className="font-extrabold text-slate-900 dark:text-white block">{food.name}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">{food.quantity}x ({food.servingUnit})</span>
                     </div>
                     <div className="text-right">
-                      <span className="font-black text-amber-900 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md text-xs">
+                      <span className="font-black text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-700 px-1.5 py-0.5 rounded-md text-xs">
                         🔥 {food.calories} kcal
                       </span>
                       <div className="text-[9px] text-slate-400 mt-0.5">
@@ -644,11 +644,11 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                 ))}
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-1 border-t border-emerald-200">
+              <div className="flex items-center justify-end gap-2 pt-1 border-t border-emerald-200 dark:border-emerald-800">
                 <button
                   type="button"
                   onClick={() => dismissSuggestedMeal(relevantSuggestions[0].id)}
-                  className="px-3 py-1 text-xs font-bold text-slate-500 hover:text-slate-800 rounded-lg cursor-pointer"
+                  className="px-3 py-1 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg cursor-pointer"
                 >
                   Dismiss
                 </button>
@@ -675,21 +675,21 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
             /* ================= TAB 1: LIBRARY SEARCH & SELECT ================= */
             <>
               {selectedFood ? (
-                <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 space-y-3">
+                <div className="bg-emerald-50/70 dark:bg-emerald-950/35 border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-4 space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide">
+                      <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">
                         {selectedFood.category}
                       </span>
-                      <h3 className="font-bold text-slate-900 text-base">{selectedFood.name}</h3>
-                      <p className="text-xs text-slate-600 mt-0.5">
+                      <h3 className="font-bold text-slate-900 dark:text-white text-base">{selectedFood.name}</h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                         Standard serving: <span className="font-medium">{selectedFood.servingUnit}</span>
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSelectedFood(null)}
-                      className="text-xs text-emerald-700 hover:text-emerald-900 underline font-medium cursor-pointer"
+                      className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 underline font-medium cursor-pointer"
                     >
                       Change Food
                     </button>
@@ -700,40 +700,40 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     const audit = classifyFoodItem(selectedFood.name, selectedFood.category, oilOption);
                     if (audit.isProblemFood) {
                       return (
-                        <div className="p-3 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 space-y-1.5 animate-in fade-in">
+                        <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100 space-y-1.5 animate-in fade-in">
                           <div className="flex items-center justify-between gap-1">
                             <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-600 text-white flex items-center gap-1">
                               <AlertTriangle className="w-3 h-3" />
                               {audit.tierLabel}
                             </span>
-                            <span className="text-[10px] font-bold text-rose-800">
+                            <span className="text-[10px] font-bold text-rose-800 dark:text-rose-300">
                               Coach Saleem Advisory
                             </span>
                           </div>
-                          <p className="text-xs text-rose-900 font-semibold leading-snug">
+                          <p className="text-xs text-rose-900 dark:text-rose-200 font-semibold leading-snug">
                             {audit.coachWarning}
                           </p>
-                          <p className="text-[11px] text-rose-800 leading-snug">
+                          <p className="text-[11px] text-rose-800 dark:text-rose-300 leading-snug">
                             {audit.clinicalReason}
                           </p>
-                          <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-200 text-emerald-950 text-[11px] space-y-0.5">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block">
+                          <div className="bg-emerald-50 dark:bg-emerald-950/50 p-2 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 text-[11px] space-y-0.5">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400 block">
                               🔄 Suggested Healthy Swap:
                             </span>
-                            <span className="font-bold text-emerald-900">{audit.recommendedSwap.name}</span>
-                            <p className="text-[10px] text-emerald-700">{audit.recommendedSwap.description}</p>
+                            <span className="font-bold text-emerald-900 dark:text-emerald-200">{audit.recommendedSwap.name}</span>
+                            <p className="text-[10px] text-emerald-700 dark:text-emerald-400">{audit.recommendedSwap.description}</p>
                           </div>
                         </div>
                       );
                     } else if (audit.isSuperFood) {
                       return (
-                        <div className="p-2.5 rounded-2xl bg-emerald-100/80 border border-emerald-300 text-emerald-950 flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <div className="p-2.5 rounded-2xl bg-emerald-100/80 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                           <div>
-                            <span className="text-xs font-black text-emerald-900 block">
+                            <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 block">
                               🌟 Coach Saleem Approved Superfood
                             </span>
-                            <span className="text-[11px] text-emerald-800 font-medium leading-snug">
+                            <span className="text-[11px] text-emerald-800 dark:text-emerald-300 font-medium leading-snug">
                               {audit.healthBenefits || audit.frequencyGuideline}
                             </span>
                           </div>
@@ -744,9 +744,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                   })()}
 
                   {/* Quantity Input */}
-                  <div className="pt-2 border-t border-emerald-200/60">
+                  <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/60">
                     <div className="flex items-center justify-between gap-3 mb-2">
-                      <label htmlFor="quantity-input" className="text-xs font-semibold text-slate-700">
+                      <label htmlFor="quantity-input" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Portions / Servings:
                       </label>
                       <div className="flex items-center gap-2">
@@ -758,7 +758,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                             className={`text-xs px-2 py-0.5 rounded-md border font-medium transition-colors cursor-pointer ${
                               quantity === preset
                                 ? 'bg-emerald-600 text-white border-emerald-600'
-                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
                             }`}
                           >
                             {preset}x
@@ -776,22 +776,22 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                         max="20"
                         value={quantity}
                         onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
-                        className="w-24 px-3 py-1.5 bg-white border border-emerald-300 rounded-lg text-sm font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                        className="w-24 px-3 py-1.5 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 rounded-lg text-sm font-bold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                       />
-                      <span className="text-xs text-slate-600">
+                      <span className="text-xs text-slate-600 dark:text-slate-300">
                         x {selectedFood.servingUnit}
                       </span>
                     </div>
                   </div>
 
                   {/* Was it oily? 3 options */}
-                  <div className="pt-2 border-t border-emerald-200/60 space-y-1.5">
+                  <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/60 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                        <Droplets className="w-3.5 h-3.5 text-amber-600" />
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                        <Droplets className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                         Was it oily? (3 Options):
                       </label>
-                      <span className="text-[10px] font-bold text-amber-800">
+                      <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300">
                         {oilCal > 0 ? `+${oilCal * (Number(quantity) || 1)} kcal oil` : '0 oil kcal'}
                       </span>
                     </div>
@@ -807,22 +807,22 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                           onClick={() => setOilOption(opt.id as any)}
                           className={`p-1.5 rounded-lg text-center border transition-all cursor-pointer ${
                             oilOption === opt.id
-                              ? 'bg-amber-100 border-amber-400 text-amber-950 font-black ring-1 ring-amber-300'
-                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black ring-1 ring-amber-300 dark:ring-amber-700'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                           }`}
                         >
                           <div className="text-[11px] font-bold leading-tight">{opt.label}</div>
-                          <div className="text-[9px] text-slate-500">{opt.sub}</div>
+                          <div className="text-[9px] text-slate-500 dark:text-slate-400">{opt.sub}</div>
                         </button>
                       ))}
                     </div>
                   </div>
 
                   {/* Good vs Bad Calorie Toggle (Flexible per log, not permanently fixed) */}
-                  <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between">
+                  <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-bold text-slate-700 block">Calorie Quality:</span>
-                      <span className="text-[10px] text-slate-500">Flexible each time (not permanently fixed)</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Calorie Quality:</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Flexible each time (not permanently fixed)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
@@ -831,7 +831,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           mealCalorieQuality === 'good'
                             ? 'bg-emerald-600 text-white shadow-2xs'
-                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
                       >
                         🟢 Good Calories
@@ -842,7 +842,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           mealCalorieQuality === 'bad'
                             ? 'bg-rose-600 text-white shadow-2xs'
-                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
                       >
                         🔴 Bad / Treat
@@ -852,26 +852,26 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
 
                   {/* Calculated Calorie & Macro breakdown */}
                   {calculatedNutrition && (
-                    <div className="bg-white p-3 rounded-lg border border-emerald-200 space-y-1.5">
+                    <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800/60 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-600 font-medium">Added to Today's Calories:</span>
-                        <span className="text-base font-black text-emerald-700 flex items-center gap-1">
+                        <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">Added to Today's Calories:</span>
+                        <span className="text-base font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                           <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
                           {calculatedNutrition.calories} kcal
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center text-xs">
+                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700 text-center text-xs">
                         <div>
                           <span className="text-slate-400 block text-[10px]">Protein</span>
-                          <span className="font-bold text-blue-700">{calculatedNutrition.protein}g</span>
+                          <span className="font-bold text-blue-700 dark:text-blue-400">{calculatedNutrition.protein}g</span>
                         </div>
                         <div>
                           <span className="text-slate-400 block text-[10px]">Carbs</span>
-                          <span className="font-bold text-amber-700">{calculatedNutrition.carbs}g</span>
+                          <span className="font-bold text-amber-700 dark:text-amber-400">{calculatedNutrition.carbs}g</span>
                         </div>
                         <div>
                           <span className="text-slate-400 block text-[10px]">Fats</span>
-                          <span className="font-bold text-rose-700">{calculatedNutrition.fat}g</span>
+                          <span className="font-bold text-rose-700 dark:text-rose-400">{calculatedNutrition.fat}g</span>
                         </div>
                       </div>
                     </div>
@@ -888,7 +888,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={t('Search food database...')}
-                        className="w-full pl-9 pr-3 py-2.5 bg-white border border-[#DFD8C8] rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
+                        className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-slate-800 border border-[#DFD8C8] dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
                       />
                     </div>
 
@@ -896,7 +896,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       value={categoryFilter}
                       onChange={(e) => setCategoryFilter(e.target.value)}
                       aria-label={t('Category')}
-                      className="w-36 sm:w-44 py-2.5 px-2.5 bg-white border border-[#DFD8C8] rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:outline-hidden cursor-pointer shrink-0"
+                      className="w-36 sm:w-44 py-2.5 px-2.5 bg-white dark:bg-slate-800 border border-[#DFD8C8] dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-emerald-600 focus:outline-hidden cursor-pointer shrink-0"
                     >
                       {categories.map((cat) => (
                         <option key={cat} value={cat}>
@@ -908,24 +908,24 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
 
                   {/* Feedback notice when logged via NutriBot Extension */}
                   {extensionAddedNotice && (
-                    <div className="bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs px-3 py-2 rounded-xl flex items-center gap-2 font-bold animate-fadeIn">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <div className="bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs px-3 py-2 rounded-xl flex items-center gap-2 font-bold animate-fadeIn">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                       <span>{extensionAddedNotice}</span>
                     </div>
                   )}
 
                   {/* 🤖 NutriBot AI Live Extension Card: Appears in real-time as user types any food name! */}
                   {searchExtensionFood && (
-                    <div className="p-3.5 bg-linear-to-br from-emerald-50 via-teal-50 to-amber-50/50 rounded-2xl border-2 border-emerald-400 shadow-sm space-y-2.5 animate-fadeIn">
+                    <div className="p-3.5 bg-linear-to-br from-emerald-50 via-teal-50 to-amber-50/50 dark:from-emerald-950/50 dark:via-teal-950/40 dark:to-amber-950/30 rounded-2xl border-2 border-emerald-400 dark:border-emerald-700 shadow-sm space-y-2.5 animate-fadeIn">
                       {/* Header */}
-                      <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200 dark:border-emerald-800">
                         <div className="flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
-                          <span className="text-xs font-black text-slate-900 tracking-tight">
+                          <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-pulse" />
+                          <span className="text-xs font-black text-slate-900 dark:text-white tracking-tight">
                             NutriBot AI Extension: Live Food Resolution
                           </span>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-200 text-emerald-950 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-200 dark:bg-emerald-900 text-emerald-950 dark:text-emerald-200 px-2 py-0.5 rounded-full">
                           {searchExtensionFood.category}
                         </span>
                       </div>
@@ -933,33 +933,33 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       {/* Food name & serving */}
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h4 className="font-extrabold text-slate-900 text-sm">
+                          <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">
                             {searchExtensionFood.name}
                           </h4>
-                          <p className="text-[11px] text-slate-600 font-medium">
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
                             Standard serving: <strong>{searchExtensionFood.servingUnit}</strong>
                           </p>
                         </div>
 
                         {/* Calories Stated First in Bold */}
-                        <div className="text-right shrink-0 bg-amber-100 border border-amber-300 px-3 py-1 rounded-xl shadow-2xs">
-                          <span className="text-[10px] font-black uppercase text-amber-800 block">
+                        <div className="text-right shrink-0 bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700 px-3 py-1 rounded-xl shadow-2xs">
+                          <span className="text-[10px] font-black uppercase text-amber-800 dark:text-amber-300 block">
                             Calories First Check
                           </span>
-                          <span className="text-sm font-black text-amber-950">
+                          <span className="text-sm font-black text-amber-950 dark:text-amber-100">
                             🔥 {Math.round((searchExtensionFood.calories + (searchExtensionOil === 'fried' ? 120 : searchExtensionOil === 'medium' ? 45 : 0)) * searchExtensionQty)} kcal
                           </span>
                         </div>
                       </div>
 
                       {/* Was it oily? 3 Cooking Options */}
-                      <div className="p-2 bg-white rounded-xl border border-emerald-200 space-y-1">
+                      <div className="p-2 bg-white dark:bg-slate-800 rounded-xl border border-emerald-200 dark:border-emerald-800/60 space-y-1">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-bold text-slate-700 flex items-center gap-1">
-                            <Droplets className="w-3 h-3 text-amber-600" />
+                          <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+                            <Droplets className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                             Was it oily? (3 Cooking Options):
                           </span>
-                          <span className="text-[10px] text-slate-500 font-semibold">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
                             {searchExtensionOil === 'fried' ? '+120 kcal' : searchExtensionOil === 'medium' ? '+45 kcal' : 'Base 0g fat'}
                           </span>
                         </div>
@@ -975,12 +975,12 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                               onClick={() => setSearchExtensionOil(opt.id as any)}
                               className={`py-1 px-1.5 rounded-lg text-center border transition-all cursor-pointer ${
                                 searchExtensionOil === opt.id
-                                  ? 'bg-amber-100 border-amber-400 text-amber-950 font-black shadow-2xs ring-1 ring-amber-300'
-                                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                  ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black shadow-2xs ring-1 ring-amber-300 dark:ring-amber-700'
+                                  : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                               }`}
                             >
                               <div className="text-[10px] font-bold leading-tight">{opt.label}</div>
-                              <div className="text-[9px] text-slate-500">{opt.sub}</div>
+                              <div className="text-[9px] text-slate-500 dark:text-slate-400">{opt.sub}</div>
                             </button>
                           ))}
                         </div>
@@ -988,14 +988,14 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
 
                       {/* Macros & Quantity */}
                       <div className="flex items-center justify-between gap-2 pt-0.5">
-                        <div className="text-[10px] font-bold text-slate-600 bg-white px-2 py-1 rounded-lg border border-slate-200">
+                        <div className="text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
                           P: <strong>{(searchExtensionFood.protein * searchExtensionQty).toFixed(1)}g</strong> • 
                           C: <strong>{(searchExtensionFood.carbs * searchExtensionQty).toFixed(1)}g</strong> • 
                           F: <strong>{((searchExtensionFood.fat + (searchExtensionOil === 'fried' ? 13 : searchExtensionOil === 'medium' ? 5 : 0)) * searchExtensionQty).toFixed(1)}g</strong>
                         </div>
 
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-bold text-slate-500">Qty:</span>
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Qty:</span>
                           {[0.5, 1, 1.5, 2].map(p => (
                             <button
                               key={p}
@@ -1004,7 +1004,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                               className={`px-1.5 py-0.5 text-[10px] font-black rounded-md transition-colors cursor-pointer ${
                                 searchExtensionQty === p
                                   ? 'bg-emerald-700 text-white shadow-2xs'
-                                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                               }`}
                             >
                               {p}x
@@ -1014,8 +1014,8 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       </div>
 
                       {/* Calorie Quality Option (Flexible each time) */}
-                      <div className="flex items-center justify-between p-1.5 bg-white rounded-xl border border-emerald-200">
-                        <span className="text-[10px] font-bold text-slate-700">Calorie Quality:</span>
+                      <div className="flex items-center justify-between p-1.5 bg-white dark:bg-slate-800 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
+                        <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">Calorie Quality:</span>
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
@@ -1023,7 +1023,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                             className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-colors cursor-pointer ${
                               searchExtensionQuality === 'good'
                                 ? 'bg-emerald-600 text-white shadow-2xs'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                             }`}
                           >
                             🟢 Good
@@ -1034,7 +1034,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                             className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-colors cursor-pointer ${
                               searchExtensionQuality === 'bad'
                                 ? 'bg-rose-600 text-white shadow-2xs'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                             }`}
                           >
                             🔴 Bad / Treat
@@ -1066,8 +1066,8 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                             onClick={() => handleSelectFood(food)}
                             className={`w-full p-2.5 text-left rounded-2xl border transition-all flex items-center justify-between gap-3 group cursor-pointer ${
                               isPreviousInSlot
-                                ? 'bg-emerald-50/40 border-emerald-200 hover:bg-emerald-50'
-                                : 'bg-white border-[#E7E0D3] hover:border-emerald-300 hover:bg-emerald-50/30'
+                                ? 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                                : 'bg-white dark:bg-slate-800 border-[#E7E0D3] dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/30'
                             }`}
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1078,36 +1078,36 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                                 }}
                                 referrerPolicy="no-referrer"
                                 alt={food.name}
-                                className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-200 bg-emerald-50"
+                                className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700 bg-emerald-50 dark:bg-slate-700"
                               />
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-emerald-800 leading-snug">
+                                  <span className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm group-hover:text-emerald-800 dark:group-hover:text-emerald-300 leading-snug">
                                     {tf(food.name)}
                                   </span>
                                   {isPreviousInSlot && (
-                                    <span className="text-[10px] font-bold text-emerald-700">
+                                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                                       · {t('Usual')} ({t(mealType)})
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[11px] text-slate-500 mt-0.5 tabular-nums truncate">
-                                  {food.servingUnit} · <strong className="text-slate-900">{food.calories} kcal</strong> · P:{food.protein}g C:{food.carbs}g F:{food.fat}g
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums truncate">
+                                  {food.servingUnit} · <strong className="text-slate-900 dark:text-slate-100">{food.calories} kcal</strong> · P:{food.protein}g C:{food.carbs}g F:{food.fat}g
                                 </div>
                               </div>
                             </div>
 
-                            <div className="w-9 h-9 rounded-full border border-emerald-200 bg-emerald-50/70 group-hover:bg-emerald-700 group-hover:text-white group-hover:border-emerald-700 flex items-center justify-center text-emerald-800 transition-colors shrink-0">
+                            <div className="w-9 h-9 rounded-full border border-emerald-200 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/60 group-hover:bg-emerald-700 group-hover:text-white group-hover:border-emerald-700 flex items-center justify-center text-emerald-800 dark:text-emerald-300 transition-colors shrink-0">
                               <Plus className="w-4 h-4" />
                             </div>
                           </button>
                         );
                       })
                     ) : (
-                      <div className="p-6 text-center text-xs text-slate-500 space-y-2 bg-white rounded-2xl border border-[#E7E0D3]">
+                      <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-2 bg-white dark:bg-slate-800 rounded-2xl border border-[#E7E0D3] dark:border-slate-700">
                         <p>No catalog foods matching &quot;{searchQuery}&quot;.</p>
                         {searchExtensionFood ? (
-                          <p className="text-emerald-700 font-bold bg-emerald-50 p-2 rounded-xl border border-emerald-200">
+                          <p className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/50 p-2 rounded-xl border border-emerald-200 dark:border-emerald-800">
                             ✨ NutriBot has resolved <strong>{searchExtensionFood.name}</strong>! Tap the green button above to log it to your {t(mealType)} diary with 1-click.
                           </p>
                         ) : (
@@ -1117,7 +1117,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                               setCustomName(searchQuery);
                               setActiveTab('custom');
                             }}
-                            className="text-xs text-emerald-700 font-bold underline cursor-pointer"
+                            className="text-xs text-emerald-700 dark:text-emerald-400 font-bold underline cursor-pointer"
                           >
                             + Create &quot;{searchQuery}&quot; as a custom food
                           </button>
@@ -1130,10 +1130,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
             </>
           ) : (
             /* ================= TAB 2: ADD CUSTOM FOOD & CALORIES ================= */
-            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+            <div className="space-y-3 bg-slate-50 dark:bg-slate-800/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-700">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200">
                     Food Name <span className="text-rose-500">*</span>
                   </label>
                   <div className="flex items-center gap-1.5">
@@ -1148,19 +1148,19 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       type="button"
                       onClick={() => photoInputRef.current?.click()}
                       disabled={isPhotoScanning}
-                      className="text-[11px] font-bold text-teal-800 bg-teal-100 hover:bg-teal-200 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-40 border border-teal-300 shadow-2xs"
+                      className="text-[11px] font-bold text-teal-800 dark:text-teal-200 bg-teal-100 dark:bg-teal-900/60 hover:bg-teal-200 dark:hover:bg-teal-800/60 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-40 border border-teal-300 dark:border-teal-700 shadow-2xs"
                       title="Take or upload food photo to analyze with Gemini 3.8 Flash"
                     >
-                      <Camera className="w-3 h-3 text-teal-700" />
+                      <Camera className="w-3 h-3 text-teal-700 dark:text-teal-300" />
                       <span>{isPhotoScanning ? 'Scanning Plate...' : '📸 Scan Plate Photo'}</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleAiEstimate}
                       disabled={isAiEstimating || !customName.trim()}
-                      className="text-[11px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 border border-emerald-300 shadow-2xs"
+                      className="text-[11px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 px-2 py-0.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 border border-emerald-300 dark:border-emerald-700 shadow-2xs"
                     >
-                      <Sparkles className="w-3 h-3 text-amber-600" />
+                      <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                       <span>{isAiEstimating ? 'Estimating...' : '✨ Auto-Fill with AI'}</span>
                     </button>
                   </div>
@@ -1171,11 +1171,11 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                   placeholder="e.g. bread, boiled egg, chicken breast, avocado"
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
                 {aiEstimateNote && (
-                  <p className="text-[11px] font-bold text-emerald-700 mt-1 flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     {aiEstimateNote}
                   </p>
                 )}
@@ -1183,13 +1183,13 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Category
                   </label>
                   <select
                     value={customCategory}
                     onChange={(e) => setCustomCategory(e.target.value as FoodCategory)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100"
                   >
                     <option value="Proteins">Proteins</option>
                     <option value="Grains & Breads">Grains &amp; Breads</option>
@@ -1202,7 +1202,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Serving Unit
                   </label>
                   <input
@@ -1210,14 +1210,14 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     placeholder="e.g. 1 plate, 1 cup, 150g"
                     value={customServing}
                     onChange={(e) => setCustomServing(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-amber-800 mb-1">
+                  <label className="block text-[11px] font-bold text-amber-800 dark:text-amber-400 mb-1">
                     Calories (kcal) *
                   </label>
                   <input
@@ -1227,12 +1227,12 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     placeholder="e.g. 280"
                     value={customCalories}
                     onChange={(e) => setCustomCalories(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-blue-800 mb-1">
+                  <label className="block text-[11px] font-bold text-blue-800 dark:text-blue-400 mb-1">
                     Protein (g)
                   </label>
                   <input
@@ -1242,12 +1242,12 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     placeholder="e.g. 15"
                     value={customProtein}
                     onChange={(e) => setCustomProtein(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-amber-700 mb-1">
+                  <label className="block text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-1">
                     Carbs (g)
                   </label>
                   <input
@@ -1257,12 +1257,12 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     placeholder="e.g. 30"
                     value={customCarbs}
                     onChange={(e) => setCustomCarbs(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-rose-700 mb-1">
+                  <label className="block text-[11px] font-bold text-rose-700 dark:text-rose-400 mb-1">
                     Fat (g)
                   </label>
                   <input
@@ -1272,19 +1272,19 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     placeholder="e.g. 8"
                     value={customFat}
                     onChange={(e) => setCustomFat(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
               </div>
 
               {/* Was it oily? 3 options for Custom Food */}
-              <div className="pt-2 border-t border-slate-200 space-y-1.5">
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                    <Droplets className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    <Droplets className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     Was this food oily? (3 Options):
                   </span>
-                  <span className="text-[10px] font-bold text-amber-800">
+                  <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300">
                     {oilCal > 0 ? `+${oilCal * (Number(quantity) || 1)} kcal oil` : '0 oil kcal'}
                   </span>
                 </div>
@@ -1300,24 +1300,24 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       onClick={() => setOilOption(opt.id as any)}
                       className={`p-1.5 rounded-lg text-center border transition-all cursor-pointer ${
                         oilOption === opt.id
-                          ? 'bg-amber-100 border-amber-400 text-amber-950 font-black ring-1 ring-amber-300'
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black ring-1 ring-amber-300 dark:ring-amber-700'
+                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                       }`}
                     >
                       <div className="text-[11px] font-bold">{opt.label}</div>
-                      <div className="text-[9px] text-slate-500">{opt.sub}</div>
+                      <div className="text-[9px] text-slate-500 dark:text-slate-400">{opt.sub}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* USER MANDATE: Good Calories vs Bad / Cheat Calories Classification */}
-              <div className="pt-2 border-t border-slate-200 space-y-1.5">
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                     Calorie Quality:
                   </span>
-                  <span className="text-[10px] text-slate-500 font-semibold">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
                     Classifies toward Good vs Bad ratio
                   </span>
                 </div>
@@ -1327,15 +1327,15 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     onClick={() => setCustomQuality('good')}
                     className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
                       customQuality === 'good'
-                        ? 'bg-emerald-50 border-emerald-400 text-emerald-950 font-black ring-1 ring-emerald-300'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-400 dark:border-emerald-600 text-emerald-950 dark:text-emerald-200 font-black ring-1 ring-emerald-300 dark:ring-emerald-700'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                     }`}
                   >
                     <div className="text-xs font-bold flex items-center gap-1.5">
                       <span>🍏</span>
                       <span>Good Calories</span>
                     </div>
-                    <div className="text-[10px] text-emerald-700 mt-0.5">Wholesome, protein, clean food</div>
+                    <div className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.5">Wholesome, protein, clean food</div>
                   </button>
 
                   <button
@@ -1343,22 +1343,22 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     onClick={() => setCustomQuality('bad')}
                     className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
                       customQuality === 'bad'
-                        ? 'bg-amber-50 border-amber-400 text-amber-950 font-black ring-1 ring-amber-300'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black ring-1 ring-amber-300 dark:ring-amber-700'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                     }`}
                   >
                     <div className="text-xs font-bold flex items-center gap-1.5">
                       <span>🍟</span>
                       <span>Bad / Cheat Calories</span>
                     </div>
-                    <div className="text-[10px] text-amber-700 mt-0.5">Fried, sugary, junk, cheat food</div>
+                    <div className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5">Fried, sugary, junk, cheat food</div>
                   </button>
                 </div>
               </div>
 
               {/* Portions */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                <span className="text-xs font-semibold text-slate-700">Portions consumed:</span>
+              <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Portions consumed:</span>
                 <div className="flex items-center gap-2">
                   {[0.5, 1, 1.5, 2].map((preset) => (
                     <button
@@ -1368,7 +1368,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       className={`text-xs px-2 py-0.5 rounded-md border font-medium transition-colors cursor-pointer ${
                         quantity === preset
                           ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
                       }`}
                     >
                       {preset}x
@@ -1379,9 +1379,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
 
               {/* Live Calculation Preview */}
               {customCalories && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
-                  <span className="text-emerald-900 font-semibold">Total Day's Calories to Add:</span>
-                  <span className="text-base font-black text-emerald-800 flex items-center gap-1">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between text-xs">
+                  <span className="text-emerald-900 dark:text-emerald-200 font-semibold">Total Day's Calories to Add:</span>
+                  <span className="text-base font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
                     <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
                     {customCalculatedNutrition.calories} kcal
                   </span>
@@ -1389,7 +1389,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
               )}
 
               {/* Save to site database checkbox */}
-              <label className="flex items-center gap-2 pt-1 text-xs text-slate-700 cursor-pointer select-none">
+              <label className="flex items-center gap-2 pt-1 text-xs text-slate-700 dark:text-slate-300 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={saveToLibrary}
@@ -1403,12 +1403,12 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         </div>
 
         {/* Footer actions */}
-        <div className="p-4 border-t border-[#E7E0D3] bg-[#F5F1E8] flex items-center justify-between gap-2 shrink-0">
+        <div className="p-4 border-t border-[#E7E0D3] dark:border-slate-700 bg-[#F5F1E8] dark:bg-slate-800/90 flex items-center justify-between gap-2 shrink-0">
           {onReviewDay ? (
             <button
               type="button"
               onClick={onReviewDay}
-              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer px-2 py-1"
+              className="text-xs font-bold text-emerald-800 dark:text-emerald-400 hover:text-emerald-950 dark:hover:text-emerald-300 underline cursor-pointer px-2 py-1"
             >
               {t('Review Day')}
             </button>
@@ -1420,7 +1420,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-white rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
             >
               {t('Cancel')}
             </button>

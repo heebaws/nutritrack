@@ -36,14 +36,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="max-w-2xl mx-auto my-12 p-6 bg-white rounded-2xl border border-rose-200 shadow-sm text-center space-y-4">
-          <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+        <div className="max-w-2xl mx-auto my-12 p-6 bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-800 shadow-sm text-center space-y-4">
+          <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center">
             <AlertTriangle className="w-6 h-6" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
             {this.props.fallbackTitle || 'Portal View Encountered an Issue'}
           </h2>
-          <p className="text-xs text-slate-600 max-w-md mx-auto">
+          <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto">
             {this.state.error?.message || 'A data display error occurred. You can safely return to the home screen or reload.'}
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">

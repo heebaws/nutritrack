@@ -18,6 +18,7 @@ import { MealType } from '../../types';
 import { calculateCalorieBreakdown, calculateStepCalories, determineCalorieQuality } from '../../utils/calorieQuality';
 import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
 import { NutriTrackLogo } from '../common/NutriTrackLogo';
+import { getNotificationStatus, parseTimeTo24h, showOSNotification } from '../../utils/notifications';
 import { 
   getTodayString, 
   getYesterdayString, 
@@ -118,7 +119,11 @@ export const ClientApp: React.FC = () => {
     language,
     toggleLanguage,
     t,
-    tf
+    tf,
+    osHealthInfo,
+    isPedometerLive,
+    pedometerPermissionState,
+    enableMobilePedometer
   } = useApp();
 
   // Active front-page icon launcher panel (null = serene clean front page with square icons only)
@@ -160,6 +165,7 @@ export const ClientApp: React.FC = () => {
   const [isClinicalGuideOpen, setIsClinicalGuideOpen] = useState(false);
   const [planLoggedNotice, setPlanLoggedNotice] = useState<string | null>(null);
   const [isResettingMeals, setIsResettingMeals] = useState(false);
+  const [confirmResetMeals, setConfirmResetMeals] = useState(false);
   const [resetFeedbackNotice, setResetFeedbackNotice] = useState<string | null>(null);
 
   // Listen to open-calorie-guide or open-app-tour events
@@ -177,11 +183,7 @@ export const ClientApp: React.FC = () => {
   const handleResetMealsToDayBefore = async () => {
     if (!activeClient) return;
     const isMl = language === 'ml';
-    const confirmMsg = isMl
-      ? `${formatDateDisplay(selectedDate)}-ലേക്കുള്ള ഭക്ഷണം തലേദിവസത്തെപ്പോലെ റീസെറ്റ് ചെയ്യണോ?`
-      : `Reset foods for ${formatDateDisplay(selectedDate)} to match what you logged the day before?`;
-    if (!window.confirm(confirmMsg)) return;
-
+    setConfirmResetMeals(false);
     setIsResettingMeals(true);
     try {
       const res = await resetClientDayMealsToDayBefore(activeClient.id, selectedDate);
@@ -329,63 +331,44 @@ export const ClientApp: React.FC = () => {
     return reminders.filter(r => r.clientId === activeClient.id);
   }, [reminders, activeClient.id]);
 
-  // Real-time Background Phone Notification Scheduler (fires native alerts on time at 8:00 AM, 1:00 PM, 7:30 PM & on coach alerts)
+  // Real-time Phone Notification Scheduler via Service Worker (8:00 AM, 1:00 PM, 7:30 PM & coach alerts)
   useEffect(() => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
+    if (getNotificationStatus() !== 'granted') return;
 
-    const parseTimeTo24h = (timeStr: string): { hour: number; minute: number } | null => {
-      const m = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-      if (!m) return null;
-      let hour = parseInt(m[1], 10);
-      const minute = parseInt(m[2], 10);
-      const ampm = m[3]?.toUpperCase();
-      if (ampm === 'PM' && hour < 12) hour += 12;
-      if (ampm === 'AM' && hour === 12) hour = 0;
-      return { hour, minute };
-    };
-
-    const checkAndDispatchNotifications = () => {
+    const checkAndDispatchNotifications = async () => {
       const now = new Date();
       const todayKey = getTodayString();
       const nowTotalMins = now.getHours() * 60 + now.getMinutes();
 
-      // 1. Check scheduled meal & hydration reminders
-      clientReminders.forEach((r) => {
-        if (!r.enabled) return;
+      // 1. Check scheduled meal & hydration reminders (10-minute delivery grace window)
+      for (const r of clientReminders) {
+        if (!r.enabled) continue;
         const parsed = parseTimeTo24h(r.time);
-        if (!parsed) return;
+        if (!parsed) continue;
         const targetMins = parsed.hour * 60 + parsed.minute;
-        // Fire if within 0-2 minutes of the scheduled time
-        if (nowTotalMins >= targetMins && nowTotalMins <= targetMins + 2) {
+        if (nowTotalMins >= targetMins && nowTotalMins <= targetMins + 10) {
           const storageKey = `nutritrack_notif_${todayKey}_${r.id}`;
           if (!localStorage.getItem(storageKey)) {
             localStorage.setItem(storageKey, '1');
-            try {
-              new Notification(`${r.title} (${r.time})`, {
-                body: r.message,
-                icon: '/favicon.ico',
-                tag: storageKey,
-              });
-            } catch {}
+            await showOSNotification(`${r.title} (${r.time})`, {
+              body: r.message,
+              tag: storageKey,
+            });
           }
         }
-      });
+      }
 
       // 2. Check new coach reminder tips that haven't been pushed to phone yet
-      clientTips.filter(t => t.type === 'reminder').forEach((tip) => {
+      for (const tip of clientTips.filter(t => t.type === 'reminder')) {
         const tipStorageKey = `nutritrack_coach_tip_${tip.id}`;
         if (!localStorage.getItem(tipStorageKey)) {
           localStorage.setItem(tipStorageKey, '1');
-          try {
-            new Notification(`Coach Reminder · ${tip.dietitianName}`, {
-              body: `${tip.title}: ${tip.message}`,
-              icon: '/favicon.ico',
-              tag: tipStorageKey,
-            });
-          } catch {}
+          await showOSNotification(`Coach Reminder · ${tip.dietitianName}`, {
+            body: `${tip.title}: ${tip.message}`,
+            tag: tipStorageKey,
+          });
         }
-      });
+      }
     };
 
     checkAndDispatchNotifications();
@@ -673,8 +656,8 @@ export const ClientApp: React.FC = () => {
 
       {/* Feedback Banner */}
       {planLoggedNotice && (
-        <div className="bg-emerald-50 text-emerald-900 text-xs sm:text-sm px-4 py-3 rounded-2xl border border-emerald-200 flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
+        <div className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm px-4 py-3 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-400 shrink-0" />
           <span className="font-semibold">{planLoggedNotice}</span>
         </div>
       )}
@@ -693,23 +676,23 @@ export const ClientApp: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsTrajectoryProjected(true)}
-          className="w-full bg-white hover:bg-emerald-50/70 border border-slate-200 hover:border-emerald-300 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 transition-all cursor-pointer group"
+          className="w-full bg-white dark:bg-slate-900 hover:bg-emerald-50/70 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 transition-all cursor-pointer group"
           title={t('8,000 kcal Projection')}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 aspect-square rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+            <div className="w-10 h-10 aspect-square rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
               <Scale className="w-5 h-5" />
             </div>
             <div className="text-left min-w-0">
-              <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                {t('8,000 kcal Projection')} · <span className="text-emerald-700 tabular-nums">{trajectoryMiniSummary.kgText}</span>
+              <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                {t('8,000 kcal Projection')} · <span className="text-emerald-700 dark:text-emerald-400 tabular-nums">{trajectoryMiniSummary.kgText}</span>
               </div>
-              <div className="text-[11px] text-slate-500 truncate tabular-nums">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate tabular-nums">
                 {trajectoryMiniSummary.runningBalance > 0 ? `+${trajectoryMiniSummary.runningBalance}` : trajectoryMiniSummary.runningBalance} kcal · {t('Tap to open')}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
             <Eye className="w-4 h-4" />
             <span className="hidden sm:inline">{t('Tap to open')}</span>
           </div>
@@ -717,14 +700,14 @@ export const ClientApp: React.FC = () => {
       )}
 
       {/* ================= 2. CLEAN SQUARE ICON APP LAUNCHER GRID ================= */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 space-y-5">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-5">
         {/* Subtle Single-Line Toolbar: Date Switcher & Meal Window Status */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => changeDateBy(-1)}
-              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 border border-slate-200 cursor-pointer"
+              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
               title="Previous Day"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -732,25 +715,25 @@ export const ClientApp: React.FC = () => {
             <button
               type="button"
               onClick={() => setSelectedDate(getTodayString())}
-              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center gap-1.5"
             >
-              <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+              <Calendar className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
               <span>{formatDateDisplay(selectedDate)}</span>
             </button>
             <button
               type="button"
               onClick={() => changeDateBy(1)}
               disabled={selectedDate >= getTodayString()}
-              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 border border-slate-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
               title="Next Day"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-slate-600">
+          <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
             <span className="hidden sm:inline">
-              {t('Next Window')}: <b className="text-slate-900">{t(currentCircadianMeal.slot)} ({currentCircadianMeal.targetTime})</b>
+              {t('Next Window')}: <b className="text-slate-900 dark:text-slate-100">{t(currentCircadianMeal.slot)} ({currentCircadianMeal.targetTime})</b>
             </span>
             <button
               type="button"
@@ -777,35 +760,35 @@ export const ClientApp: React.FC = () => {
               key: 'morning-weight',
               label: t('Morning Weight'),
               icon: Scale,
-              bg: 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white',
+              bg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white',
               active: false,
             },
             {
               key: 'hydration',
               label: t('Daily Hydration'),
               icon: Droplets,
-              bg: 'bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-600 hover:text-white',
+              bg: 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 hover:bg-cyan-600 hover:text-white',
               active: isHydrationModalOpen,
             },
             {
               key: 'workout',
               label: t('Log Workout'),
               icon: Dumbbell,
-              bg: 'bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-600 hover:text-white',
+              bg: 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 hover:bg-orange-600 hover:text-white',
               active: false,
             },
             {
               key: 'appointments',
               label: t('Appointments'),
               icon: CalendarCheck,
-              bg: 'bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-600 hover:text-white',
+              bg: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-600 hover:text-white',
               active: false,
             },
             {
               key: 'meal-diary',
               label: t('Meal Diary'),
               icon: ClipboardList,
-              bg: 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-700 hover:text-white',
+              bg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-700 hover:text-white',
               active: activeViewPanel === 'meals',
               badge: clientLogsForDay.length > 0 ? clientLogsForDay.length : undefined,
             },
@@ -813,42 +796,42 @@ export const ClientApp: React.FC = () => {
               key: 'trajectory',
               label: t('8,000 kcal'),
               icon: Flame,
-              bg: 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-500 hover:text-white',
+              bg: 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-500 hover:text-white',
               active: isTrajectoryProjected,
             },
             {
               key: 'profile',
               label: t('Coach & Profile'),
               icon: User,
-              bg: 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white',
+              bg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white',
               active: activeViewPanel === 'profile',
             },
             {
               key: 'diet-plan',
               label: t('Diet Plan'),
               icon: CalendarDays,
-              bg: 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-600 hover:text-white',
+              bg: 'bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 hover:bg-amber-600 hover:text-white',
               active: activeViewPanel === 'plan',
             },
             {
               key: 'progress',
               label: t('Progress'),
               icon: ChartIcon,
-              bg: 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white',
+              bg: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white',
               active: activeViewPanel === 'progress',
             },
             {
               key: 'app-tour',
               label: t('App Tour'),
               icon: Compass,
-              bg: 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-800 hover:text-white',
+              bg: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-800 hover:text-white',
               active: false,
             },
             {
               key: 'more',
               label: t('More Tools'),
               icon: LayoutGrid,
-              bg: 'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-800 hover:text-white',
+              bg: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-800 hover:text-white',
               active: activeViewPanel === 'more',
               badge: unreadAlertsCount > 0 ? unreadAlertsCount : undefined,
             },
@@ -864,19 +847,19 @@ export const ClientApp: React.FC = () => {
                 <div
                   className={`w-16 h-16 sm:w-20 sm:h-20 aspect-square rounded-2xl flex items-center justify-center relative transition-all duration-150 group-active:scale-95 ${
                     item.active
-                      ? 'bg-emerald-800 text-white ring-4 ring-emerald-200 shadow-sm'
+                      ? 'bg-emerald-800 text-white ring-4 ring-emerald-200 dark:ring-emerald-900 shadow-sm'
                       : item.bg
                   }`}
                 >
                   <IconComponent className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
                   {item.badge !== undefined && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center border-2 border-white tabular-nums">
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center border-2 border-white dark:border-slate-900 tabular-nums">
                       {item.badge}
                     </span>
                   )}
                 </div>
                 <span className={`text-xs font-bold text-center leading-tight transition-colors ${
-                  item.active ? 'text-emerald-900' : 'text-slate-700 group-hover:text-slate-950'
+                  item.active ? 'text-emerald-900 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300 group-hover:text-slate-950 dark:group-hover:text-white'
                 }`}>
                   {item.label}
                 </span>
@@ -885,32 +868,57 @@ export const ClientApp: React.FC = () => {
           })}
         </div>
 
-        {/* Compact Phone OS Steps & Sleep Sync Strip (1-tap to open Daily Habits editor) */}
-        <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-slate-700 tabular-nums">
-            <span className="flex items-center gap-1.5 font-semibold">
-              <Footprints className="w-4 h-4 text-orange-600 shrink-0" />
-              <span>{(dayHabit?.steps || 0).toLocaleString()} {t('steps')}</span>
-              <span className="text-orange-700 font-bold">(-{stepCaloriesToday} kcal)</span>
+        {/* Compact Phone OS Steps & Sleep Sync Strip (auto-syncs mobile OS motion + sleep on login) */}
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-slate-700 dark:text-slate-300 tabular-nums">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-[11px]">
+              <Smartphone className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+              <span>{osHealthInfo.osLabel}</span>
             </span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
             <span className="flex items-center gap-1.5 font-semibold">
-              <Moon className="w-4 h-4 text-indigo-600 shrink-0" />
+              <Footprints className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+              <span>{(dayHabit?.steps || 0).toLocaleString()} {t('steps')}</span>
+              <span className="text-orange-700 dark:text-orange-400 font-bold">(-{stepCaloriesToday} kcal)</span>
+              {isPedometerLive && (
+                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                  · {language === 'ml' ? 'ലൈവ് OS സിങ്ക്' : 'Live OS Sync'}
+                </span>
+              )}
+            </span>
+            <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Moon className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
               <span>{dayHabit?.sleepHours ?? 7} {t('hours')} {language === 'ml' ? 'ഉറക്കം' : 'sleep'}</span>
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveViewPanel('more');
-              setActiveMoreSubPanel('habits');
-            }}
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>{language === 'ml' ? 'ചുവടുകളും ഉറക്കവും മാറ്റുക' : 'Edit Steps & Sleep'}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {osHealthInfo.os === 'ios' && osHealthInfo.requiresPermissionPrompt && !isPedometerLive && (
+              <button
+                type="button"
+                onClick={enableMobilePedometer}
+                className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Activity className="w-3.5 h-3.5" />
+                <span>
+                  {pedometerPermissionState === 'denied'
+                    ? t('Sensor Blocked')
+                    : t('Enable iPhone Step Sensor')}
+                </span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveViewPanel('more');
+                setActiveMoreSubPanel('habits');
+              }}
+              className="text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>{language === 'ml' ? 'ചുവടുകളും ഉറക്കവും മാറ്റുക' : 'Edit Steps & Sleep'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -920,51 +928,51 @@ export const ClientApp: React.FC = () => {
       {activeViewPanel === 'profile' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <User className="w-4 h-4 text-blue-600" />
+            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>{t('Coach & Profile')}</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveViewPanel(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{t('Back')}</span>
             </button>
           </div>
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-900">{t('Your Profile')}</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{t('Your Profile')}</h3>
               <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="bg-slate-50 p-3 rounded-2xl">
+                <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl">
                   <span className="text-slate-400 block text-xs">{t('Height')}</span>
-                  <span className="font-bold text-slate-900 text-base tabular-nums">{activeClient.heightCm} cm</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100 text-base tabular-nums">{activeClient.heightCm} cm</span>
                 </div>
-                <div className="bg-slate-50 p-3 rounded-2xl">
+                <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl">
                   <span className="text-slate-400 block text-xs">{t('Age')}</span>
-                  <span className="font-bold text-slate-900 text-base tabular-nums">{activeClient.age} yrs</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100 text-base tabular-nums">{activeClient.age} yrs</span>
                 </div>
-                <div className="bg-slate-50 p-3 rounded-2xl">
+                <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl">
                   <span className="text-slate-400 block text-xs">{t('BMI')}</span>
-                  <span className="font-bold text-emerald-700 text-base tabular-nums">
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400 text-base tabular-nums">
                     {(activeClient.currentWeightKg / ((activeClient.heightCm / 100) ** 2)).toFixed(1)}
                   </span>
                 </div>
               </div>
             </div>
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-900">{t('Assigned Wellness Coach')}</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{t('Assigned Wellness Coach')}</h3>
               <div className="flex items-start gap-3">
                 <img
                   src={assignedDietitian.avatarUrl || 'https://images.unsplash.com/photo-1594824813637-27a3a93d4895?auto=format&fit=crop&q=80&w=250'}
                   alt={assignedDietitian.name}
-                  className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shrink-0"
+                  className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                 />
                 <div>
-                  <p className="text-sm font-bold text-slate-900">{assignedDietitian.name}</p>
-                  <p className="text-xs text-emerald-700 font-semibold">{assignedDietitian.title}</p>
-                  <p className="text-xs text-slate-500 mt-1">{assignedDietitian.phone}</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{assignedDietitian.name}</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">{assignedDietitian.title}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{assignedDietitian.phone}</p>
                 </div>
               </div>
             </div>
@@ -975,11 +983,11 @@ export const ClientApp: React.FC = () => {
       {/* B) MORE TOOLS SQUARE SUB-LAUNCHER */}
       {activeViewPanel === 'more' && (
         <div className="space-y-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-slate-700" />
-                <h2 className="text-sm font-bold text-slate-900">{t('Additional Health Tools & Profile')}</h2>
+                <LayoutGrid className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">{t('Additional Health Tools & Profile')}</h2>
               </div>
               <button
                 type="button"
@@ -987,7 +995,7 @@ export const ClientApp: React.FC = () => {
                   setActiveViewPanel(null);
                   setActiveMoreSubPanel(null);
                 }}
-                className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+                className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>{t('Close')}</span>
@@ -1000,10 +1008,10 @@ export const ClientApp: React.FC = () => {
                 onClick={() => openCalorieGuide('what-is-calorie')}
                 className="flex flex-col items-center gap-2 group cursor-pointer"
               >
-                <div className="w-16 h-16 aspect-square rounded-2xl bg-amber-100 text-amber-900 border border-amber-300 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center transition-colors">
+                <div className="w-16 h-16 aspect-square rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center transition-colors">
                   <Flame className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Calorie 101')}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Calorie 101')}</span>
               </button>
 
               <button
@@ -1011,15 +1019,15 @@ export const ClientApp: React.FC = () => {
                 onClick={() => setIsNotificationsOpen(true)}
                 className="flex flex-col items-center gap-2 group cursor-pointer"
               >
-                <div className="w-16 h-16 aspect-square rounded-2xl bg-rose-50 text-rose-700 border border-rose-200 group-hover:bg-rose-600 group-hover:text-white flex items-center justify-center relative transition-colors">
+                <div className="w-16 h-16 aspect-square rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 group-hover:bg-rose-600 group-hover:text-white flex items-center justify-center relative transition-colors">
                   <BellRing className="w-6 h-6" />
                   {unreadAlertsCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center border-2 border-white tabular-nums">
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center border-2 border-white dark:border-slate-900 tabular-nums">
                       {unreadAlertsCount}
                     </span>
                   )}
                 </div>
-                <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Notifications')}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Notifications')}</span>
               </button>
 
               <button
@@ -1029,12 +1037,12 @@ export const ClientApp: React.FC = () => {
               >
                 <div className={`w-16 h-16 aspect-square rounded-2xl flex items-center justify-center transition-colors ${
                   language === 'ml'
-                    ? 'bg-emerald-700 text-white ring-4 ring-emerald-200'
-                    : 'bg-indigo-50 text-indigo-700 border border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white'
+                    ? 'bg-emerald-700 text-white ring-4 ring-emerald-200 dark:ring-emerald-900'
+                    : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 group-hover:bg-indigo-600 group-hover:text-white'
                 }`}>
                   <Languages className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold text-slate-700 text-center leading-tight">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">
                   {language === 'ml' ? 'English-ലേക്ക് മാറ്റുക' : 'മലയാളം / EN'}
                 </span>
               </button>
@@ -1045,11 +1053,11 @@ export const ClientApp: React.FC = () => {
                 className="flex flex-col items-center gap-2 group cursor-pointer"
               >
                 <div className={`w-16 h-16 aspect-square rounded-2xl flex items-center justify-center transition-colors ${
-                  activeMoreSubPanel === 'habits' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200 group-hover:bg-amber-600 group-hover:text-white'
+                  activeMoreSubPanel === 'habits' ? 'bg-amber-600 text-white' : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 group-hover:bg-amber-600 group-hover:text-white'
                 }`}>
                   <Activity className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Daily Habits')}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Daily Habits')}</span>
               </button>
 
               <button
@@ -1057,10 +1065,10 @@ export const ClientApp: React.FC = () => {
                 onClick={() => setIsClinicalGuideOpen(true)}
                 className="flex flex-col items-center gap-2 group cursor-pointer"
               >
-                <div className="w-16 h-16 aspect-square rounded-2xl bg-teal-50 text-teal-700 border border-teal-200 group-hover:bg-teal-600 group-hover:text-white flex items-center justify-center transition-colors">
+                <div className="w-16 h-16 aspect-square rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 group-hover:bg-teal-600 group-hover:text-white flex items-center justify-center transition-colors">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Food Rules')}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Food Rules')}</span>
               </button>
 
               <button
@@ -1068,10 +1076,10 @@ export const ClientApp: React.FC = () => {
                 onClick={() => setIsPrintModalOpen(true)}
                 className="flex flex-col items-center gap-2 group cursor-pointer"
               >
-                <div className="w-16 h-16 aspect-square rounded-2xl bg-slate-100 text-slate-700 border border-slate-200 group-hover:bg-slate-800 group-hover:text-white flex items-center justify-center transition-colors">
+                <div className="w-16 h-16 aspect-square rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 group-hover:bg-slate-800 group-hover:text-white flex items-center justify-center transition-colors">
                   <Printer className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Print Report')}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Print Report')}</span>
               </button>
 
               <button
@@ -1079,10 +1087,10 @@ export const ClientApp: React.FC = () => {
                 onClick={() => clientSignOut()}
                 className="flex flex-col items-center gap-2 group cursor-pointer"
               >
-                <div className="w-16 h-16 aspect-square rounded-2xl bg-rose-50 text-rose-700 border border-rose-200 group-hover:bg-rose-600 group-hover:text-white flex items-center justify-center transition-colors">
+                <div className="w-16 h-16 aspect-square rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 group-hover:bg-rose-600 group-hover:text-white flex items-center justify-center transition-colors">
                   <LogOut className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Sign Out')}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Sign Out')}</span>
               </button>
             </div>
           </div>
@@ -1095,14 +1103,14 @@ export const ClientApp: React.FC = () => {
       {activeViewPanel === 'meals' && (
         <div className="space-y-6 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <ClipboardList className="w-4 h-4 text-emerald-700" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
               <span>{t('Meal Diary & Macro Breakdown')} · {formatDateDisplay(selectedDate)}</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveViewPanel(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{t('Back')}</span>
@@ -1110,12 +1118,12 @@ export const ClientApp: React.FC = () => {
           </div>
 
           {/* 1-Tap Quick Common Kerala Staples Bar */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-2.5">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-2.5">
             <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="font-bold text-slate-800">
+              <span className="font-bold text-slate-800 dark:text-slate-100">
                 ⚡ {language === 'ml' ? `${t(currentCircadianMeal.slot)}-ലേക്ക് ഒറ്റ ടാപ്പിൽ ചേർക്കുക:` : `1-Tap Quick Staples into ${t(currentCircadianMeal.slot)}:`}
               </span>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
                 {language === 'ml' ? 'ഉചിത സമയം:' : 'Recommended:'} {currentCircadianMeal.window}
               </span>
             </div>
@@ -1123,35 +1131,35 @@ export const ClientApp: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleQuickLogStaple('2 Boiled Eggs', 140, 12, 1, 10, 'pieces')}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:text-emerald-900 dark:hover:text-emerald-200 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
               >
                 🥚 {tf('2 Boiled Eggs')} (140k)
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogStaple('2 Appam (Kerala Rice Pancake)', 240, 4, 52, 2, 'pieces')}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:text-emerald-900 dark:hover:text-emerald-200 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
               >
                 🫓 {tf('2 Appam')} (240k)
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogStaple('Oats with Skimmed Milk', 180, 8, 30, 3, 'bowl')}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:text-emerald-900 dark:hover:text-emerald-200 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
               >
                 🥣 {tf('Oats')} (180k)
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogStaple('Kerala Matta Rice + Ayala Curry', 380, 24, 45, 10, 'plate')}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:text-emerald-900 dark:hover:text-emerald-200 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
               >
                 🍛 {tf('Kerala Matta Rice + Ayala Curry')} (380k)
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogStaple('Black Tea / Coffee (No Sugar)', 5, 0, 1, 0, 'cup')}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:text-emerald-900 dark:hover:text-emerald-200 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
               >
                 ☕ {tf('Black Tea')} (5k)
               </button>
@@ -1160,92 +1168,92 @@ export const ClientApp: React.FC = () => {
 
           <div className="space-y-6">
             <div className="space-y-6">
-              <div className="bg-white rounded-3xl p-6 shadow-2xs border border-slate-200 space-y-5">
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xs border border-slate-200 dark:border-slate-800 space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <Flame className="w-5 h-5 text-amber-500" />
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         {t('Daily Calorie Balance & Targets')}
                       </span>
                     </div>
                     <div className="flex items-baseline gap-2 mt-1 flex-wrap tabular-nums">
-                      <span className={`text-3xl sm:text-4xl font-black ${isCalorieGreen ? 'text-emerald-700' : 'text-rose-600'}`}>
+                      <span className={`text-3xl sm:text-4xl font-black ${isCalorieGreen ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                         {netCalories}
                       </span>
-                      <span className="text-sm sm:text-base font-semibold text-slate-500">
+                      <span className="text-sm sm:text-base font-semibold text-slate-500 dark:text-slate-400">
                         {language === 'ml' ? `നെറ്റ് / ${targetCalories} kcal (ലക്ഷ്യം)` : `Net / ${targetCalories} kcal (Target)`}
                       </span>
                     </div>
                   </div>
                   <div className="text-right tabular-nums">
-                    <span className="text-xs font-bold text-slate-500 block">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">
                       {isWeightLossGoal ? t('Deficit Remaining') : t('Calorie Surplus Needed')}
                     </span>
-                    <span className="text-lg font-black text-emerald-700">{caloriesRemaining} kcal</span>
+                    <span className="text-lg font-black text-emerald-700 dark:text-emerald-400">{caloriesRemaining} kcal</span>
                   </div>
                 </div>
 
                   {/* USER MANDATE: Good Calories vs Bad Calories Columns + Burned Calories Minus Calculation */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                     {/* Column 1: Total Consumed */}
-                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200">
-                      <span className="text-[10px] uppercase font-black tracking-wider text-slate-500 block">
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3 border border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] uppercase font-black tracking-wider text-slate-500 dark:text-slate-400 block">
                         {t('Total Food Eaten')}
                       </span>
-                      <div className="text-lg font-black text-slate-900 mt-0.5 tabular-nums">
-                        {calorieBreakdown.totalCalories} <span className="text-xs font-normal text-slate-500">kcal</span>
+                      <div className="text-lg font-black text-slate-900 dark:text-slate-100 mt-0.5 tabular-nums">
+                        {calorieBreakdown.totalCalories} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">kcal</span>
                       </div>
                       <span className="text-[10px] text-slate-400 block mt-0.5">{t('Gross food intake')}</span>
                     </div>
 
                     {/* Column 2: Good Calories */}
-                    <div className="bg-emerald-50/70 rounded-2xl p-3 border border-emerald-200">
+                    <div className="bg-emerald-50/70 dark:bg-emerald-950/50 rounded-2xl p-3 border border-emerald-200 dark:border-emerald-800">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-black tracking-wider text-emerald-900 block">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-emerald-900 dark:text-emerald-300 block">
                           🍏 {t('Good Calories')}
                         </span>
-                        <span className="text-[10px] font-bold text-emerald-700 tabular-nums">
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
                           {calorieBreakdown.totalCalories > 0 ? Math.round((calorieBreakdown.goodCalories / calorieBreakdown.totalCalories) * 100) : 0}%
                         </span>
                       </div>
-                      <div className="text-lg font-black text-emerald-800 mt-0.5 tabular-nums">
-                        {calorieBreakdown.goodCalories} <span className="text-xs font-normal text-emerald-600">kcal</span>
+                      <div className="text-lg font-black text-emerald-800 dark:text-emerald-300 mt-0.5 tabular-nums">
+                        {calorieBreakdown.goodCalories} <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">kcal</span>
                       </div>
-                      <span className="text-[10px] text-emerald-600 block mt-0.5">{t('Wholesome & Nutritious')}</span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block mt-0.5">{t('Wholesome & Nutritious')}</span>
                     </div>
 
                     {/* Column 3: Bad Calories */}
-                    <div className="bg-amber-50/70 rounded-2xl p-3 border border-amber-200">
+                    <div className="bg-amber-50/70 dark:bg-amber-950/50 rounded-2xl p-3 border border-amber-200 dark:border-amber-800">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-black tracking-wider text-amber-900 block">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-amber-900 dark:text-amber-300 block">
                           🍟 {t('Bad Calories')}
                         </span>
-                        <span className="text-[10px] font-bold text-amber-800 tabular-nums">
+                        <span className="text-[10px] font-bold text-amber-800 dark:text-amber-400 tabular-nums">
                           {calorieBreakdown.totalCalories > 0 ? Math.round((calorieBreakdown.badCalories / calorieBreakdown.totalCalories) * 100) : 0}%
                         </span>
                       </div>
-                      <div className="text-lg font-black text-amber-900 mt-0.5 tabular-nums">
-                        {calorieBreakdown.badCalories} <span className="text-xs font-normal text-amber-700">kcal</span>
+                      <div className="text-lg font-black text-amber-900 dark:text-amber-200 mt-0.5 tabular-nums">
+                        {calorieBreakdown.badCalories} <span className="text-xs font-normal text-amber-700 dark:text-amber-400">kcal</span>
                       </div>
-                      <span className="text-[10px] text-amber-700 block mt-0.5">{t('Fried / Refined / Treats')}</span>
+                      <span className="text-[10px] text-amber-700 dark:text-amber-400 block mt-0.5">{t('Fried / Refined / Treats')}</span>
                     </div>
 
                     {/* Column 4: Calories Burned (Workouts + OS Walking Steps) */}
-                    <div className="bg-blue-50/70 rounded-2xl p-3 border border-blue-200 flex flex-col justify-between">
+                    <div className="bg-blue-50/70 dark:bg-blue-950/50 rounded-2xl p-3 border border-blue-200 dark:border-blue-800 flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] uppercase font-black tracking-wider text-blue-900 block">
+                          <span className="text-[10px] uppercase font-black tracking-wider text-blue-900 dark:text-blue-300 block">
                             ⚽ {t('Calorie Burn')}
                           </span>
-                          <span className="text-[10px] font-bold text-blue-700">
+                          <span className="text-[10px] font-bold text-blue-700 dark:text-blue-400">
                             {t('Exercise')}
                           </span>
                         </div>
-                        <div className="text-lg font-black text-blue-800 mt-0.5 tabular-nums">
-                          -{calorieBreakdown.caloriesBurned} <span className="text-xs font-normal text-blue-600">kcal</span>
+                        <div className="text-lg font-black text-blue-800 dark:text-blue-300 mt-0.5 tabular-nums">
+                          -{calorieBreakdown.caloriesBurned} <span className="text-xs font-normal text-blue-600 dark:text-blue-400">kcal</span>
                         </div>
-                        <span className="text-[10px] text-blue-700 block mt-0.5 tabular-nums">
+                        <span className="text-[10px] text-blue-700 dark:text-blue-400 block mt-0.5 tabular-nums">
                           {language === 'ml'
                             ? `വ്യായാമം: -${workoutBurnToday} · നടപ്പ്: -${stepCaloriesToday}`
                             : `Workout: -${workoutBurnToday} · Steps: -${stepCaloriesToday}`}
@@ -1254,7 +1262,7 @@ export const ClientApp: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setIsActivityModalOpen(true)}
-                        className="mt-2 text-[10px] font-bold text-blue-700 bg-white border border-blue-200 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        className="mt-2 text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2 py-1 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
                         title={language === 'ml' ? 'വ്യായാമം അല്ലെങ്കിൽ കായികവിനോദം ചേർക്കുക' : 'Log Football, Workout, Gym, or Walking to minus calories burned'}
                       >
                         <Plus className="w-3 h-3" />
@@ -1265,16 +1273,16 @@ export const ClientApp: React.FC = () => {
 
                   {/* Dual Split Calorie Progress Bar */}
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-slate-500 font-semibold flex-wrap gap-1 tabular-nums">
+                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold flex-wrap gap-1 tabular-nums">
                       <span>
                         {language === 'ml'
                           ? `കലോറി മീറ്റർ: ${calorieBreakdown.goodCalories} നല്ലത് + ${calorieBreakdown.badCalories} മോശം - ${calorieBreakdown.caloriesBurned} കത്തിച്ചത് = `
                           : `Calorie Meter: ${calorieBreakdown.goodCalories} good + ${calorieBreakdown.badCalories} bad - ${calorieBreakdown.caloriesBurned} burned = `}
-                        <b>{netCalories} {language === 'ml' ? 'നെറ്റ് kcal' : 'net kcal'}</b>
+                        <b className="text-slate-800 dark:text-slate-200">{netCalories} {language === 'ml' ? 'നെറ്റ് kcal' : 'net kcal'}</b>
                       </span>
                       <span>{language === 'ml' ? 'ലക്ഷ്യം' : 'Target'}: {targetCalories} kcal</span>
                     </div>
-                    <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden p-0.5 flex">
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-4 rounded-full overflow-hidden p-0.5 flex">
                       {/* Good Calories Segment */}
                       <div
                         className="bg-emerald-600 h-full rounded-l-full transition-all duration-500"
@@ -1288,7 +1296,7 @@ export const ClientApp: React.FC = () => {
                         title={`${t('Bad Calories')}: ${calorieBreakdown.badCalories} kcal`}
                       />
                     </div>
-                    <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap tabular-nums">
+                    <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap tabular-nums">
                       <span className="flex items-center gap-1">
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
                         {language === 'ml' ? 'നല്ലത്' : 'Good'} ({calorieBreakdown.goodCalories} kcal)
@@ -1298,7 +1306,7 @@ export const ClientApp: React.FC = () => {
                         {language === 'ml' ? 'മോശം' : 'Bad'} ({calorieBreakdown.badCalories} kcal)
                       </span>
                       {calorieBreakdown.caloriesBurned > 0 && (
-                        <span className="flex items-center gap-1 text-blue-600 font-semibold">
+                        <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold">
                           <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
                           {language === 'ml' ? 'കത്തിച്ചത്' : 'Burned'} (-{calorieBreakdown.caloriesBurned} kcal)
                         </span>
@@ -1307,22 +1315,22 @@ export const ClientApp: React.FC = () => {
                   </div>
 
                 {/* Macronutrient breakdown cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                   {/* Protein */}
-                  <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-100">
-                    <div className="text-xs font-bold text-slate-600 flex items-center justify-between">
+                  <div className="bg-slate-50/80 dark:bg-slate-800 rounded-2xl p-3.5 border border-slate-100 dark:border-slate-700">
+                    <div className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <Dumbbell className="w-4 h-4 text-emerald-600" />
+                        <Dumbbell className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         {t('Protein')}
                       </span>
-                      <span className="text-[11px] font-semibold text-emerald-700 tabular-nums">
+                      <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
                         {Math.round((consumedTotals.protein / targetProtein) * 100)}%
                       </span>
                     </div>
-                    <div className="text-lg font-extrabold text-slate-900 mt-1 tabular-nums">
-                      {consumedTotals.protein} <span className="text-xs font-normal text-slate-500">/ {targetProtein}g</span>
+                    <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
+                      {consumedTotals.protein} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">/ {targetProtein}g</span>
                     </div>
-                    <div className="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full mt-2 overflow-hidden">
                       <div
                         className="bg-emerald-600 h-full rounded-full"
                         style={{ width: `${Math.min(100, (consumedTotals.protein / targetProtein) * 100)}%` }}
@@ -1331,20 +1339,20 @@ export const ClientApp: React.FC = () => {
                   </div>
 
                   {/* Carbs */}
-                  <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-100">
-                    <div className="text-xs font-bold text-slate-600 flex items-center justify-between">
+                  <div className="bg-slate-50/80 dark:bg-slate-800 rounded-2xl p-3.5 border border-slate-100 dark:border-slate-700">
+                    <div className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <Wheat className="w-4 h-4 text-blue-600" />
+                        <Wheat className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         {t('Carbohydrates')}
                       </span>
-                      <span className="text-[11px] font-semibold text-blue-700 tabular-nums">
+                      <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 tabular-nums">
                         {Math.round((consumedTotals.carbs / targetCarbs) * 100)}%
                       </span>
                     </div>
-                    <div className="text-lg font-extrabold text-slate-900 mt-1 tabular-nums">
-                      {consumedTotals.carbs} <span className="text-xs font-normal text-slate-500">/ {targetCarbs}g</span>
+                    <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
+                      {consumedTotals.carbs} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">/ {targetCarbs}g</span>
                     </div>
-                    <div className="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full mt-2 overflow-hidden">
                       <div
                         className="bg-blue-600 h-full rounded-full"
                         style={{ width: `${Math.min(100, (consumedTotals.carbs / targetCarbs) * 100)}%` }}
@@ -1353,20 +1361,20 @@ export const ClientApp: React.FC = () => {
                   </div>
 
                   {/* Fat */}
-                  <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-100">
-                    <div className="text-xs font-bold text-slate-600 flex items-center justify-between">
+                  <div className="bg-slate-50/80 dark:bg-slate-800 rounded-2xl p-3.5 border border-slate-100 dark:border-slate-700">
+                    <div className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <Droplets className="w-4 h-4 text-amber-600" />
+                        <Droplets className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                         {t('Healthy Fats')}
                       </span>
-                      <span className="text-[11px] font-semibold text-amber-700 tabular-nums">
+                      <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
                         {Math.round((consumedTotals.fat / targetFat) * 100)}%
                       </span>
                     </div>
-                    <div className="text-lg font-extrabold text-slate-900 mt-1 tabular-nums">
-                      {consumedTotals.fat} <span className="text-xs font-normal text-slate-500">/ {targetFat}g</span>
+                    <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
+                      {consumedTotals.fat} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">/ {targetFat}g</span>
                     </div>
-                    <div className="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full mt-2 overflow-hidden">
                       <div
                         className="bg-amber-600 h-full rounded-full"
                         style={{ width: `${Math.min(100, (consumedTotals.fat / targetFat) * 100)}%` }}
@@ -1376,24 +1384,24 @@ export const ClientApp: React.FC = () => {
                 </div>
 
                 {/* Net Calorie & Exercise Burn Row */}
-                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-3 tabular-nums">
-                    <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
                       <Flame className="w-4 h-4 text-orange-500" />
                       <span>{t('Activity Burn:')}</span>
-                      <span className="text-orange-600 font-extrabold">-{caloriesBurnedToday} kcal</span>
+                      <span className="text-orange-600 dark:text-orange-400 font-extrabold">-{caloriesBurnedToday} kcal</span>
                     </div>
-                    <span className="text-slate-300">•</span>
-                    <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                    <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
                       <span>{t('Net Energy:')}</span>
-                      <span className="text-emerald-800 font-extrabold">{netCalories} kcal</span>
+                      <span className="text-emerald-800 dark:text-emerald-400 font-extrabold">{netCalories} kcal</span>
                     </div>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => setIsActivityModalOpen(true)}
-                    className="text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-xl border border-orange-200 transition-colors flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/60 hover:bg-orange-100 dark:hover:bg-orange-900/60 px-3 py-1.5 rounded-xl border border-orange-200 dark:border-orange-800 transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>
@@ -1407,30 +1415,30 @@ export const ClientApp: React.FC = () => {
 
               {/* Suggested Meals from AI Chatbot */}
               {pendingSuggestions.length > 0 && (
-                <div className="bg-linear-to-br from-emerald-50 via-teal-50/70 to-amber-50/50 rounded-3xl p-5 sm:p-6 shadow-sm border-2 border-emerald-300/90 space-y-4">
+                <div className="bg-linear-to-br from-emerald-50 via-teal-50/70 to-amber-50/50 dark:from-emerald-950/60 dark:via-slate-900 dark:to-amber-950/40 rounded-3xl p-5 sm:p-6 shadow-sm border-2 border-emerald-300/90 dark:border-emerald-700 space-y-4">
 
                   <div className="space-y-3">
                     {pendingSuggestions.map((sugg) => (
                       <div
                         key={sugg.id}
-                        className="bg-white rounded-2xl p-4 border-2 border-emerald-200 shadow-xs space-y-3"
+                        className="bg-white dark:bg-slate-900 rounded-2xl p-4 border-2 border-emerald-200 dark:border-emerald-800 shadow-xs space-y-3"
                       >
                         {/* Suggestion Top Banner */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
                           <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-emerald-700 text-white text-xs font-black rounded-lg">
+                            <span className="px-3 py-1 bg-emerald-700 text-white text-xs font-black rounded-lg">
                               {t(sugg.mealType)}
                             </span>
-                            <span className="flex items-center gap-1 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
-                              <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                              {language === 'ml' ? 'കഴിച്ച സമയം:' : 'Eaten at:'} <strong className="text-slate-900">{sugg.timeGiven}</strong>
+                            <span className="flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+                              <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              {language === 'ml' ? 'കഴിച്ച സമയം:' : 'Eaten at:'} <strong className="text-slate-900 dark:text-white">{sugg.timeGiven}</strong>
                             </span>
                           </div>
 
                           {/* Total calories badge */}
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-amber-950 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                              <Flame className="w-3.5 h-3.5 text-amber-600" />
+                            <span className="text-xs font-black text-amber-950 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                              <Flame className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                               <strong>{language === 'ml' ? 'ആകെ' : 'Total'}: {sugg.totalCalories} kcal</strong>
                             </span>
                           </div>
@@ -1438,7 +1446,7 @@ export const ClientApp: React.FC = () => {
 
                         {/* Each food's calories listed FIRST */}
                         <div className="space-y-1.5">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
                             {language === 'ml' ? 'ഓരോ ഭക്ഷണത്തിന്റെയും കലോറി:' : "Each Food's Calories (Check First):"}
                           </span>
 
@@ -1446,17 +1454,17 @@ export const ClientApp: React.FC = () => {
                             {sugg.foods.map((food, fIdx) => (
                               <div
                                 key={fIdx}
-                                className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between"
+                                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between"
                               >
                                 <div>
-                                  <span className="font-extrabold text-slate-900 text-xs block">{tf(food.name)}</span>
-                                  <span className="text-[11px] text-slate-500 font-medium">
+                                  <span className="font-extrabold text-slate-900 dark:text-slate-100 text-xs block">{tf(food.name)}</span>
+                                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                                     {food.quantity}x ({food.servingUnit})
                                   </span>
                                 </div>
                                 <div className="text-right">
-                                  <span className="font-black text-amber-950 text-xs bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
-                                    <Flame className="w-3 h-3 text-amber-600" />
+                                  <span className="font-black text-amber-950 dark:text-amber-200 text-xs bg-amber-100/90 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                                    <Flame className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                                     {food.calories} kcal
                                   </span>
                                   <div className="text-[10px] text-slate-400 font-medium mt-0.5">
@@ -1469,11 +1477,11 @@ export const ClientApp: React.FC = () => {
                         </div>
 
                         {/* Accept or Dismiss Buttons */}
-                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
                           <button
                             type="button"
                             onClick={() => dismissSuggestedMeal(sugg.id)}
-                            className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                            className="px-3 py-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                           >
                             {t('Dismiss')}
                           </button>
@@ -1503,25 +1511,47 @@ export const ClientApp: React.FC = () => {
               {/* Today's Meals Timeline Cards */}
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <Utensils className="w-4 h-4 text-emerald-600" />
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <Utensils className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     <span>{t("Today's Meals Timeline")}</span>
                   </h2>
-                  <button
-                    type="button"
-                    onClick={handleResetMealsToDayBefore}
-                    disabled={isResettingMeals}
-                    title={language === 'ml' ? 'ഇന്നത്തെ ഭക്ഷണ ലിസ്റ്റ് ഇന്നലത്തേതുപോലെ ആക്കുക' : 'Reset your food log for this date to exactly what you had typed the day before'}
-                    className="flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition-all cursor-pointer border border-amber-200 shadow-2xs disabled:opacity-50 self-start sm:self-auto"
-                  >
-                    <RotateCcw className={`w-3.5 h-3.5 text-amber-600 ${isResettingMeals ? 'animate-spin' : ''}`} />
-                    <span>{isResettingMeals ? (language === 'ml' ? 'റീസെറ്റ് ചെയ്യുന്നു...' : 'Resetting...') : t("Reset to Yesterday's Foods")}</span>
-                  </button>
+                  {confirmResetMeals ? (
+                    <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-xl text-xs">
+                      <span className="font-bold text-amber-900 dark:text-amber-200">
+                        {language === 'ml' ? 'ഇന്നലത്തെ ഭക്ഷണം പോലെ ആക്കണോ?' : "Copy yesterday's meals?"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleResetMealsToDayBefore}
+                        className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer"
+                      >
+                        {language === 'ml' ? 'ഉറപ്പ്' : 'Confirm'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmResetMeals(false)}
+                        className="px-2 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 font-semibold cursor-pointer"
+                      >
+                        {t('Cancel')}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmResetMeals(true)}
+                      disabled={isResettingMeals}
+                      title={language === 'ml' ? 'ഇന്നത്തെ ഭക്ഷണ ലിസ്റ്റ് ഇന്നലത്തേതുപോലെ ആക്കുക' : 'Reset your food log for this date to exactly what you had typed the day before'}
+                      className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 hover:text-amber-900 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 px-3 py-1.5 rounded-xl transition-all cursor-pointer border border-amber-200 dark:border-amber-800 shadow-2xs disabled:opacity-50 self-start sm:self-auto"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 text-amber-600 dark:text-amber-400 ${isResettingMeals ? 'animate-spin' : ''}`} />
+                      <span>{isResettingMeals ? (language === 'ml' ? 'റീസെറ്റ് ചെയ്യുന്നു...' : 'Resetting...') : t("Reset to Yesterday's Foods")}</span>
+                    </button>
+                  )}
                 </div>
 
                   {resetFeedbackNotice && (
-                    <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
-                      <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                      <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                       <span>{resetFeedbackNotice}</span>
                     </div>
                   )}
@@ -1533,29 +1563,29 @@ export const ClientApp: React.FC = () => {
                     const isSlotOpen = openMealSlots[slot] ?? true;
 
                     return (
-                      <div key={slot} className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 hover:border-slate-300 transition-all">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div key={slot} className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-2xs border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                           <div 
                             onClick={() => toggleMealSlot(slot)}
                             className="flex items-center gap-2.5 cursor-pointer group select-none flex-wrap"
                             title={`Click to ${isSlotOpen ? 'collapse' : 'expand'} ${slot}`}
                           >
-                            <span className="p-1 rounded-md text-slate-400 group-hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                            <span className="p-1 rounded-md text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                               {isSlotOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                             </span>
-                            <span className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors">{t(slot)}</span>
+                            <span className="font-bold text-slate-900 dark:text-slate-100 text-sm group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">{t(slot)}</span>
                             {slotBreakdown.totalCalories > 0 ? (
                               <div className="flex items-center gap-2 flex-wrap tabular-nums text-xs">
-                                <span className="font-bold text-slate-800">
+                                <span className="font-bold text-slate-800 dark:text-slate-200">
                                   {slotBreakdown.totalCalories} kcal
                                 </span>
                                 {slotBreakdown.goodCalories > 0 && (
-                                  <span className="text-[11px] font-bold text-emerald-700">
+                                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
                                     · 🍏 {slotBreakdown.goodCalories}
                                   </span>
                                 )}
                                 {slotBreakdown.badCalories > 0 && (
-                                  <span className="text-[11px] font-bold text-amber-800">
+                                  <span className="text-[11px] font-bold text-amber-800 dark:text-amber-400">
                                     · 🍟 {slotBreakdown.badCalories}
                                   </span>
                                 )}
@@ -1572,7 +1602,7 @@ export const ClientApp: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => openLogForSlot(slot)}
-                              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                              className="text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
                             >
                               <Plus className="w-3.5 h-3.5" />
                               <span>{t('Log Food')}</span>
@@ -1589,23 +1619,23 @@ export const ClientApp: React.FC = () => {
                                 {slotSuggestions.map((sugg) => (
                                   <div
                                     key={sugg.id}
-                                    className="p-3 bg-emerald-50/90 border border-emerald-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs"
+                                    className="p-3 bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs"
                                   >
                                     <div className="flex items-start gap-2">
-                                      <Sparkles className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                                      <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
                                       <div>
                                         <div className="flex items-center gap-1.5 flex-wrap">
-                                          <span className="text-xs font-black text-emerald-950">
+                                          <span className="text-xs font-black text-emerald-950 dark:text-emerald-200">
                                             {language === 'ml' ? `AI നിർദ്ദേശം (${sugg.timeGiven})` : `AI Suggestion (Eaten at ${sugg.timeGiven})`}
                                           </span>
-                                          <span className="text-[10px] font-extrabold text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-200">
+                                          <span className="text-[10px] font-extrabold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70 px-1.5 py-0.2 rounded border border-amber-200 dark:border-amber-700">
                                             🔥 {sugg.totalCalories} kcal
                                           </span>
                                         </div>
-                                        <div className="text-xs text-slate-700 mt-1 flex flex-wrap items-center gap-1.5">
+                                        <div className="text-xs text-slate-700 dark:text-slate-300 mt-1 flex flex-wrap items-center gap-1.5">
                                           {sugg.foods.map((f, i) => (
-                                            <span key={i} className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-slate-900 font-medium text-[11px]">
-                                              <strong className="font-bold">{tf(f.name)}</strong>: <strong className="text-amber-700">{f.calories} kcal</strong>
+                                            <span key={i} className="bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-700 text-slate-900 dark:text-slate-100 font-medium text-[11px]">
+                                              <strong className="font-bold">{tf(f.name)}</strong>: <strong className="text-amber-700 dark:text-amber-400">{f.calories} kcal</strong>
                                             </span>
                                           ))}
                                         </div>
@@ -1632,7 +1662,7 @@ export const ClientApp: React.FC = () => {
                                       <button
                                         type="button"
                                         onClick={() => dismissSuggestedMeal(sugg.id)}
-                                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-lg cursor-pointer"
+                                        className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
                                         title={t('Dismiss')}
                                       >
                                         <X className="w-3.5 h-3.5" />
@@ -1645,7 +1675,7 @@ export const ClientApp: React.FC = () => {
 
                             {/* Logged food items list */}
                             {itemsInSlot.length > 0 ? (
-                              <div className="divide-y divide-slate-100 pt-1">
+                              <div className="divide-y divide-slate-100 dark:divide-slate-800 pt-1">
                                 {itemsInSlot.map((item) => {
                                   const itemQuality = item.calorieQuality || determineCalorieQuality(item.foodName);
                                   const itemAudit = classifyFoodItem(item.foodName);
@@ -1653,49 +1683,49 @@ export const ClientApp: React.FC = () => {
                                     <div key={item.id} className="py-2.5 flex items-center justify-between text-xs sm:text-sm">
                                       <div>
                                         <div className="flex items-center gap-1.5 flex-wrap">
-                                          <span className="font-bold text-slate-800">{tf(item.foodName)}</span>
+                                          <span className="font-bold text-slate-800 dark:text-slate-100">{tf(item.foodName)}</span>
                                           {itemAudit.isProblemFood ? (
                                             <span 
-                                              className="text-[10px] font-bold text-rose-700"
+                                              className="text-[10px] font-bold text-rose-700 dark:text-rose-400"
                                               title={`${itemAudit.tierLabel}: ${itemAudit.clinicalReason}`}
                                             >
                                               · 🛑 {itemAudit.tier === 'strict_avoid' ? (language === 'ml' ? 'ഒഴിവാക്കേണ്ടത്' : 'Strict Avoid') : itemAudit.tier === 'once_twice_month' ? (language === 'ml' ? 'മാസത്തിൽ 1-2 തവണ' : '1-2x / Month') : (language === 'ml' ? 'ആഴ്ചയിൽ 1-2 തവണ' : '1-2x / Week')}
                                             </span>
                                           ) : itemAudit.isSuperFood ? (
                                             <span 
-                                              className="text-[10px] font-bold text-emerald-700"
+                                              className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
                                               title={language === 'ml' ? 'സൂപ്പർഫുഡ്: ദിവസവും ധൈര്യമായി കഴിക്കാം' : 'Superfood: wholesome nutrition to eat freely'}
                                             >
                                               · 🥗 {language === 'ml' ? 'സൂപ്പർഫുഡ്' : 'Superfood'}
                                             </span>
                                           ) : null}
                                           {itemQuality === 'good' ? (
-                                            <span className="text-[10px] font-bold text-emerald-700">
+                                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                                               · 🍏 {t('Good Calories')}
                                             </span>
                                           ) : (
-                                            <span className="text-[10px] font-bold text-amber-800">
+                                            <span className="text-[10px] font-bold text-amber-800 dark:text-amber-400">
                                               · 🍟 {t('Bad / Cheat Calories')}
                                             </span>
                                           )}
                                         </div>
-                                        <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-2 tabular-nums">
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-2 tabular-nums">
                                           <span>{item.quantity}x ({item.servingUnit})</span>
                                           <span>•</span>
-                                          <span className="text-emerald-700 font-medium">P: {item.protein}g</span>
+                                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">P: {item.protein}g</span>
                                           <span>•</span>
-                                          <span className="text-blue-700 font-medium">C: {item.carbs}g</span>
+                                          <span className="text-blue-700 dark:text-blue-400 font-medium">C: {item.carbs}g</span>
                                           <span>•</span>
-                                          <span className="text-amber-700 font-medium">F: {item.fat}g</span>
+                                          <span className="text-amber-700 dark:text-amber-400 font-medium">F: {item.fat}g</span>
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-3">
-                                        <span className="font-bold text-slate-800 text-sm tabular-nums">{item.calories} kcal</span>
+                                        <span className="font-bold text-slate-800 dark:text-slate-100 text-sm tabular-nums">{item.calories} kcal</span>
                                         <button
                                           type="button"
                                           onClick={() => deleteMealLog(item.id)}
                                           title={language === 'ml' ? 'ഭക്ഷണം നീക്കം ചെയ്യുക' : 'Remove food'}
-                                          className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                          className="text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
                                         >
                                           <Trash2 className="w-4 h-4" />
                                         </button>
@@ -1714,7 +1744,7 @@ export const ClientApp: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => openLogForSlot(slot)}
-                                  className="text-xs font-semibold text-slate-500 hover:text-emerald-700 transition-colors cursor-pointer"
+                                  className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors cursor-pointer"
                                 >
                                   {language === 'ml' ? '+ കഴിച്ച ഭക്ഷണം ചേർക്കാൻ ഇവിടെ തൊടുക' : '+ Click here to add what you ate'}
                                 </button>
@@ -1735,14 +1765,14 @@ export const ClientApp: React.FC = () => {
       {activeViewPanel === 'plan' && (
         <div className="space-y-5 animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-amber-600" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span>{t('Diet Plan')}</span>
             </h2>
             <button
               type="button"
               onClick={() => setActiveViewPanel(null)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{t('Back')}</span>
@@ -1750,39 +1780,39 @@ export const ClientApp: React.FC = () => {
           </div>
 
           {/* Plan Header Card */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xs border border-slate-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xs border border-slate-200 dark:border-slate-800">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                   {language === 'ml' ? 'നിർദ്ദേശിച്ച ക്ലിനിക്കൽ ഡയറ്റ് പ്ലാൻ' : 'Prescribed Clinical Plan'}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">{assignedPlan.title}</h2>
-                <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl">{assignedPlan.description}</p>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{assignedPlan.title}</h2>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">{assignedPlan.description}</p>
               </div>
 
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>{language === 'ml' ? `തയ്യാറാക്കിയത്: ${assignedDietitian.name}` : `Reviewed by ${assignedDietitian.name}`}</span>
               </div>
             </div>
 
             {/* Daily Nutrition Targets Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-100 text-center tabular-nums">
-              <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/60">
-                <span className="text-xs text-slate-500 font-medium block">{language === 'ml' ? 'കലോറി ലക്ഷ്യം' : 'Calories Target'}</span>
-                <span className="text-xl font-black text-amber-800">{assignedPlan.targetCalories} kcal</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 text-center tabular-nums">
+              <div className="bg-amber-50/70 dark:bg-amber-950/50 p-4 rounded-2xl border border-amber-200/60 dark:border-amber-800">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">{language === 'ml' ? 'കലോറി ലക്ഷ്യം' : 'Calories Target'}</span>
+                <span className="text-xl font-black text-amber-800 dark:text-amber-300">{assignedPlan.targetCalories} kcal</span>
               </div>
-              <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/60">
-                <span className="text-xs text-slate-500 font-medium block">{language === 'ml' ? 'പ്രോട്ടീൻ ലക്ഷ്യം' : 'Protein Goal'}</span>
-                <span className="text-xl font-black text-emerald-800">{assignedPlan.targetProtein}g</span>
+              <div className="bg-emerald-50/70 dark:bg-emerald-950/50 p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-800">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">{language === 'ml' ? 'പ്രോട്ടീൻ ലക്ഷ്യം' : 'Protein Goal'}</span>
+                <span className="text-xl font-black text-emerald-800 dark:text-emerald-300">{assignedPlan.targetProtein}g</span>
               </div>
-              <div className="bg-blue-50/70 p-4 rounded-2xl border border-blue-200/60">
-                <span className="text-xs text-slate-500 font-medium block">{t('Carbohydrates')}</span>
-                <span className="text-xl font-black text-blue-800">{assignedPlan.targetCarbs}g</span>
+              <div className="bg-blue-50/70 dark:bg-blue-950/50 p-4 rounded-2xl border border-blue-200/60 dark:border-blue-800">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">{t('Carbohydrates')}</span>
+                <span className="text-xl font-black text-blue-800 dark:text-blue-300">{assignedPlan.targetCarbs}g</span>
               </div>
-              <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-200/60">
-                <span className="text-xs text-slate-500 font-medium block">{t('Daily Hydration')}</span>
-                <span className="text-xl font-black text-purple-800">{assignedPlan.waterTargetLitres} {language === 'ml' ? 'ലിറ്റർ' : 'Litres'}</span>
+              <div className="bg-purple-50/70 dark:bg-purple-950/50 p-4 rounded-2xl border border-purple-200/60 dark:border-purple-800">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">{t('Daily Hydration')}</span>
+                <span className="text-xl font-black text-purple-800 dark:text-purple-300">{assignedPlan.waterTargetLitres} {language === 'ml' ? 'ലിറ്റർ' : 'Litres'}</span>
               </div>
             </div>
           </div>
@@ -1790,39 +1820,39 @@ export const ClientApp: React.FC = () => {
           {/* Meal Schedule Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {assignedPlan.meals.map((m) => (
-              <div key={m.mealType} className="bg-white rounded-2xl p-5 shadow-2xs border border-slate-200 flex flex-col justify-between">
+              <div key={m.mealType} className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-2xs border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 text-sm">{t(m.mealType)}</span>
-                      <span className="text-xs text-slate-500 font-medium">({m.timeGuideline})</span>
+                      <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">{t(m.mealType)}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">({m.timeGuideline})</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleLogPlannedMeal(m.mealType)}
-                      className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-xl transition-colors cursor-pointer"
+                      className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 px-3 py-1 rounded-xl transition-colors cursor-pointer"
                     >
                       {language === 'ml' ? '+ പ്ലാനിൽ നിന്ന് ചേർക്കുക' : '+ Quick Log from Plan'}
                     </button>
                   </div>
 
                   {m.instructions && (
-                    <p className="text-xs text-emerald-800 bg-emerald-50/60 px-3 py-2 rounded-xl mb-3 font-medium">
+                    <p className="text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/40 px-3 py-2 rounded-xl mb-3 font-medium">
                       💡 {m.instructions}
                     </p>
                   )}
 
                   <div className="space-y-2">
                     {m.recommendedFoods.map((rf, idx) => (
-                      <div key={idx} className="flex items-start justify-between text-xs sm:text-sm text-slate-700 py-1">
+                      <div key={idx} className="flex items-start justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-300 py-1">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 mt-1"></span>
                           <div>
-                            <span className="font-bold text-slate-900">{tf(rf.foodName)}</span>
+                            <span className="font-bold text-slate-900 dark:text-slate-100">{tf(rf.foodName)}</span>
                             {rf.notes && <span className="text-xs text-slate-400 block italic">{rf.notes}</span>}
                           </div>
                         </div>
-                        <span className="text-xs font-bold text-slate-700 whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                           {rf.portion}x {rf.unit}
                         </span>
                       </div>
@@ -1835,15 +1865,15 @@ export const ClientApp: React.FC = () => {
 
           {/* Dietitian Clinical Guidelines Card */}
           {assignedPlan.generalGuidelines && (
-            <div className="bg-emerald-50 rounded-3xl p-6 border border-emerald-200">
-              <h3 className="text-sm font-bold text-emerald-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
+            <div className="bg-emerald-50 dark:bg-emerald-950/50 rounded-3xl p-6 border border-emerald-200 dark:border-emerald-800">
+              <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 {language === 'ml' ? 'കോച്ചിന്റെ പ്രത്യേക നിർദ്ദേശങ്ങൾ' : 'Coach Guidelines for You'}
               </h3>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs sm:text-sm text-emerald-950">
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs sm:text-sm text-emerald-950 dark:text-emerald-100">
                 {assignedPlan.generalGuidelines.map((g, i) => (
-                  <li key={i} className="flex items-start gap-2 bg-white/70 p-3 rounded-xl border border-emerald-200/50">
-                    <span className="text-emerald-600 font-bold">•</span>
+                  <li key={i} className="flex items-start gap-2 bg-white/70 dark:bg-slate-900/70 p-3 rounded-xl border border-emerald-200/50 dark:border-emerald-800">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">•</span>
                     <span>{g}</span>
                   </li>
                 ))}
@@ -1860,8 +1890,8 @@ export const ClientApp: React.FC = () => {
           {/* Header Strip & Back + Action Button */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">{t('Body Composition & Progress History')}</h2>
-              <p className="text-xs text-slate-500">{t('Track weight, BMI, body fat %, and centre device InBody scans')}</p>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('Body Composition & Progress History')}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('Track weight, BMI, body fat %, and centre device InBody scans')}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -1875,7 +1905,7 @@ export const ClientApp: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveViewPanel(null)}
-                className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer"
+                className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>{t('Back')}</span>
@@ -1885,24 +1915,24 @@ export const ClientApp: React.FC = () => {
 
           {/* Progress Overview Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tabular-nums">
-            <div className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 text-center">
-              <span className="text-xs font-semibold text-slate-500 block">{t('Starting Weight')}</span>
-              <div className="text-2xl font-black text-slate-900 mt-1">
-                {activeClient.startingWeightKg} <span className="text-xs font-normal text-slate-500">kg</span>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-2xs border border-slate-200 dark:border-slate-800 text-center">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">{t('Starting Weight')}</span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                {activeClient.startingWeightKg} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">kg</span>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 shadow-2xs border border-emerald-200 bg-emerald-50/20 text-center">
-              <span className="text-xs font-semibold text-emerald-700 block">{t('Current Weight')}</span>
-              <div className="text-2xl font-black text-emerald-700 mt-1">
-                {activeClient.currentWeightKg} <span className="text-xs font-normal text-emerald-600">kg</span>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-2xs border border-emerald-200 dark:border-emerald-800 bg-emerald-50/20 dark:bg-emerald-950/40 text-center">
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 block">{t('Current Weight')}</span>
+              <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
+                {activeClient.currentWeightKg} <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">kg</span>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 text-center">
-              <span className="text-xs font-semibold text-slate-500 block">{t('Target Goal')}</span>
-              <div className="text-2xl font-black text-blue-700 mt-1">
-                {activeClient.targetWeightKg} <span className="text-xs font-normal text-slate-500">kg</span>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-2xs border border-slate-200 dark:border-slate-800 text-center">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">{t('Target Goal')}</span>
+              <div className="text-2xl font-black text-blue-700 dark:text-blue-400 mt-1">
+                {activeClient.targetWeightKg} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">kg</span>
               </div>
             </div>
 
@@ -1915,13 +1945,13 @@ export const ClientApp: React.FC = () => {
           </div>
 
           {/* Large Interactive Weight Trend Chart */}
-          <div className="bg-white rounded-3xl p-6 shadow-2xs border border-slate-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xs border border-slate-200 dark:border-slate-800">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">{t('Weight Progression Timeline')}</h3>
-                <p className="text-xs text-slate-500">{t('Historical weigh-ins with goal marker')}</p>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('Weight Progression Timeline')}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('Historical weigh-ins with goal marker')}</p>
               </div>
-              <span className="text-xs font-semibold text-emerald-700">
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                 {language === 'ml' ? 'ലക്ഷ്യം' : 'Target'}: {activeClient.targetWeightKg} kg
               </span>
             </div>
@@ -1929,32 +1959,32 @@ export const ClientApp: React.FC = () => {
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={clientMeasurements} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.25} />
                   <XAxis 
                     dataKey="date" 
                     tickFormatter={(val) => val.slice(5)} 
-                    tick={{ fontSize: 12, fill: '#64748b' }}
+                    tick={{ fontSize: 12, fill: '#94a3b8' }}
                   />
                   <YAxis 
                     domain={['dataMin - 1', 'dataMax + 1']} 
-                    tick={{ fontSize: 12, fill: '#64748b' }}
+                    tick={{ fontSize: 12, fill: '#94a3b8' }}
                   />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    contentStyle={{ backgroundColor: '#0f172a', color: '#f8fafc', borderRadius: '12px', border: '1px solid #334155', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.2)' }}
                     formatter={(val: any) => [`${val} kg`, language === 'ml' ? 'ഭാരം' : 'Weight']}
                   />
                   <ReferenceLine 
                     y={activeClient.targetWeightKg} 
-                    stroke="#059669" 
+                    stroke="#10b981" 
                     strokeDasharray="4 4" 
-                    label={{ value: t('Target Goal'), position: 'right', fill: '#059669', fontSize: 11 }}
+                    label={{ value: t('Target Goal'), position: 'right', fill: '#10b981', fontSize: 11 }}
                   />
                   <Line 
                     type="monotone" 
                     dataKey="weightKg" 
-                    stroke="#0284c7" 
+                    stroke="#0ea5e9" 
                     strokeWidth={3} 
-                    dot={{ r: 5, fill: '#0284c7', strokeWidth: 2, stroke: '#ffffff' }}
+                    dot={{ r: 5, fill: '#0ea5e9', strokeWidth: 2, stroke: '#ffffff' }}
                     activeDot={{ r: 7 }}
                   />
                 </LineChart>
@@ -1964,7 +1994,7 @@ export const ClientApp: React.FC = () => {
 
           {/* Historical Logs & Centre Device Readings List */}
           <div className="space-y-3">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
               {t('Measurement Logs & Centre InBody Scans')}
             </h3>
 
@@ -1974,48 +2004,48 @@ export const ClientApp: React.FC = () => {
                   key={m.id} 
                   className={`rounded-2xl p-4 border transition-all ${
                     m.source === 'centre_device'
-                      ? 'bg-blue-50/50 border-blue-200 shadow-2xs'
-                      : 'bg-white border-slate-200'
+                      ? 'bg-blue-50/50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-slate-900 text-base tabular-nums">{m.weightKg} kg</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white text-base tabular-nums">{m.weightKg} kg</span>
                         {m.source === 'centre_device' ? (
-                          <span className="text-[10px] font-bold text-blue-800 flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1">
                             <Building2 className="w-3 h-3" />
                             <span>· {language === 'ml' ? 'സെന്റർ ഇൻബോഡി സ്കാൻ' : 'Centre InBody Scan'}</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] font-medium text-slate-500">
+                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
                             · {language === 'ml' ? 'സ്വയം രേഖപ്പെടുത്തിയത്' : 'Home Self-Log'}
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-slate-500 mt-1 block">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 block">
                         {m.date} · {language === 'ml' ? 'രേഖപ്പെടുത്തിയത്:' : 'Logged by'} {m.enteredBy}
                       </span>
                     </div>
 
                     {m.bodyFatPercentage && (
-                      <div className="text-right bg-white p-2 rounded-xl border border-slate-200/70 tabular-nums">
+                      <div className="text-right bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200/70 dark:border-slate-700 tabular-nums">
                         <span className="text-[10px] text-slate-400 block font-semibold">{language === 'ml' ? 'ശരീര കൊഴുപ്പ്' : 'Body Fat'}</span>
-                        <span className="text-xs font-bold text-slate-800">{m.bodyFatPercentage}%</span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{m.bodyFatPercentage}%</span>
                       </div>
                     )}
                   </div>
 
                   {(m.waistCm || m.muscleMassKg || m.visceralFatLevel) && (
-                    <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex flex-wrap items-center gap-3 text-xs text-slate-600 tabular-nums">
-                      {m.waistCm && <span>{language === 'ml' ? 'അരവണ്ണം' : 'Waist'}: <b className="text-slate-900">{m.waistCm} cm</b></span>}
-                      {m.muscleMassKg && <span>{language === 'ml' ? 'പേശീബലം' : 'Muscle'}: <b className="text-slate-900">{m.muscleMassKg} kg</b></span>}
-                      {m.visceralFatLevel && <span>{language === 'ml' ? 'വിസറൽ ഫാറ്റ്' : 'Visceral Fat'}: <b className="text-slate-900">Lvl {m.visceralFatLevel}</b></span>}
+                    <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-700 flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-300 tabular-nums">
+                      {m.waistCm && <span>{language === 'ml' ? 'അരവണ്ണം' : 'Waist'}: <b className="text-slate-900 dark:text-white">{m.waistCm} cm</b></span>}
+                      {m.muscleMassKg && <span>{language === 'ml' ? 'പേശീബലം' : 'Muscle'}: <b className="text-slate-900 dark:text-white">{m.muscleMassKg} kg</b></span>}
+                      {m.visceralFatLevel && <span>{language === 'ml' ? 'വിസറൽ ഫാറ്റ്' : 'Visceral Fat'}: <b className="text-slate-900 dark:text-white">Lvl {m.visceralFatLevel}</b></span>}
                     </div>
                   )}
 
                   {m.notes && (
-                    <p className="mt-2 text-xs text-slate-600 italic bg-white/70 p-2 rounded-xl border border-slate-100">
+                    <p className="mt-2 text-xs text-slate-600 dark:text-slate-300 italic bg-white/70 dark:bg-slate-800/70 p-2 rounded-xl border border-slate-100 dark:border-slate-700">
                       &ldquo;{m.notes}&rdquo;
                     </p>
                   )}

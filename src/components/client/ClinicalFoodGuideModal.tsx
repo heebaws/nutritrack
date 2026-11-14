@@ -31,7 +31,7 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -142,10 +142,10 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
         <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
 
           {/* Golden Principles */}
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 sm:p-5">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-200 dark:border-amber-800/70 rounded-2xl p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-amber-700" />
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-amber-900">
+              <Sparkles className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-amber-900 dark:text-amber-200">
                 {isMl
                   ? 'കോച്ച് സലീമിന്റെയും ഫസീല സലീമിന്റെയും 4 പ്രധാന നിയമങ്ങൾ'
                   : '4 Clinical Rules of Thumb from Coach Saleem & Faseela Saleem'}
@@ -153,14 +153,14 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {encyclopedia.goldenRules.map((rule, idx) => (
-                <div key={idx} className="bg-white/90 rounded-xl p-3 border border-amber-100 shadow-2xs">
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-amber-950">
-                    <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-900 text-[10px] flex items-center justify-center font-black shrink-0">
+                <div key={idx} className="bg-white/90 dark:bg-slate-800/80 rounded-xl p-3 border border-amber-100 dark:border-amber-800/50 shadow-2xs">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-amber-950 dark:text-amber-200">
+                    <span className="w-5 h-5 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 text-[10px] flex items-center justify-center font-black shrink-0">
                       {idx + 1}
                     </span>
                     {rule.title}
                   </div>
-                  <p className="text-[11px] sm:text-xs text-slate-600 mt-1.5 leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
                     {rule.description}
                   </p>
                 </div>
@@ -178,14 +178,14 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
               const isGreen = tier.id === 'daily_superfoods';
 
               const headerBg = isRose
-                ? 'bg-rose-50 border-rose-200 text-rose-950'
+                ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800 text-rose-950 dark:text-rose-200'
                 : isRed
-                ? 'bg-red-50 border-red-200 text-red-950'
+                ? 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800 text-red-950 dark:text-red-200'
                 : isAmber
-                ? 'bg-amber-50 border-amber-200 text-amber-950'
+                ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800 text-amber-950 dark:text-amber-200'
                 : isYellow
-                ? 'bg-yellow-50 border-yellow-200 text-yellow-950'
-                : 'bg-emerald-50 border-emerald-200 text-emerald-950';
+                ? 'bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800 text-yellow-950 dark:text-yellow-200'
+                : 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200';
 
               const badgeBg = isRose
                 ? 'bg-rose-600 text-white'
@@ -198,7 +198,7 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
                 : 'bg-emerald-600 text-white';
 
               return (
-                <div key={tier.id} className="rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+                <div key={tier.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
                   <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${headerBg}`}>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -207,28 +207,28 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
                         </span>
                         <h4 className="font-black text-sm sm:text-base">{tier.title}</h4>
                       </div>
-                      <p className="text-xs text-slate-600 mt-0.5">{tier.subtitle}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">{tier.subtitle}</p>
                     </div>
                   </div>
 
-                  <div className="divide-y divide-slate-100 bg-white">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     {tier.items.map((item, i) => (
-                      <div key={i} className="p-3.5 sm:p-4 hover:bg-slate-50/80 transition-colors">
+                      <div key={i} className="p-3.5 sm:p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/60 transition-colors">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1.5">
                           <div className="space-y-1 max-w-xl">
-                            <span className="font-extrabold text-xs sm:text-sm text-slate-900 block">
+                            <span className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white block">
                               {item.name}
                             </span>
-                            <p className="text-xs text-slate-600 leading-snug">
+                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-snug">
                               {item.details}
                             </p>
                           </div>
                           <div className={`text-[11px] sm:text-xs font-semibold px-2.5 py-1.5 rounded-xl border shrink-0 sm:max-w-xs ${
                             isGreen
-                              ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
                               : isRose || isRed
-                              ? 'bg-rose-50 text-rose-900 border-rose-200'
-                              : 'bg-amber-50 text-amber-900 border-amber-200'
+                              ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200 border-rose-200 dark:border-rose-800'
+                              : 'bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800'
                           }`}>
                             <span className="font-bold block text-[10px] uppercase tracking-wider opacity-75">
                               {isGreen
@@ -247,7 +247,7 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
           </div>
 
           {/* Balanced Plate Guide Callout */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 dark:bg-slate-950 border border-slate-800 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <Flame className="w-4 h-4 text-emerald-400" />

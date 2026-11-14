@@ -31,7 +31,14 @@ import {
 } from '../data/mockData';
 import { getTodayString, clampToToday, getDayBeforeDateString, getDaysSinceDate, isClientInactiveThreeDays } from '../utils/dateUtils';
 import { AppLanguage, translateText, translateFoodLabel } from '../utils/i18n';
-import { estimateOvernightSleepHours, recordDeviceActivityTimestamp } from '../utils/deviceHealthSync';
+import {
+  DetectedOSInfo,
+  detectClientOS,
+  estimateOvernightSleepHours,
+  recordDeviceActivityTimestamp,
+  requestMotionSensorPermission,
+  startStepPedometer
+} from '../utils/deviceHealthSync';
 import {
   testFirestoreConnection,
   subscribeToCollection,
@@ -41,12 +48,19 @@ import {
   forceSeedInitialFirestoreData
 } from '../services/firebase';
 
+export type AppTheme = 'light' | 'dark';
+
 interface AppContextType {
   // Navigation & View Mode
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   phoneFrameEnabled: boolean;
   setPhoneFrameEnabled: (enabled: boolean) => void;
+
+  // Theme Mode (Light / Dark)
+  theme: AppTheme;
+  setTheme: (theme: AppTheme) => void;
+  toggleTheme: () => void;
 
   // Language Translation Switch (EN <-> Malayalam)
   language: AppLanguage;
@@ -120,8 +134,14 @@ interface AppContextType {
   addActivity: (activity: Omit<ActivityLog, 'id' | 'timeLogged'>) => void;
   deleteActivity: (id: string) => void;
 
-  // Daily Habits Operations
+  // Daily Habits & Mobile OS Sensor Operations
   updateDailyHabits: (date: string, partial: Partial<DailyHabits>) => void;
+  incrementDailySteps: (date: string, delta?: number) => void;
+  osHealthInfo: DetectedOSInfo;
+  isPedometerLive: boolean;
+  pedometerPermissionState: 'default' | 'granted' | 'denied' | 'unsupported';
+  enableMobilePedometer: () => Promise<'granted' | 'denied' | 'unsupported'>;
+  pauseMobilePedometer: () => void;
 
   // Notification Read Status Operations
   markTipAsRead: (tipId: string) => void;
@@ -177,6 +197,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   };
   const [phoneFrameEnabled, setPhoneFrameEnabled] = useState<boolean>(false);
+
+  // Theme Mode (Light / Dark persisted cleanly + applied to html.dark)
+  const [theme, setThemeState] = useState<AppTheme>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_PREFIX + 'theme');
+      if (stored === 'dark' || stored === 'light') return stored;
+    } catch {}
+    return 'light';
+  });
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute('content', theme === 'dark' ? '#020617' : '#064e3b');
+      }
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'theme', theme);
+    } catch {}
+  }, [theme]);
+
+  const setTheme = useCallback((next: AppTheme) => {
+    setThemeState(next);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
 
   // Language Translation Switch (defaults to English, persisted in localStorage)
   const [language, setLanguageState] = useState<AppLanguage>(() => {
@@ -1095,6 +1145,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Daily Habits Operations (real-time sync to Firestore)
+  const stepSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingHabitForFlushRef = useRef<DailyHabits | null>(null);
+
+  const flushHabitToFirestore = useCallback((habitObj: DailyHabits) => {
+    if (stepSyncTimerRef.current) {
+      clearTimeout(stepSyncTimerRef.current);
+      stepSyncTimerRef.current = null;
+    }
+    pendingHabitForFlushRef.current = null;
+    saveDocumentToFirestore('habits', habitObj.id, habitObj).catch(() => {});
+  }, []);
+
   const updateDailyHabits = (date: string, partial: Partial<DailyHabits>) => {
     setHabits(prev => {
       const existing = prev.find(h => h.clientId === activeClientId && h.date === date);
@@ -1120,10 +1182,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         newHabitsList = [updatedHabit, ...prev];
       }
 
-      saveDocumentToFirestore('habits', updatedHabit.id, updatedHabit).catch(() => {});
+      flushHabitToFirestore(updatedHabit);
       return newHabitsList;
     });
   };
+
+  // Race-free functional updater for live mobile accelerometer steps + debounced Firestore sync
+  const incrementDailySteps = useCallback((date: string, delta: number = 1) => {
+    if (!activeClientId || delta === 0) return;
+    setHabits(prev => {
+      const existing = prev.find(h => h.clientId === activeClientId && h.date === date);
+      let updatedHabit: DailyHabits;
+      let nextList: DailyHabits[];
+
+      if (existing) {
+        updatedHabit = {
+          ...existing,
+          steps: Math.max(0, (existing.steps || 0) + delta),
+          stepsSource: 'os_sensor',
+          lastDeviceSyncAt: new Date().toISOString(),
+        };
+        nextList = prev.map(h => (h.id === existing.id ? updatedHabit : h));
+      } else {
+        updatedHabit = {
+          id: `hab-${Date.now()}`,
+          clientId: activeClientId,
+          date,
+          steps: Math.max(0, delta),
+          targetSteps: 8000,
+          sleepHours: 7,
+          supplementsTaken: false,
+          saladEaten: false,
+          stretchingDone: false,
+          stepsSource: 'os_sensor',
+          lastDeviceSyncAt: new Date().toISOString(),
+        };
+        nextList = [updatedHabit, ...prev];
+      }
+
+      pendingHabitForFlushRef.current = updatedHabit;
+      if (updatedHabit.steps % 10 === 0) {
+        flushHabitToFirestore(updatedHabit);
+      } else {
+        if (stepSyncTimerRef.current) clearTimeout(stepSyncTimerRef.current);
+        stepSyncTimerRef.current = setTimeout(() => {
+          if (pendingHabitForFlushRef.current) {
+            flushHabitToFirestore(pendingHabitForFlushRef.current);
+          }
+        }, 2500);
+      }
+
+      return nextList;
+    });
+  }, [activeClientId, flushHabitToFirestore]);
 
   // Notification Read Status Operations (persisted on ClientProfile.readTipIds -> Firestore + localStorage)
   const markTipAsRead = useCallback((tipId: string) => {
@@ -1154,7 +1265,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (activeClient.readTipIds || []).includes(tipId);
   }, [activeClient]);
 
-  // Automatic Phone/OS Overnight Sleep Window Sync on session open & keep last-active timestamp fresh
+  // Mobile OS Detection & Global Live Pedometer (starts automatically on Android upon client login; 1-tap on iOS)
+  const [osHealthInfo] = useState<DetectedOSInfo>(() => detectClientOS());
+  const [isPedometerLive, setIsPedometerLive] = useState<boolean>(false);
+  const [pedometerPermissionState, setPedometerPermissionState] = useState<'default' | 'granted' | 'denied' | 'unsupported'>(() => {
+    if (!osHealthInfo.supportsMotionSensor) return 'unsupported';
+    return osHealthInfo.requiresPermissionPrompt ? 'default' : 'granted';
+  });
+
+  const enableMobilePedometer = useCallback(async () => {
+    const res = await requestMotionSensorPermission();
+    setPedometerPermissionState(res);
+    if (res === 'granted') {
+      setIsPedometerLive(true);
+    }
+    return res;
+  }, []);
+
+  const pauseMobilePedometer = useCallback(() => {
+    setIsPedometerLive(false);
+    if (pendingHabitForFlushRef.current) {
+      flushHabitToFirestore(pendingHabitForFlushRef.current);
+    }
+  }, [flushHabitToFirestore]);
+
+  // Auto-start mobile step sensor immediately when a mobile client logs in (no prompt needed on Android)
+  useEffect(() => {
+    if (!activeClientId || viewMode !== 'client') {
+      setIsPedometerLive(false);
+      return;
+    }
+    if (
+      osHealthInfo.supportsMotionSensor &&
+      !osHealthInfo.requiresPermissionPrompt &&
+      (osHealthInfo.os === 'android' || osHealthInfo.os === 'ios')
+    ) {
+      setIsPedometerLive(true);
+    }
+  }, [activeClientId, viewMode, osHealthInfo]);
+
+  // Run global live step detector into today's date whenever active
+  useEffect(() => {
+    if (!isPedometerLive || !activeClientId) return;
+    const stop = startStepPedometer(() => {
+      incrementDailySteps(getTodayString(), 1);
+    });
+    return () => {
+      stop();
+      if (pendingHabitForFlushRef.current) {
+        flushHabitToFirestore(pendingHabitForFlushRef.current);
+      }
+    };
+  }, [isPedometerLive, activeClientId, incrementDailySteps, flushHabitToFirestore]);
+
+  // Automatic Phone/OS Overnight Sleep Window Sync on session open + visibility/pagehide timestamping
   useEffect(() => {
     if (!activeClientId) return;
     const today = getTodayString();
@@ -1196,8 +1360,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const pingInterval = setInterval(() => recordDeviceActivityTimestamp(), 60000);
-    return () => clearInterval(pingInterval);
-  }, [activeClientId]);
+    const handleVisibilityOrHide = () => {
+      recordDeviceActivityTimestamp();
+      if (document.visibilityState === 'hidden' && pendingHabitForFlushRef.current) {
+        flushHabitToFirestore(pendingHabitForFlushRef.current);
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibilityOrHide);
+    window.addEventListener('pagehide', handleVisibilityOrHide);
+    return () => {
+      clearInterval(pingInterval);
+      window.removeEventListener('visibilitychange', handleVisibilityOrHide);
+      window.removeEventListener('pagehide', handleVisibilityOrHide);
+    };
+  }, [activeClientId, flushHabitToFirestore]);
 
   // Appointments Operations (real-time sync to Firestore)
   const addAppointment = (app: Omit<ClinicAppointment, 'id'>) => {
@@ -1533,6 +1709,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setViewMode,
         phoneFrameEnabled,
         setPhoneFrameEnabled,
+        theme,
+        setTheme,
+        toggleTheme,
         language,
         setLanguage,
         toggleLanguage,
@@ -1585,6 +1764,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addActivity,
         deleteActivity,
         updateDailyHabits,
+        incrementDailySteps,
+        osHealthInfo,
+        isPedometerLive,
+        pedometerPermissionState,
+        enableMobilePedometer,
+        pauseMobilePedometer,
         markTipAsRead,
         markAllTipsAsRead,
         isTipRead,
