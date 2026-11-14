@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, ShieldAlert, AlertTriangle, AlertCircle, CheckCircle, Info, Heart, Flame, Sparkles } from 'lucide-react';
-import { CLINICAL_FOOD_ENCYCLOPEDIA } from '../../utils/clinicalFoodAudit';
+import { X, ShieldAlert, AlertTriangle, AlertCircle, CheckCircle, Info, Flame, Sparkles } from 'lucide-react';
+import { getClinicalFoodEncyclopedia } from '../../utils/clinicalFoodAudit';
+import { useApp } from '../../context/AppContext';
 
 interface ClinicalFoodGuideModalProps {
   isOpen: boolean;
@@ -13,48 +14,59 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
   onClose,
   clientName = 'Client'
 }) => {
+  const { language } = useApp();
+  const isMl = language === 'ml';
   const [selectedTierId, setSelectedTierId] = useState<string>('all');
 
   if (!isOpen) return null;
 
-  const tiersToShow = selectedTierId === 'all' 
-    ? CLINICAL_FOOD_ENCYCLOPEDIA.tiers 
-    : CLINICAL_FOOD_ENCYCLOPEDIA.tiers.filter(t => t.id === selectedTierId);
+  const encyclopedia = getClinicalFoodEncyclopedia(language);
+  const tiersToShow = selectedTierId === 'all'
+    ? encyclopedia.tiers
+    : encyclopedia.tiers.filter(t => t.id === selectedTierId);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div 
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+      onClick={onClose}
+    >
+      <div
         className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-5 sm:p-6 shrink-0 relative">
           <button
+            type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-            aria-label="Close"
+            className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label={isMl ? 'അടയ്ക്കുക' : 'Close'}
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2 mb-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 flex items-center gap-1">
-              <ShieldAlert className="w-3 h-3" />
-              Official Clinical Guidelines
+          <div className="flex items-center gap-2 mb-2 text-xs text-emerald-200 font-semibold">
+            <ShieldAlert className="w-4 h-4 text-emerald-300" />
+            <span className="uppercase tracking-wider font-black">
+              {isMl ? 'ഔദ്യോഗിക ക്ലിനിക്കൽ നിർദ്ദേശങ്ങൾ' : 'Official Clinical Guidelines'}
             </span>
-            <span className="text-xs text-emerald-200 font-medium">Saleem Valanchery Wellness Centre</span>
+            <span aria-hidden="true">·</span>
+            <span>{isMl ? 'സലീം വളാഞ്ചേരി വെൽനെസ് സെന്റർ' : 'Saleem Valanchery Wellness Centre'}</span>
           </div>
 
           <h2 className="text-xl sm:text-2xl font-black tracking-tight">
-            Coach Saleem's Food Frequency &amp; Risk Guide
+            {isMl ? 'കോച്ച് സലീമിന്റെ ഭക്ഷണ നിയന്ത്രണ & സുരക്ഷാ ഗൈഡ്' : "Coach Saleem's Food Frequency & Risk Guide"}
           </h2>
           <p className="text-xs sm:text-sm text-emerald-100/90 mt-1 max-w-2xl leading-relaxed">
-            Personalized clinical roadmap for <span className="font-bold text-white">{clientName}</span>. Use this authoritative frequency guide to know exactly which foods to enjoy daily, which to moderate, and which to keep strictly as rare treats.
+            {isMl
+              ? <><span className="font-bold text-white">{clientName}</span>-നുള്ള പ്രത്യേക ഭക്ഷണ മാർഗ്ഗരേഖ. ഏതെല്ലാം ഭക്ഷണങ്ങൾ ദിവസവും കഴിക്കാം, ഏതെല്ലാം കുറയ്ക്കണം എന്ന് ഇതിലൂടെ അറിയാം.</>
+              : <>Personalized clinical roadmap for <span className="font-bold text-white">{clientName}</span>. Use this authoritative frequency guide to know exactly which foods to enjoy daily, which to moderate, and which to keep strictly as rare treats.</>}
           </p>
 
           {/* Quick Filter Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pt-4 no-scrollbar">
+          <div className="flex flex-wrap items-center gap-1.5 pt-4">
             <button
+              type="button"
               onClick={() => setSelectedTierId('all')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedTierId === 'all'
@@ -62,9 +74,10 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
                   : 'bg-white/15 text-white hover:bg-white/25'
               }`}
             >
-              All 5 Tiers
+              {isMl ? 'എല്ലാ 5 വിഭാഗങ്ങളും' : 'All 5 Tiers'}
             </button>
             <button
+              type="button"
               onClick={() => setSelectedTierId('strict_avoid')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
                 selectedTierId === 'strict_avoid'
@@ -73,9 +86,10 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
               }`}
             >
               <AlertCircle className="w-3 h-3" />
-              Strict Avoid
+              {isMl ? 'പൂർണ്ണമായി ഒഴിവാക്കുക' : 'Strict Avoid'}
             </button>
             <button
+              type="button"
               onClick={() => setSelectedTierId('once_twice_month')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
                 selectedTierId === 'once_twice_month'
@@ -84,9 +98,10 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
               }`}
             >
               <AlertTriangle className="w-3 h-3" />
-              1–2x Month
+              {isMl ? 'മാസത്തിൽ 1–2 തവണ' : '1–2x Month'}
             </button>
             <button
+              type="button"
               onClick={() => setSelectedTierId('once_twice_week')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
                 selectedTierId === 'once_twice_week'
@@ -95,9 +110,10 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
               }`}
             >
               <Info className="w-3 h-3" />
-              1–2x Week
+              {isMl ? 'ആഴ്ചയിൽ 1–2 തവണ' : '1–2x Week'}
             </button>
             <button
+              type="button"
               onClick={() => setSelectedTierId('daily_portion')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
                 selectedTierId === 'daily_portion'
@@ -105,9 +121,10 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
                   : 'bg-yellow-900/40 text-yellow-200 hover:bg-yellow-900/60'
               }`}
             >
-              Portion Control
+              {isMl ? 'അളവ് നിയന്ത്രണം' : 'Portion Control'}
             </button>
             <button
+              type="button"
               onClick={() => setSelectedTierId('daily_superfoods')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
                 selectedTierId === 'daily_superfoods'
@@ -116,27 +133,29 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
               }`}
             >
               <CheckCircle className="w-3 h-3" />
-              Eat Daily Freely
+              {isMl ? 'ദിവസവും കഴിക്കാവുന്നവ' : 'Eat Daily Freely'}
             </button>
           </div>
         </div>
 
         {/* Content Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
-          
-          {/* Golden Principles from Coach Saleem */}
+
+          {/* Golden Principles */}
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-amber-700" />
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-amber-900">
-                4 Clinical Rules of Thumb from Coach Saleem &amp; Faseela Saleem
+                {isMl
+                  ? 'കോച്ച് സലീമിന്റെയും ഫസീല സലീമിന്റെയും 4 പ്രധാന നിയമങ്ങൾ'
+                  : '4 Clinical Rules of Thumb from Coach Saleem & Faseela Saleem'}
               </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {CLINICAL_FOOD_ENCYCLOPEDIA.goldenRules.map((rule, idx) => (
+              {encyclopedia.goldenRules.map((rule, idx) => (
                 <div key={idx} className="bg-white/90 rounded-xl p-3 border border-amber-100 shadow-2xs">
                   <div className="flex items-center gap-1.5 font-bold text-xs text-amber-950">
-                    <span className="w-4 h-4 rounded-full bg-amber-200 text-amber-900 text-[10px] flex items-center justify-center font-black shrink-0">
+                    <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-900 text-[10px] flex items-center justify-center font-black shrink-0">
                       {idx + 1}
                     </span>
                     {rule.title}
@@ -158,7 +177,7 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
               const isYellow = tier.id === 'daily_portion';
               const isGreen = tier.id === 'daily_superfoods';
 
-              const headerBg = isRose 
+              const headerBg = isRose
                 ? 'bg-rose-50 border-rose-200 text-rose-950'
                 : isRed
                 ? 'bg-red-50 border-red-200 text-red-950'
@@ -182,8 +201,8 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
                 <div key={tier.id} className="rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
                   <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${headerBg}`}>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${badgeBg}`}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg ${badgeBg}`}>
                           {tier.badge}
                         </span>
                         <h4 className="font-black text-sm sm:text-base">{tier.title}</h4>
@@ -205,14 +224,16 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
                             </p>
                           </div>
                           <div className={`text-[11px] sm:text-xs font-semibold px-2.5 py-1.5 rounded-xl border shrink-0 sm:max-w-xs ${
-                            isGreen 
-                              ? 'bg-emerald-50 text-emerald-900 border-emerald-200' 
+                            isGreen
+                              ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
                               : isRose || isRed
                               ? 'bg-rose-50 text-rose-900 border-rose-200'
                               : 'bg-amber-50 text-amber-900 border-amber-200'
                           }`}>
                             <span className="font-bold block text-[10px] uppercase tracking-wider opacity-75">
-                              {isGreen ? 'Clinical Benefit' : 'Health Risk / Caution'}
+                              {isGreen
+                                ? (isMl ? 'ആരോഗ്യ ഗുണം' : 'Clinical Benefit')
+                                : (isMl ? 'ആരോഗ്യ മുന്നറിയിപ്പ്' : 'Health Risk / Caution')}
                             </span>
                             {item.danger}
                           </div>
@@ -231,11 +252,13 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
               <div className="flex items-center gap-2">
                 <Flame className="w-4 h-4 text-emerald-400" />
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                  The Universal Balanced Plate Rule
+                  {isMl ? 'സമീകൃത ഭക്ഷണ പ്ലേറ്റ് നിയമം' : 'The Universal Balanced Plate Rule'}
                 </span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
-                Every main meal should aim for: <span className="text-emerald-300 font-bold">50% Vegetables &amp; Whole Fruits</span>, <span className="text-blue-300 font-bold">25% Clean Protein</span> (eggs, fish, lentils, sprouts), and <span className="text-amber-300 font-bold">25% Whole Grains</span> (matta rice, oats, chapati).
+                {isMl
+                  ? <>ഓരോ പ്രധാന ഭക്ഷണത്തിലും <span className="text-emerald-300 font-bold">50% പച്ചക്കറികളും പഴങ്ങളും</span>, <span className="text-blue-300 font-bold">25% നല്ല പ്രോട്ടീൻ</span> (മുട്ട, മീൻ, പരിപ്പ്, പയർ), <span className="text-amber-300 font-bold">25% ധാന്യങ്ങൾ</span> (മട്ട അരി, ഓട്സ്, ചപ്പാത്തി) എന്നിവ ഉണ്ടാകണം.</>
+                  : <>Every main meal should aim for: <span className="text-emerald-300 font-bold">50% Vegetables &amp; Whole Fruits</span>, <span className="text-blue-300 font-bold">25% Clean Protein</span> (eggs, fish, lentils, sprouts), and <span className="text-amber-300 font-bold">25% Whole Grains</span> (matta rice, oats, chapati).</>}
               </p>
             </div>
             <button
@@ -243,7 +266,7 @@ export const ClinicalFoodGuideModal: React.FC<ClinicalFoodGuideModalProps> = ({
               onClick={onClose}
               className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shrink-0 cursor-pointer shadow-md"
             >
-              Got It, Coach!
+              {isMl ? 'മനസ്സിലായി, കോച്ച്!' : 'Got It, Coach!'}
             </button>
           </div>
 

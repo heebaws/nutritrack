@@ -9,6 +9,7 @@ import {
   detectMalayalamOrManglish 
 } from '../../utils/nutritionEstimator';
 import { NutriTrackLogo } from './NutriTrackLogo';
+import { getFoodImageUrl, FOOD_FALLBACK_SVG } from '../../utils/foodImages';
 import {
   Bot,
   Sparkles,
@@ -284,6 +285,8 @@ export const AIChatBot: React.FC = () => {
     foods,
     viewMode,
     addSuggestedMeal,
+    t,
+    tf,
   } = useApp();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -505,8 +508,8 @@ export const AIChatBot: React.FC = () => {
         isDraggingBtnRef.current = true;
       }
 
-      const maxX = Math.max(10, window.innerWidth - 240);
-      const maxY = Math.max(10, window.innerHeight - 65);
+      const maxX = Math.max(10, window.innerWidth - 72);
+      const maxY = Math.max(10, window.innerHeight - 72);
       const newX = Math.min(Math.max(10, curX - offsetX), maxX);
       const newY = Math.min(Math.max(10, curY - offsetY), maxY);
 
@@ -644,6 +647,17 @@ I am ready to help you with:
     window.addEventListener('open-nutribot', handleOpen);
     return () => window.removeEventListener('open-nutribot', handleOpen);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   // Quick preset questions demonstrating mandates
   const quickPrompts = [
@@ -1467,41 +1481,25 @@ What food or snack would you like to check?`
 
   return (
     <>
-      {/* Floating Chat Trigger Button - Moveable anywhere by dragging */}
+      {/* Floating Chat Trigger Button - Compact Square, Moveable by Dragging */}
       {!isOpen && (
         <div
           id="nutribot-trigger-btn"
           style={btnPos ? { position: 'fixed', left: `${btnPos.x}px`, top: `${btnPos.y}px`, bottom: 'auto', right: 'auto' } : undefined}
-          className={btnPos ? "fixed z-[9999] flex items-center gap-2 select-none" : "fixed bottom-5 right-5 z-[9999] flex items-center gap-2 select-none"}
+          className={btnPos ? 'fixed z-[9999] select-none' : 'fixed bottom-5 right-5 z-[9999] select-none'}
         >
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!isDraggingBtnRef.current) {
-                setIsOpen(true);
-              }
-            }}
-            className="flex items-center gap-2.5 bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold px-4 py-3 rounded-full shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-emerald-300/60"
-            title="Click to open NutriBot AI, or click and drag move handle to reposition anywhere"
+            onMouseDown={handleBtnDragStart}
+            onTouchStart={handleBtnDragStart}
+            aria-label={t('Ask NutriBot')}
+            title={`${t('Ask NutriBot')} · ${t('Click & Drag to Move')}`}
+            className="w-14 h-14 aspect-square rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white shadow-lg hover:shadow-xl active:scale-95 transition-all cursor-pointer border-2 border-emerald-400/50 flex flex-col items-center justify-center gap-0.5"
           >
-            <div className="relative">
-              <NutriTrackLogo size="xs" showText={false} variant="dark" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full" />
-            </div>
-            <span className="text-xs sm:text-sm font-extrabold tracking-tight">
-              Ask NutriBot (Kerala Food AI)
+            <NutriTrackLogo size="xs" showText={false} variant="dark" />
+            <span className="text-[9px] font-bold tracking-tight text-emerald-100 leading-none">
+              AI
             </span>
-            <div
-              onMouseDown={handleBtnDragStart}
-              onTouchStart={handleBtnDragStart}
-              className="flex items-center gap-1 pl-1.5 border-l border-white/30 text-amber-300 cursor-grab active:cursor-grabbing hover:text-white"
-              title="Click & drag here to move button anywhere on screen"
-            >
-              <Move className="w-3.5 h-3.5" />
-            </div>
           </button>
         </div>
       )}
@@ -1511,24 +1509,24 @@ What food or snack would you like to check?`
         <div
           id="nutribot-window-container"
           style={!isExpanded && modalPos ? { position: 'fixed', left: `${modalPos.x}px`, top: `${modalPos.y}px`, bottom: 'auto', right: 'auto' } : undefined}
-          className={`fixed z-[9999] transition-all duration-150 flex flex-col bg-white rounded-3xl shadow-2xl border-2 border-emerald-500/30 overflow-hidden ${
+          className={`fixed z-[9999] transition-all duration-150 flex flex-col bg-white rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden ${
             isExpanded
               ? 'inset-4 sm:inset-8'
               : modalPos
-                ? 'w-[calc(100vw-24px)] sm:w-[540px] h-[740px] max-h-[94vh]'
-                : 'bottom-4 right-4 w-[calc(100vw-24px)] sm:w-[540px] h-[740px] max-h-[94vh]'
+                ? 'w-[calc(100vw-24px)] sm:w-[520px] h-[720px] max-h-[92vh]'
+                : 'bottom-4 right-4 w-[calc(100vw-24px)] sm:w-[520px] h-[720px] max-h-[92vh]'
           }`}
         >
           {/* Draggable repositioning bar */}
           <div
             onMouseDown={handleModalDragStart}
             onTouchStart={handleModalDragStart}
-            className="bg-emerald-950/95 text-emerald-200/90 px-3 py-1.5 flex items-center justify-between text-[11px] font-semibold cursor-grab active:cursor-grabbing select-none border-b border-white/10"
-            title="Click and drag to move the chatbot anywhere on your screen"
+            className="bg-emerald-950 text-emerald-200/90 px-3 py-1.5 flex items-center justify-between text-[11px] font-semibold cursor-grab active:cursor-grabbing select-none border-b border-white/10"
+            title={t('Click & Drag to Move')}
           >
             <div className="flex items-center gap-1.5">
               <GripHorizontal className="w-4 h-4 text-amber-300" />
-              <span>Click &amp; Drag to Move Chatbot</span>
+              <span>{t('Click & Drag to Move')}</span>
             </div>
             {(modalPos || btnPos) && (
               <button
@@ -1541,86 +1539,85 @@ What food or snack would you like to check?`
                 className="text-[10px] text-emerald-200 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded cursor-pointer transition-colors"
                 title="Reset position back to default bottom-right"
               >
-                Reset Position
+                Reset
               </button>
             )}
           </div>
 
-          {/* Top Header */}
-          <div className="bg-linear-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-3.5 sm:p-4 flex items-center justify-between shrink-0 shadow-xs">
-            <div 
+          {/* Clean Uncluttered Top Header + High-Contrast Close Button */}
+          <div className="bg-emerald-900 text-white px-4 py-3 flex items-center justify-between gap-2 shrink-0">
+            <div
               onMouseDown={handleModalDragStart}
               onTouchStart={handleModalDragStart}
-              className="flex items-center gap-3 cursor-grab active:cursor-grabbing"
-              title="Drag header to move"
+              className="flex items-center gap-2.5 min-w-0 cursor-grab active:cursor-grabbing"
+              title={t('Click & Drag to Move')}
             >
               <NutriTrackLogo size="sm" showText={false} variant="dark" />
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-black text-white text-sm sm:text-base tracking-tight">NutriBot (Kerala Food AI)</h3>
-                  {isOnline ? (
-                    <span className="text-[10px] uppercase font-black bg-emerald-500/30 text-emerald-100 px-2 py-0.5 rounded-full border border-emerald-400/40 flex items-center gap-1 shadow-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      NutriAI Online
-                    </span>
-                  ) : (
-                    <span className="text-[10px] uppercase font-black bg-amber-500/30 text-amber-200 px-2 py-0.5 rounded-full border border-amber-400/40 flex items-center gap-1 shadow-xs">
-                      <WifiOff className="w-2.5 h-2.5 text-amber-300" />
-                      Verified Library
+                  <h3 className="font-bold text-white text-sm sm:text-base tracking-tight truncate">
+                    {t('NutriBot')}
+                  </h3>
+                  {!isOnline && (
+                    <span className="text-[10px] font-semibold text-amber-200 flex items-center gap-1 shrink-0">
+                      <WifiOff className="w-3 h-3" />
+                      {t('Verified Library Mode')}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-emerald-100/90 font-medium">
-                  Super NutriAI Engine • Vision &amp; Voice Multimodal Intelligence
+                <p className="text-[11px] text-emerald-200 truncate">
+                  {t('Kerala Food AI · Vision & Voice')}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {/* Grant Bot Access Pill in Header */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setGrantBotColumnAccess(!grantBotColumnAccess)}
-                title={grantBotColumnAccess ? "Bot has access to directly log into client diary" : "Click to grant bot access to client diary"}
-                className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                title={grantBotColumnAccess ? 'Bot has access to directly log into client diary' : 'Click to grant bot access to client diary'}
+                className={`hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-colors cursor-pointer ${
                   grantBotColumnAccess
-                    ? 'bg-emerald-500/30 text-emerald-100 border-emerald-400/40'
-                    : 'bg-white/10 text-white/70 border-white/20'
+                    ? 'bg-emerald-700/80 text-emerald-50 border-emerald-500/60'
+                    : 'bg-white/10 text-white/75 border-white/20'
                 }`}
               >
-                <ShieldCheck className="w-3 h-3 text-emerald-300" />
-                <span>{grantBotColumnAccess ? '✓ Column Access' : 'Access Off'}</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+                <span>{grantBotColumnAccess ? t('Column Access') : t('Access Off')}</span>
               </button>
 
-              {/* Kerala Snacks Referral Toggle Button */}
               <button
                 type="button"
                 onClick={() => setShowReferralGuide(!showReferralGuide)}
                 title="View Kerala Snacks & Calories Referral List"
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border ${
+                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer border ${
                   showReferralGuide
-                    ? 'bg-amber-400 text-slate-900 border-amber-300 shadow-2xs font-extrabold'
-                    : 'bg-white/15 text-white hover:bg-white/25 border-white/20'
+                    ? 'bg-amber-400 text-slate-900 border-amber-300 font-extrabold'
+                    : 'bg-white/10 text-white hover:bg-white/20 border-white/20'
                 }`}
               >
-                <span>🌴 Referral</span>
+                <BookOpen className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t('Referral')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+                className="p-2 text-white/85 hover:text-white hover:bg-white/15 rounded-xl transition-colors cursor-pointer"
                 title={isExpanded ? 'Restore window size' : 'Expand chat window'}
               >
                 {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
+
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
-                title="Close chat"
+                aria-label={t('Close')}
+                className="px-3 py-1.5 bg-white/20 hover:bg-rose-600 text-white border border-white/30 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold shadow-xs"
+                title={t('Close')}
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4 stroke-[2.5]" />
+                <span>{t('Close')}</span>
               </button>
             </div>
           </div>
@@ -1631,11 +1628,11 @@ What food or snack would you like to check?`
               <div className="flex items-center gap-2 truncate">
                 <User className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                 <span className="font-semibold truncate">{activeClient.name}</span>
-                <span className="text-emerald-500">•</span>
+                <span className="text-emerald-500">·</span>
                 <span className="text-slate-600 truncate text-[11px]">{activeClient.goal}</span>
               </div>
-              <div className="font-mono font-bold text-[11px] text-emerald-800 shrink-0">
-                {clientContext.remainingCalories} kcal left today
+              <div className="font-mono font-bold text-[11px] text-emerald-800 shrink-0 tabular-nums">
+                {clientContext.remainingCalories} kcal left
               </div>
             </div>
           )}
@@ -1855,21 +1852,32 @@ What food or snack would you like to check?`
                     {msg.food && adjusted && (
                       <div className="mb-3.5 p-3.5 bg-emerald-50/70 rounded-2xl border-2 border-emerald-200 text-slate-900 space-y-3">
                         
-                        {/* 1. Food Header */}
-                        <div className="flex items-start justify-between gap-2 pb-2 border-b border-emerald-200/80">
-                          <div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-black text-slate-900 text-base">{msg.food.name}</span>
-                              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full">
-                                {msg.food.category}
+                        {/* 1. Food Header with Photo */}
+                        <div className="flex items-start justify-between gap-2.5 pb-2 border-b border-emerald-200/80">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <img
+                              src={getFoodImageUrl(msg.food.name, msg.food.category)}
+                              alt={msg.food.name}
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = FOOD_FALLBACK_SVG;
+                              }}
+                              className="w-12 h-12 rounded-xl object-cover shrink-0 border border-emerald-200 bg-white"
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-black text-slate-900 text-base truncate">{tf(msg.food.name)}</span>
+                                <span className="text-[11px] font-semibold text-emerald-800">
+                                  · {t(msg.food.category)}
+                                </span>
+                              </div>
+                              <span className="text-xs text-slate-600 font-bold block mt-0.5">
+                                {t('Serving Unit')}: <strong className="text-slate-900">{msg.food.servingUnit}</strong>
                               </span>
                             </div>
-                            <span className="text-xs text-slate-600 font-bold block mt-0.5">
-                              Serving Unit: <strong className="text-slate-900">{msg.food.servingUnit}</strong>
-                            </span>
                           </div>
 
-                          <span className="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-xl border border-emerald-200 shadow-2xs">
+                          <span className="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-xl border border-emerald-200 shadow-2xs shrink-0">
                             {msg.food.glycemicIndex || 'GI: Balanced'}
                           </span>
                         </div>
@@ -2213,18 +2221,18 @@ What food or snack would you like to check?`
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Prompt Pill Carousel */}
-          <div className="px-3 py-2 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto shrink-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1 flex items-center gap-1">
+          {/* Compact Wrapped Quick Prompts (No Horizontal Scrollbar) */}
+          <div className="px-3 py-2 bg-white border-t border-slate-100 flex flex-wrap items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-0.5 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-amber-500" />
-              Quick:
+              {t('Quick:')}
             </span>
-            {quickPrompts.map((qp, idx) => (
+            {quickPrompts.slice(0, 5).map((qp, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handleSendMessage(qp.query)}
-                className="whitespace-nowrap px-2.5 py-1 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 border border-slate-200 rounded-full text-[11px] font-medium text-slate-600 transition-all cursor-pointer shrink-0"
+                className="px-2.5 py-1 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 border border-slate-200 rounded-lg text-[11px] font-medium text-slate-600 transition-colors cursor-pointer"
               >
                 {qp.label}
               </button>
@@ -2340,7 +2348,7 @@ What food or snack would you like to check?`
                   ? "Add note about this meal photo..." 
                   : isRecordingVoice 
                     ? "Listening to voice note..." 
-                    : "Ask in English or Malayalam, speak with mic, or snap plate photo..."
+                    : t('Ask in English or Malayalam, speak with mic, or snap plate photo...')
               }
               disabled={isLoading || isRecordingVoice}
               className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
@@ -2361,9 +2369,9 @@ What food or snack would you like to check?`
           <div className="px-4 py-1.5 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between shrink-0">
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              Saleem Valanchery Centre Kerala Food Database
+              Saleem Valanchery Centre
             </span>
-            <span>All foods auto-saved to library</span>
+            <span>{t('All foods auto-saved to library')}</span>
           </div>
 
         </div>

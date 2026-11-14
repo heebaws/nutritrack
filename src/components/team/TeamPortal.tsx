@@ -53,7 +53,8 @@ import {
   SlidersHorizontal,
   BellRing,
   ArrowLeft,
-  LogOut
+  LogOut,
+  Languages
 } from 'lucide-react';
 
 export const TeamPortal: React.FC = () => {
@@ -77,7 +78,10 @@ export const TeamPortal: React.FC = () => {
     staffSignOut,
     deleteClient,
     addDietitian,
-    resetAllData
+    resetAllData,
+    t,
+    language,
+    toggleLanguage
   } = useApp();
 
   const [isResetting, setIsResetting] = useState(false);
@@ -256,7 +260,7 @@ export const TeamPortal: React.FC = () => {
                 <span className={`text-xs font-bold ${
                   currentCoach?.role === 'admin' ? 'text-purple-700' : 'text-emerald-700'
                 }`}>
-                  {currentCoach?.role === 'admin' ? 'Centre Administrator' : 'Clinical Dietitian'}
+                  {currentCoach?.role === 'admin' ? t('Centre Administrator') : t('Clinical Dietitian')}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5 truncate">
@@ -272,7 +276,7 @@ export const TeamPortal: React.FC = () => {
               onClick={() => setActiveWorkspace('clients')}
               className="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-left transition-colors cursor-pointer"
             >
-              <span className="text-[11px] font-semibold text-slate-500 block">Enrolled</span>
+              <span className="text-[11px] font-semibold text-slate-500 block">{t('Enrolled')}</span>
               <span className="text-xl font-black text-slate-900 tabular-nums">{totalClients}</span>
             </button>
 
@@ -284,7 +288,7 @@ export const TeamPortal: React.FC = () => {
               }}
               className="bg-emerald-50/70 hover:bg-emerald-100/70 border border-emerald-200 rounded-2xl px-3.5 py-2.5 text-left transition-colors cursor-pointer"
             >
-              <span className="text-[11px] font-semibold text-emerald-800 block">Active</span>
+              <span className="text-[11px] font-semibold text-emerald-800 block">{t('Active')}</span>
               <span className="text-xl font-black text-emerald-700 tabular-nums">{activeClients.length}</span>
             </button>
 
@@ -298,7 +302,7 @@ export const TeamPortal: React.FC = () => {
               }`}
             >
               <span className={`text-[11px] font-semibold block ${inactiveClients.length > 0 ? 'text-rose-800' : 'text-slate-500'}`}>
-                3+ Days Away
+                {t('3+ Days Away')}
               </span>
               <span className={`text-xl font-black tabular-nums ${inactiveClients.length > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
                 {inactiveClients.length}
@@ -312,9 +316,9 @@ export const TeamPortal: React.FC = () => {
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
-            <span>Coach Workspace</span>
+            <span>{t('Coach Workspace')}</span>
             <span className="text-slate-300">·</span>
-            <span className="text-slate-500 font-normal">Tap any square icon to open tools or client records</span>
+            <span className="text-slate-500 font-normal">{t('Tap any square icon to open tools or client records')}</span>
           </div>
           {activeWorkspace && (
             <button
@@ -323,7 +327,7 @@ export const TeamPortal: React.FC = () => {
               className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Minimize Open View</span>
+              <span>{t('Minimize Open View')}</span>
             </button>
           )}
         </div>
@@ -332,7 +336,7 @@ export const TeamPortal: React.FC = () => {
           {[
             {
               key: 'clients',
-              label: 'Clients',
+              label: t('Clients'),
               icon: Users,
               bg: 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white',
               active: activeWorkspace === 'clients',
@@ -344,7 +348,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'reports',
-              label: 'Inactive Alerts',
+              label: t('Inactive Alerts'),
               icon: AlertTriangle,
               bg: 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white',
               active: activeWorkspace === 'reports',
@@ -353,7 +357,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'live-feed',
-              label: 'Live Feed',
+              label: t('Live Feed'),
               icon: Smartphone,
               bg: 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white',
               active: activeWorkspace === 'live-feed',
@@ -361,7 +365,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'add-client',
-              label: 'Add Client',
+              label: t('Add Client'),
               icon: UserPlus,
               bg: 'bg-blue-600 text-white hover:bg-blue-700',
               active: false,
@@ -369,7 +373,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'send-alert',
-              label: 'Send Alert',
+              label: t('Send Alert'),
               icon: BellRing,
               bg: 'bg-emerald-600 text-white hover:bg-emerald-700',
               active: false,
@@ -380,7 +384,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'plans',
-              label: 'Diet Plans',
+              label: t('Diet Plans'),
               icon: CalendarDays,
               bg: 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-600 hover:text-white',
               active: activeWorkspace === 'plans',
@@ -388,7 +392,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'foods',
-              label: 'Food Library',
+              label: t('Food Library'),
               icon: UtensilsCrossed,
               bg: 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-600 hover:text-white',
               active: activeWorkspace === 'foods',
@@ -396,7 +400,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'centre',
-              label: 'Centre Scan',
+              label: t('Centre Scan'),
               icon: Building2,
               bg: 'bg-slate-900 text-white hover:bg-slate-800',
               active: activeWorkspace === 'centre',
@@ -404,7 +408,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'appointments',
-              label: 'Appointments',
+              label: t('Appointments'),
               icon: CalendarCheck,
               bg: 'bg-cyan-50 text-cyan-800 border border-cyan-200 hover:bg-cyan-600 hover:text-white',
               active: false,
@@ -415,7 +419,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'print',
-              label: 'Print Report',
+              label: t('Print Report'),
               icon: Printer,
               bg: 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-800 hover:text-white',
               active: false,
@@ -426,7 +430,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'staff',
-              label: 'Staff & Roles',
+              label: t('Staff & Roles'),
               icon: ShieldCheck,
               bg: 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-600 hover:text-white',
               active: activeWorkspace === 'staff',
@@ -434,7 +438,7 @@ export const TeamPortal: React.FC = () => {
             },
             {
               key: 'more',
-              label: 'More & Admin',
+              label: t('More & Admin'),
               icon: SlidersHorizontal,
               bg: 'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-800 hover:text-white',
               active: activeWorkspace === 'more' || activeWorkspace === 'broadcast',
@@ -480,7 +484,7 @@ export const TeamPortal: React.FC = () => {
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-slate-700" />
-              <h2 className="text-sm font-bold text-slate-900">Additional Admin &amp; Broadcast Controls</h2>
+              <h2 className="text-sm font-bold text-slate-900">{t('Additional Admin & Broadcast Controls')}</h2>
             </div>
             <button
               type="button"
@@ -488,11 +492,31 @@ export const TeamPortal: React.FC = () => {
               className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Close</span>
+              <span>{t('Close')}</span>
             </button>
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+            <button
+              type="button"
+              onClick={() => toggleLanguage()}
+              className="flex flex-col items-center gap-2 group cursor-pointer"
+            >
+              <div className={`w-16 h-16 aspect-square rounded-2xl border flex flex-col items-center justify-center transition-colors ${
+                language === 'ml'
+                  ? 'bg-emerald-800 text-white border-emerald-900'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 group-hover:bg-emerald-700 group-hover:text-white'
+              }`}>
+                <Languages className="w-5 h-5" />
+                <span className="text-[10px] font-bold mt-0.5">
+                  {language === 'ml' ? 'EN' : 'മലയാളം'}
+                </span>
+              </div>
+              <span className="text-xs font-bold text-slate-700 text-center leading-tight">
+                {language === 'ml' ? t('Switch to English') : t('Switch to Malayalam')}
+              </span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveWorkspace('broadcast')}
@@ -501,7 +525,7 @@ export const TeamPortal: React.FC = () => {
               <div className="w-16 h-16 aspect-square rounded-2xl bg-blue-50 text-blue-700 border border-blue-200 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-colors">
                 <Send className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight">Broadcast Log ({tips.length})</span>
+              <span className="text-xs font-bold text-slate-700 text-center leading-tight tabular-nums">Broadcast ({tips.length})</span>
             </button>
 
             <button
@@ -512,7 +536,7 @@ export const TeamPortal: React.FC = () => {
               <div className="w-16 h-16 aspect-square rounded-2xl bg-purple-50 text-purple-700 border border-purple-200 group-hover:bg-purple-600 group-hover:text-white flex items-center justify-center transition-colors">
                 <Edit3 className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight">Edit Profile</span>
+              <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Edit Profile')}</span>
             </button>
 
             {currentCoach?.role === 'admin' && (
@@ -524,7 +548,7 @@ export const TeamPortal: React.FC = () => {
                 <div className="w-16 h-16 aspect-square rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center transition-colors">
                   <UserPlus className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold text-slate-700 text-center leading-tight">Add Coach</span>
+                <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Add Coach')}</span>
               </button>
             )}
 
@@ -539,7 +563,7 @@ export const TeamPortal: React.FC = () => {
               <div className="w-16 h-16 aspect-square rounded-2xl bg-slate-100 text-slate-800 border border-slate-200 group-hover:bg-slate-800 group-hover:text-white flex items-center justify-center transition-colors">
                 <Building2 className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight">New Scan</span>
+              <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('New Scan')}</span>
             </button>
 
             <button
@@ -552,7 +576,7 @@ export const TeamPortal: React.FC = () => {
                 <RotateCcw className={`w-6 h-6 ${isResetting ? 'animate-spin' : ''}`} />
               </div>
               <span className="text-xs font-bold text-slate-700 text-center leading-tight">
-                {isResetting ? 'Restoring...' : 'Reset Centre'}
+                {isResetting ? 'Restoring...' : t('Reset Centre')}
               </span>
             </button>
 
@@ -564,7 +588,7 @@ export const TeamPortal: React.FC = () => {
               <div className="w-16 h-16 aspect-square rounded-2xl bg-rose-50 text-rose-700 border border-rose-200 group-hover:bg-rose-600 group-hover:text-white flex items-center justify-center transition-colors">
                 <LogOut className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-700 text-center leading-tight">Sign Out</span>
+              <span className="text-xs font-bold text-slate-700 text-center leading-tight">{t('Sign Out')}</span>
             </button>
           </div>
         </div>

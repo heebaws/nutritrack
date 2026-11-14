@@ -33,8 +33,11 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
     appointments, 
     addAppointment, 
     deleteAppointment,
-    viewMode
+    viewMode,
+    language,
+    t
   } = useApp();
+  const isMl = language === 'ml';
 
   const [date, setDate] = useState<string>(() => {
     const d = new Date();
@@ -45,7 +48,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
   const [type, setType] = useState<ClinicAppointment['type']>('inbody_scan');
   const [location, setLocation] = useState<string>('NutriTrack Centre Valanchery - Diagnostic Room');
   const [selectedDietitianId, setSelectedDietitianId] = useState<string>(dietitians[0]?.id || 'admin-1');
-  const [notes, setNotes] = useState<string>('Periodic InBody 270 scan, body fat % review, and diet adjustment.');
+  const [notes, setNotes] = useState<string>('');
 
   if (!isOpen) return null;
 
@@ -72,10 +75,25 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
       type,
       status: 'scheduled',
       location,
-      notes
+      notes: notes || 'Periodic InBody 270 scan, body fat % review, and diet adjustment.'
     });
 
     onClose();
+  };
+
+  const getTypeLabel = (apptType: ClinicAppointment['type']) => {
+    if (!isMl) {
+      if (apptType === 'inbody_scan') return 'InBody Scan';
+      if (apptType === 'diet_review') return 'Diet Review';
+      if (apptType === 'initial_consult') return 'Clinical Consultation';
+      if (apptType === 'virtual_checkin') return 'WhatsApp Video Call';
+      return String(apptType).replace('_', ' ');
+    }
+    if (apptType === 'inbody_scan') return 'ഇൻബോഡി സ്കാൻ & പരിശോധന';
+    if (apptType === 'diet_review') return 'ഡയറ്റ് പ്ലാൻ അവലോകനം';
+    if (apptType === 'initial_consult') return 'പ്രാഥമിക പരിശോധന';
+    if (apptType === 'virtual_checkin') return 'വാട്സാപ്പ് വീഡിയോ പരിശോധന';
+    return String(apptType).replace('_', ' ');
   };
 
   return (
@@ -89,31 +107,33 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
               <CalendarCheck className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold tracking-tight">Centre Consultations &amp; Checkups</h2>
+              <h2 className="text-base font-extrabold tracking-tight">{t('Centre Consultations & Checkups')}</h2>
               <p className="text-xs text-teal-100 font-medium">
-                Patient: <span className="text-white font-bold">{targetClient.name}</span>
+                {isMl ? 'ക്ലയന്റ്:' : 'Patient:'} <span className="text-white font-bold">{targetClient.name}</span>
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-white/80 hover:text-white p-1 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+            className="text-white/80 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Existing Scheduled Appointments */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Scheduled Appointments ({clientAppointments.length})
+              {t('Scheduled Appointments')} ({clientAppointments.length})
             </h3>
 
             {clientAppointments.length === 0 ? (
               <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-200/80 text-xs text-slate-500">
-                No upcoming consultations scheduled yet. Book your next InBody scan or review below!
+                {isMl
+                  ? 'ഇതുവരെ അപ്പോയിന്റ്മെന്റുകളൊന്നും ബുക്ക് ചെയ്തിട്ടില്ല. അടുത്ത ഇൻബോഡി സ്കാനോ പരിശോധനയോ താഴെ ബുക്ക് ചെയ്യുക!'
+                  : 'No upcoming consultations scheduled yet. Book your next InBody scan or review below!'}
               </div>
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -124,18 +144,18 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-slate-900 capitalize">
-                          {app.type.replace('_', ' ')}
+                        <span className="font-bold text-slate-900">
+                          {getTypeLabel(app.type)}
                         </span>
-                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                          {app.status}
+                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">
+                          {isMl && app.status === 'scheduled' ? 'നിശ്ചയിച്ചത്' : app.status}
                         </span>
                       </div>
-                      <p className="text-slate-600 flex items-center gap-1.5 font-medium">
+                      <p className="text-slate-600 flex items-center gap-1.5 font-medium flex-wrap">
                         <Calendar className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>{app.date} at {app.time}</span>
+                        <span>{app.date} {isMl ? 'സമയം:' : 'at'} {app.time}</span>
                         <span className="text-slate-300">•</span>
-                        <span>Coach: <b>{app.dietitianName}</b></span>
+                        <span>{t('Coach')}: <b>{app.dietitianName}</b></span>
                       </p>
                       <p className="text-slate-500 text-[11px] flex items-center gap-1.5 mt-1">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -143,7 +163,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                       </p>
                       {app.notes && (
                         <p className="text-slate-400 text-[11px] italic mt-1">
-                          "{app.notes}"
+                          &ldquo;{app.notes}&rdquo;
                         </p>
                       )}
                     </div>
@@ -151,8 +171,8 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => deleteAppointment(app.id)}
-                      className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                      title="Cancel appointment"
+                      className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                      title={isMl ? 'അപ്പോയിന്റ്മെന്റ് റദ്ദാക്കുക' : 'Cancel appointment'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -166,13 +186,17 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
           <form onSubmit={handleCreate} className="pt-4 border-t border-slate-100 space-y-3">
             <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <Plus className="w-4 h-4 text-emerald-600" />
-              <span>{viewMode === 'team' ? 'Book New Consultation for Client' : 'Request Next Review Appointment'}</span>
+              <span>
+                {viewMode === 'team'
+                  ? (isMl ? 'ക്ലയന്റിന് പുതിയ പരിശോധന ബുക്ക് ചെയ്യുക' : 'Book New Consultation for Client')
+                  : t('Request Next Review Appointment')}
+              </span>
             </h4>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
-                  Date
+                  {t('Date')}
                 </label>
                 <input
                   type="date"
@@ -186,11 +210,11 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
 
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
-                  Time Slot
+                  {isMl ? 'സമയം' : 'Time Slot'}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 10:30 AM"
+                  placeholder={isMl ? 'ഉദാ: 10:30 AM' : 'e.g. 10:30 AM'}
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-emerald-500"
@@ -202,23 +226,23 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
-                  Appointment Type
+                  {isMl ? 'പരിശോധന വിഭാഗം' : 'Appointment Type'}
                 </label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value as any)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-emerald-500 cursor-pointer"
                 >
-                  <option value="inbody_scan">InBody Full Scan &amp; Composition</option>
-                  <option value="diet_review">Diet Plan Review &amp; Calories</option>
-                  <option value="initial_consult">Clinical Consultation</option>
-                  <option value="virtual_checkin">WhatsApp Video Call Review</option>
+                  <option value="inbody_scan">{isMl ? 'ഇൻബോഡി ഫുൾ സ്കാൻ & പരിശോധന' : 'InBody Full Scan & Composition'}</option>
+                  <option value="diet_review">{isMl ? 'ഡയറ്റ് പ്ലാനും കലോറിയും അവലോകനം' : 'Diet Plan Review & Calories'}</option>
+                  <option value="initial_consult">{isMl ? 'ക്ലിനിക്കൽ കൺസൾട്ടേഷൻ' : 'Clinical Consultation'}</option>
+                  <option value="virtual_checkin">{isMl ? 'വാട്സാപ്പ് വീഡിയോ കോൾ പരിശോധന' : 'WhatsApp Video Call Review'}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
-                  Coach / Dietitian
+                  {isMl ? 'കോച്ച് / ഡയറ്റീഷ്യൻ' : 'Coach / Dietitian'}
                 </label>
                 <select
                   value={selectedDietitianId}
@@ -227,7 +251,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                 >
                   {dietitians.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name} ({d.role === 'admin' ? 'Lead Coach' : 'Wellness Coach'})
+                      {d.name} ({d.role === 'admin' ? (isMl ? 'ലീഡ് കോച്ച്' : 'Lead Coach') : (isMl ? 'വെൽനെസ് കോച്ച്' : 'Wellness Coach')})
                     </option>
                   ))}
                 </select>
@@ -236,7 +260,7 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
-                Location / Branch
+                {isMl ? 'സ്ഥലം / ബ്രാഞ്ച്' : 'Location / Branch'}
               </label>
               <input
                 type="text"
@@ -249,10 +273,11 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
-                Consultation Purpose / Clinical Notes
+                {isMl ? 'പരിശോധന ഉദ്ദേശ്യം / കുറിപ്പുകൾ' : 'Consultation Purpose / Clinical Notes'}
               </label>
               <input
                 type="text"
+                placeholder={isMl ? 'ഇൻബോഡി 270 സ്കാനും ഡയറ്റ് ക്രമീകരണവും' : 'Periodic InBody 270 scan, body fat % review, and diet adjustment.'}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-medium focus:outline-emerald-500"
@@ -265,14 +290,14 @@ export const AppointmentsModal: React.FC<AppointmentsModalProps> = ({
                 onClick={onClose}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
               >
-                Close
+                {t('Close')}
               </button>
               <button
                 type="submit"
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2 rounded-xl transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Confirm Appointment</span>
+                <span>{t('Confirm Appointment')}</span>
               </button>
             </div>
           </form>

@@ -124,3 +124,14 @@ export function calculateCalorieBreakdown(
     netCalories
   };
 }
+
+/**
+ * Convert daily walking steps into clinical calories burned adjusted for body weight.
+ * ~0.04 kcal/step at 70kg baseline (~320 kcal for 8,000 steps).
+ */
+export function calculateStepCalories(steps: number, weightKg: number = 70): number {
+  const safeSteps = Math.max(0, Number(steps) || 0);
+  const safeWeight = weightKg && weightKg > 20 ? weightKg : 70;
+  return Math.round(safeSteps * 0.04 * (safeWeight / 70));
+}
+

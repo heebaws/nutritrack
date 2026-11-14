@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useApp } from '../../context/AppContext';
 import { ClientProfile, ClientReminder, DietitianTip, MealLogItem, MealType } from '../../types';
 import { CoachClinicalAlertsCard } from './CoachClinicalAlertsCard';
 import {
@@ -17,7 +18,9 @@ import {
   ShieldCheck,
   CalendarDays,
   Sparkles,
-  Send
+  Send,
+  Check,
+  CheckCheck
 } from 'lucide-react';
 
 interface NotificationsModalProps {
@@ -43,6 +46,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   selectedDate,
   onQuickAction,
 }) => {
+  const { t, language, markTipAsRead, markAllTipsAsRead, isTipRead } = useApp();
+  const isMl = language === 'ml';
   const [notifPermission, setNotifPermission] = useState<'default' | 'granted' | 'denied' | 'unsupported'>(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
     return Notification.permission;
@@ -55,8 +60,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
       const perm = await Notification.requestPermission();
       setNotifPermission(perm);
       if (perm === 'granted') {
-        new Notification('NutriTrack Pro Alerts Enabled', {
-          body: `Hi ${client.name}, you will receive on-time reminders at 8:00 AM (Breakfast), 1:00 PM (Lunch), and 7:30 PM (Dinner), plus coach alerts.`,
+        new Notification(isMl ? 'ന്യൂട്രിട്രാക്ക് പ്രോ അലേർട്ടുകൾ സജീവമായി' : 'NutriTrack Pro Alerts Enabled', {
+          body: isMl
+            ? `ഹായ് ${client.name}, 8:00 AM, 1:00 PM, 7:30 PM എന്നീ ഭക്ഷണ സമയങ്ങളിലും കോച്ച് നിർദ്ദേശങ്ങളിലും അലേർട്ട് ലഭിക്കും.`
+            : `Hi ${client.name}, you will receive on-time reminders at 8:00 AM (Breakfast), 1:00 PM (Lunch), and 7:30 PM (Dinner), plus coach alerts.`,
           icon: '/favicon.ico',
         });
       }
@@ -65,8 +72,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
   const sendTestPhoneAlert = () => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('Coach Saleem · Meal Reminder', {
-        body: `Time to log your nutrition in NutriTrack Pro! Stay consistent with your ${client.goal} goal.`,
+      new Notification(isMl ? 'കോച്ച് സലീം · ഭക്ഷണ ഓർമ്മപ്പെടുത്തൽ' : 'Coach Saleem · Meal Reminder', {
+        body: isMl
+          ? `ന്യൂട്രിട്രാക്ക് പ്രോയിൽ ഇന്നത്തെ ഭക്ഷണം രേഖപ്പെടുത്താൻ സമയമായി!`
+          : `Time to log your nutrition in NutriTrack Pro! Stay consistent with your ${client.goal} goal.`,
         icon: '/favicon.ico',
       });
     }
@@ -75,22 +84,33 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   };
 
   const mealIconForTitle = (title: string, time: string) => {
-    const t = `${title} ${time}`.toLowerCase();
-    if (t.includes('breakfast') || t.includes('8:00 am') || t.includes('morning')) {
+    const lower = `${title} ${time}`.toLowerCase();
+    if (lower.includes('breakfast') || lower.includes('8:00 am') || lower.includes('morning')) {
       return <Sun className="w-4 h-4 text-amber-600" />;
     }
-    if (t.includes('lunch') || t.includes('1:00 pm') || t.includes('afternoon')) {
+    if (lower.includes('lunch') || lower.includes('1:00 pm') || lower.includes('afternoon')) {
       return <Sunset className="w-4 h-4 text-orange-600" />;
     }
-    if (t.includes('dinner') || t.includes('7:30 pm') || t.includes('evening')) {
+    if (lower.includes('dinner') || lower.includes('7:30 pm') || lower.includes('evening')) {
       return <Moon className="w-4 h-4 text-indigo-600" />;
     }
     return <Droplets className="w-4 h-4 text-cyan-600" />;
   };
 
   const sortedTips = useMemo(() => {
-    return [...tips].sort((a, b) => (b.type === 'reminder' ? 1 : 0) - (a.type === 'reminder' ? 1 : 0));
-  }, [tips]);
+    return [...tips].sort((a, b) => {
+      const aUnread = isTipRead(a.id) ? 0 : 1;
+      const bUnread = isTipRead(b.id) ? 0 : 1;
+      if (aUnread !== bUnread) return bUnread - aUnread;
+      return (b.type === 'reminder' ? 1 : 0) - (a.type === 'reminder' ? 1 : 0);
+    });
+  }, [tips, isTipRead]);
+
+  const unreadTipIds = useMemo(() => {
+    return tips.filter(tip => !isTipRead(tip.id)).map(tip => tip.id);
+  }, [tips, isTipRead]);
+
+  const unreadCount = unreadTipIds.length;
 
   if (!isOpen) return null;
 
@@ -105,16 +125,21 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
       >
         {/* Header */}
         <div className="bg-emerald-950 text-white px-5 py-4 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
               <BellRing className="w-5 h-5 text-amber-300" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white leading-tight">
-                Notifications &amp; Coach Reminders
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-white leading-tight truncate">
+                {t('Notifications & Coach Reminders')}
               </h2>
-              <p className="text-xs text-emerald-200">
-                On-time phone alerts at 8:00 AM · 1:00 PM · 7:30 PM &amp; coach messages
+              <p className="text-xs text-emerald-200 tabular-nums">
+                8:00 AM · 1:00 PM · 7:30 PM ·{' '}
+                <span className={unreadCount > 0 ? 'text-amber-300 font-bold' : 'text-emerald-300'}>
+                  {unreadCount > 0
+                    ? `${unreadCount} ${t('Unread')}`
+                    : t('All Caught Up')}
+                </span>
               </p>
             </div>
           </div>
@@ -122,10 +147,11 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-white/70 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
-            title="Close Notifications"
+            className="text-white/80 hover:text-white px-3 py-2 rounded-xl hover:bg-white/10 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold shrink-0"
+            title={t('Close')}
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
+            <span>{t('Close')}</span>
           </button>
         </div>
 
@@ -140,14 +166,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Phone Notification Delivery
+                  {t('Phone Notification Delivery')}
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                   {notifPermission === 'granted'
-                    ? 'Active: Scheduled meal times & coach reminders trigger native alerts directly on your phone.'
+                    ? t('Active: Scheduled meal times & coach reminders trigger native alerts directly on your phone.')
                     : notifPermission === 'denied'
-                    ? 'Notifications are blocked in your browser settings. Enable them in site permissions to receive phone alerts.'
-                    : 'Allow notifications so meal check-ins and coach alerts arrive on your phone on time — without cluttering the app.'}
+                    ? t('Notifications are blocked in your browser settings. Enable them in site permissions to receive phone alerts.')
+                    : t('Allow notifications so meal check-ins and coach alerts arrive on your phone on time — without cluttering the app.')}
                 </p>
               </div>
             </div>
@@ -160,7 +186,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Test Alert</span>
+                  <span>{t('Test Alert')}</span>
                 </button>
               ) : notifPermission !== 'unsupported' && notifPermission !== 'denied' ? (
                 <button
@@ -169,7 +195,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <Bell className="w-3.5 h-3.5" />
-                  <span>Enable Phone Alerts</span>
+                  <span>{t('Enable Phone Alerts')}</span>
                 </button>
               ) : null}
             </div>
@@ -178,15 +204,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           {testSentBanner && (
             <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Test notification sent! Scheduled reminders will alert your phone at exact meal times.</span>
+              <span>{t('Test notification sent! Scheduled reminders will alert your phone at exact meal times.')}</span>
             </div>
           )}
 
           {/* 2. Quick-Action Square Icons inside Notification Center */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-700">Quick Actions from Alerts</h3>
-              <span className="text-[11px] text-slate-400">Tap any icon to respond</span>
+              <h3 className="text-xs font-bold text-slate-700">{t('Quick Actions from Alerts')}</h3>
             </div>
 
             <div className="grid grid-cols-5 gap-2.5">
@@ -201,7 +226,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white text-emerald-700 flex items-center justify-center transition-colors">
                   <Utensils className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">Log Meal</span>
+                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Log Meal')}</span>
               </button>
 
               <button
@@ -215,7 +240,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 <div className="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-200 group-hover:bg-cyan-600 group-hover:text-white text-cyan-700 flex items-center justify-center transition-colors">
                   <Droplets className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">Hydration</span>
+                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Daily Hydration')}</span>
               </button>
 
               <button
@@ -229,7 +254,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 group-hover:bg-blue-600 group-hover:text-white text-blue-700 flex items-center justify-center transition-colors">
                   <Scale className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">Weight</span>
+                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Morning Weight')}</span>
               </button>
 
               <button
@@ -243,7 +268,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 group-hover:bg-amber-500 group-hover:text-white text-amber-700 flex items-center justify-center transition-colors">
                   <CalendarDays className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">Diet Plan</span>
+                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Diet Plan')}</span>
               </button>
 
               <button
@@ -257,67 +282,121 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 group-hover:bg-rose-600 group-hover:text-white text-rose-700 flex items-center justify-center transition-colors">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">Food Rules</span>
+                <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{t('Food Rules')}</span>
               </button>
             </div>
           </div>
 
           {/* 3. Coach Reminders & Clinical Meal Alerts */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 px-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Coach Reminders &amp; Live Guidance</span>
-            </h3>
+            <div className="flex items-center justify-between gap-2 px-1">
+              <h3 className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>{t('Coach Reminders & Live Guidance')}</span>
+                <span className="text-slate-400">·</span>
+                <span className={`tabular-nums ${unreadCount > 0 ? 'text-rose-600 font-extrabold' : 'text-emerald-700'}`}>
+                  {unreadCount} {t('Unread')}
+                </span>
+              </h3>
 
-            {/* Live Clinical Food Feedback (Red warnings / Green praise moved cleanly here) */}
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => markAllTipsAsRead(unreadTipIds)}
+                  className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  <span>{t('Mark All as Read')}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Live Clinical Food Feedback */}
             <CoachClinicalAlertsCard
               logs={logsForDay}
               client={client}
               selectedDate={selectedDate}
             />
 
-            {/* Direct Coach Messages / Reminders */}
+            {/* Direct Coach Messages / Reminders with Mark as Read */}
             <div className="space-y-2">
-              {sortedTips.map((tip) => (
-                <div
-                  key={tip.id}
-                  className={`rounded-2xl p-4 border space-y-1.5 ${
-                    tip.type === 'reminder'
-                      ? 'bg-rose-50/70 border-rose-200'
-                      : 'bg-white border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="font-bold text-slate-900">{tip.title}</span>
-                    <span className="text-[11px] text-slate-500 font-mono tabular-nums">
-                      {tip.dietitianName} · {tip.createdAt}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-700 leading-relaxed">{tip.message}</p>
-                  {tip.type === 'reminder' && (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onQuickAction('log-meal');
-                        }}
-                        className="text-[11px] font-bold text-rose-700 hover:text-rose-900 underline cursor-pointer"
-                      >
-                        Log Today&apos;s Meals Now →
-                      </button>
-                    </div>
-                  )}
+              {sortedTips.length === 0 ? (
+                <div className="rounded-2xl p-4 border border-slate-200 bg-white text-center text-xs text-slate-500">
+                  {t('No notifications right now')}
                 </div>
-              ))}
+              ) : (
+                sortedTips.map((tip) => {
+                  const read = isTipRead(tip.id);
+                  return (
+                    <div
+                      key={tip.id}
+                      className={`rounded-2xl p-4 border space-y-2 transition-colors ${
+                        read
+                          ? 'bg-white/70 border-slate-200 opacity-80'
+                          : tip.type === 'reminder'
+                          ? 'bg-rose-50/80 border-rose-300 shadow-2xs'
+                          : 'bg-white border-emerald-300 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2 text-xs">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`font-bold ${read ? 'text-slate-600' : 'text-slate-900'}`}>
+                              {tip.title}
+                            </span>
+                            <span className="text-slate-300">·</span>
+                            <span className={`text-[11px] font-bold ${read ? 'text-emerald-700' : 'text-rose-600'}`}>
+                              {read ? `✓ ${t('Read')}` : t('Unread')}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 font-mono tabular-nums">
+                            {tip.dietitianName} · {tip.createdAt}
+                          </div>
+                        </div>
+
+                        {!read && (
+                          <button
+                            type="button"
+                            onClick={() => markTipAsRead(tip.id)}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{t('Mark as Read')}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <p className={`text-xs leading-relaxed ${read ? 'text-slate-500' : 'text-slate-700'}`}>
+                        {tip.message}
+                      </p>
+
+                      {tip.type === 'reminder' && (
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!read) markTipAsRead(tip.id);
+                              onClose();
+                              onQuickAction('log-meal');
+                            }}
+                            className="text-[11px] font-bold text-rose-700 hover:text-rose-900 underline cursor-pointer"
+                          >
+                            {t("Log Today's Meals Now →")}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
           {/* 4. Scheduled Official Meal Notification Times */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 px-1">
+            <h3 className="text-xs font-bold text-slate-600 flex items-center gap-1.5 px-1">
               <Clock className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Scheduled Phone Notification Times</span>
+              <span>{t('Scheduled Phone Notification Times')}</span>
             </h3>
 
             <div className="bg-white rounded-2xl divide-y divide-slate-100 border border-slate-200 overflow-hidden">

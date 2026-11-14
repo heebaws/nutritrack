@@ -9,7 +9,8 @@ interface MeasurementModalProps {
 }
 
 export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onClose }) => {
-  const { activeClient, selectedDate, addMeasurement } = useApp();
+  const { activeClient, selectedDate, addMeasurement, language, t } = useApp();
+  const isMl = language === 'ml';
 
   const [date, setDate] = useState<string>(() => selectedDate || getTodayString());
   const [weightKg, setWeightKg] = useState<string>(activeClient ? String(activeClient.currentWeightKg) : '');
@@ -74,14 +75,16 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
               <Scale className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Record Measurements</h2>
-              <p className="text-xs text-slate-500">Hand-enter readings from your scale/tape</p>
+              <h2 className="text-base font-bold text-slate-900">{t('Record Measurements')}</h2>
+              <p className="text-xs text-slate-500">
+                {isMl ? 'നിങ്ങളുടെ സ്കെയിൽ/ടേപ്പ് അളവുകൾ രേഖപ്പെടുത്തുക' : 'Hand-enter readings from your scale/tape'}
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+            className="p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -93,7 +96,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
           {/* Date Picker */}
           <div>
             <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-              Date
+              {t('Date')}
             </label>
             <input
               type="date"
@@ -109,9 +112,11 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-semibold uppercase text-slate-600">
-                Body Weight <span className="text-emerald-600 font-bold">*</span>
+                {isMl ? 'ശരീര ഭാരം' : 'Body Weight'} <span className="text-emerald-600 font-bold">*</span>
               </label>
-              <span className="text-[11px] text-slate-500">Target: {activeClient.targetWeightKg} kg</span>
+              <span className="text-[11px] text-slate-500 tabular-nums">
+                {isMl ? `ലക്ഷ്യം: ${activeClient.targetWeightKg} kg` : `Target: ${activeClient.targetWeightKg} kg`}
+              </span>
             </div>
             <div className="relative">
               <input
@@ -121,7 +126,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
                 max="300"
                 value={weightKg}
                 onChange={(e) => setWeightKg(e.target.value)}
-                placeholder="e.g. 69.5"
+                placeholder={isMl ? 'ഉദാ: 69.5' : 'e.g. 69.5'}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 required
               />
@@ -135,7 +140,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                Waist
+                {isMl ? 'അരവണ്ണം (Waist)' : 'Waist'}
               </label>
               <div className="relative">
                 <input
@@ -145,7 +150,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
                   max="200"
                   value={waistCm}
                   onChange={(e) => setWaistCm(e.target.value)}
-                  placeholder="e.g. 81"
+                  placeholder={isMl ? 'ഉദാ: 81' : 'e.g. 81'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
@@ -156,7 +161,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
 
             <div>
               <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                Hips
+                {isMl ? 'ഇടുപ്പ് (Hips)' : 'Hips'}
               </label>
               <div className="relative">
                 <input
@@ -166,7 +171,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
                   max="200"
                   value={hipCm}
                   onChange={(e) => setHipCm(e.target.value)}
-                  placeholder="e.g. 98"
+                  placeholder={isMl ? 'ഉദാ: 98' : 'e.g. 98'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
@@ -179,7 +184,10 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
           {/* Body Fat % (optional) */}
           <div>
             <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-              Body Fat % <span className="text-[11px] font-normal text-slate-400">(Optional smart scale reading)</span>
+              {isMl ? 'ശരീരത്തിലെ കൊഴുപ്പ് %' : 'Body Fat %'}{' '}
+              <span className="text-[11px] font-normal text-slate-400">
+                {isMl ? '(സ്മാർട്ട് സ്കെയിൽ ഉണ്ടെങ്കിൽ മാത്രം)' : '(Optional smart scale reading)'}
+              </span>
             </label>
             <div className="relative">
               <input
@@ -189,7 +197,7 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
                 max="60"
                 value={bodyFatPercentage}
                 onChange={(e) => setBodyFatPercentage(e.target.value)}
-                placeholder="e.g. 29.5"
+                placeholder={isMl ? 'ഉദാ: 29.5' : 'e.g. 29.5'}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
@@ -202,28 +210,30 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
           <div className="grid grid-cols-2 gap-3 bg-teal-50/50 p-2.5 rounded-xl border border-teal-100">
             <div>
               <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                Calcium / Bone (kg) <span className="text-slate-400 font-normal">(Opt)</span>
+                {isMl ? 'കാൽസ്യം / അസ്ഥി (kg)' : 'Calcium / Bone (kg)'}{' '}
+                <span className="text-slate-400 font-normal">({isMl ? 'ഐച്ഛികം' : 'Opt'})</span>
               </label>
               <input
                 type="number"
                 step="0.1"
                 value={boneMassKg}
                 onChange={(e) => setBoneMassKg(e.target.value)}
-                placeholder="e.g. 2.4"
+                placeholder={isMl ? 'ഉദാ: 2.4' : 'e.g. 2.4'}
                 className="w-full bg-white border border-teal-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-teal-500"
               />
             </div>
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                Body Water % <span className="text-slate-400 font-normal">(Opt)</span>
+                {isMl ? 'ശരീരത്തിലെ ജലാംശം %' : 'Body Water %'}{' '}
+                <span className="text-slate-400 font-normal">({isMl ? 'ഐച്ഛികം' : 'Opt'})</span>
               </label>
               <input
                 type="number"
                 step="0.5"
                 value={bodyWaterPercentage}
                 onChange={(e) => setBodyWaterPercentage(e.target.value)}
-                placeholder="e.g. 55"
+                placeholder={isMl ? 'ഉദാ: 55' : 'e.g. 55'}
                 className="w-full bg-white border border-teal-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-teal-500"
               />
             </div>
@@ -232,13 +242,13 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
           {/* Notes */}
           <div>
             <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-              Notes
+              {isMl ? 'കുറിപ്പുകൾ' : 'Notes'}
             </label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Taken right after waking up, feeling energetic"
+              placeholder={isMl ? 'ഉദാ: രാവിലെ ഉണർന്ന ഉടൻ എടുത്തത്' : 'e.g. Taken right after waking up, feeling energetic'}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
             />
           </div>
@@ -248,22 +258,22 @@ export const MeasurementModal: React.FC<MeasurementModalProps> = ({ isOpen, onCl
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-xl"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-xl cursor-pointer"
             >
-              Cancel
+              {t('Cancel')}
             </button>
             <button
               type="submit"
               disabled={isSaved}
-              className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+              className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
               {isSaved ? (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Saved!</span>
+                  <span>{t('Saved!')}</span>
                 </>
               ) : (
-                <span>Save Reading</span>
+                <span>{t('Save Reading')}</span>
               )}
             </button>
           </div>

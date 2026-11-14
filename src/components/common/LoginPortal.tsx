@@ -26,7 +26,8 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
     staffSignIn, 
     setViewMode,
     activeClient,
-    activeTeamUser
+    activeTeamUser,
+    t
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'client' | 'coach'>(defaultTab);
@@ -116,17 +117,13 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
       {/* Top Clinic Branding Banner */}
       <div className="text-center mb-8 flex flex-col items-center">
         <div className="mb-4">
-          <NutriTrackLogo size="xl" subtitle="Clinical Nutrition & Diet Management System" />
-        </div>
-        <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 px-4 py-1.5 rounded-full text-xs font-bold border border-emerald-200 mb-2 shadow-2xs">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Saleem Valanchery Clinic &amp; Diagnostic Centre</span>
+          <NutriTrackLogo size="xl" subtitle={t('Clinical Nutrition & Diet Management System')} />
         </div>
         <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          Secure Portal Access
+          {t('Secure Portal Access')}
         </h1>
         <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-md mx-auto leading-relaxed">
-          Sign in securely to your personal nutrition diary or clinical practitioner dashboard.
+          Saleem Valanchery Wellness Centre
         </p>
 
         {/* Currently active session notice */}
@@ -165,10 +162,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
             }`}
           >
             <User className="w-4 h-4 text-emerald-600" />
-            <span>Client Login</span>
-            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
-              Members
-            </span>
+            <span>{t('Client Login')}</span>
           </button>
 
           <button
@@ -184,11 +178,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
             }`}
           >
             <Stethoscope className="w-4 h-4 text-purple-600" />
-            <span>Coach &amp; Admin</span>
-            <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-              <Crown className="w-3 h-3 text-purple-600" />
-              Staff
-            </span>
+            <span>{t('Coach & Admin')}</span>
           </button>
         </div>
 
@@ -200,7 +190,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
               htmlFor="portal-username"
               className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
             >
-              {activeTab === 'client' ? 'Username or Mobile Number' : 'Coach / Admin Username'}
+              {activeTab === 'client' ? t('Username or Mobile Number') : t('Coach / Admin Username')}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -231,7 +221,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
               htmlFor="portal-password"
               className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
             >
-              Password
+              {t('Password')}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -270,7 +260,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
               />
-              <span>Remember me on this browser</span>
+              <span>{t('Remember me on this browser')}</span>
             </label>
             <span className="text-[11px] text-slate-400">Encrypted portal login</span>
           </div>
@@ -303,10 +293,10 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
           >
             <span>
               {isSubmitting
-                ? 'Verifying Credentials...'
+                ? 'Verifying...'
                 : activeTab === 'client'
-                ? 'Sign In to Client Portal'
-                : 'Sign In to Coach & Admin Portal'}
+                ? t('Sign In to Client Portal')
+                : t('Sign In to Coach & Admin Portal')}
             </span>
             <ArrowRight className="w-4 h-4" />
           </button>

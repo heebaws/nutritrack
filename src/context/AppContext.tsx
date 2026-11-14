@@ -30,6 +30,8 @@ import {
   INITIAL_APPOINTMENTS
 } from '../data/mockData';
 import { getTodayString, clampToToday, getDayBeforeDateString, getDaysSinceDate, isClientInactiveThreeDays } from '../utils/dateUtils';
+import { AppLanguage, translateText, translateFoodLabel } from '../utils/i18n';
+import { estimateOvernightSleepHours, recordDeviceActivityTimestamp } from '../utils/deviceHealthSync';
 import {
   testFirestoreConnection,
   subscribeToCollection,
@@ -45,6 +47,13 @@ interface AppContextType {
   setViewMode: (mode: ViewMode) => void;
   phoneFrameEnabled: boolean;
   setPhoneFrameEnabled: (enabled: boolean) => void;
+
+  // Language Translation Switch (EN <-> Malayalam)
+  language: AppLanguage;
+  setLanguage: (lang: AppLanguage) => void;
+  toggleLanguage: () => void;
+  t: (text: string) => string;
+  tf: (foodName: string) => string;
 
   // Cloud Sync Status
   cloudSyncStatus: 'connected' | 'syncing' | 'offline';
@@ -114,6 +123,11 @@ interface AppContextType {
   // Daily Habits Operations
   updateDailyHabits: (date: string, partial: Partial<DailyHabits>) => void;
 
+  // Notification Read Status Operations
+  markTipAsRead: (tipId: string) => void;
+  markAllTipsAsRead: (tipIds: string[]) => void;
+  isTipRead: (tipId: string) => boolean;
+
   // Clinic Appointments
   addAppointment: (app: Omit<ClinicAppointment, 'id'>) => void;
   updateAppointment: (app: ClinicAppointment) => void;
@@ -163,6 +177,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   };
   const [phoneFrameEnabled, setPhoneFrameEnabled] = useState<boolean>(false);
+
+  // Language Translation Switch (defaults to English, persisted in localStorage)
+  const [language, setLanguageState] = useState<AppLanguage>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_PREFIX + 'language');
+      if (stored === 'ml' || stored === 'en') return stored;
+    } catch {}
+    return 'en';
+  });
+
+  const setLanguage = useCallback((lang: AppLanguage) => {
+    setLanguageState(lang);
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'language', lang);
+    } catch {}
+  }, []);
+
+  const toggleLanguage = useCallback(() => {
+    setLanguageState(prev => {
+      const next: AppLanguage = prev === 'en' ? 'ml' : 'en';
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + 'language', next);
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const t = useCallback((text: string) => translateText(text, language), [language]);
+  const tf = useCallback((foodName: string) => translateFoodLabel(foodName, language), [language]);
 
   // Cloud Sync state
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'connected' | 'syncing' | 'offline'>('syncing');
@@ -1082,6 +1125,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  // Notification Read Status Operations (persisted on ClientProfile.readTipIds -> Firestore + localStorage)
+  const markTipAsRead = useCallback((tipId: string) => {
+    if (!activeClientId || !tipId) return;
+    setClients(prev => prev.map(c => {
+      if (c.id !== activeClientId) return c;
+      const existing = c.readTipIds || [];
+      if (existing.includes(tipId)) return c;
+      const updated = { ...c, readTipIds: [...existing, tipId] };
+      saveDocumentToFirestore('clients', updated.id, updated).catch(() => {});
+      return updated;
+    }));
+  }, [activeClientId]);
+
+  const markAllTipsAsRead = useCallback((tipIds: string[]) => {
+    if (!activeClientId || !tipIds.length) return;
+    setClients(prev => prev.map(c => {
+      if (c.id !== activeClientId) return c;
+      const merged = Array.from(new Set([...(c.readTipIds || []), ...tipIds]));
+      const updated = { ...c, readTipIds: merged };
+      saveDocumentToFirestore('clients', updated.id, updated).catch(() => {});
+      return updated;
+    }));
+  }, [activeClientId]);
+
+  const isTipRead = useCallback((tipId: string): boolean => {
+    if (!activeClient) return false;
+    return (activeClient.readTipIds || []).includes(tipId);
+  }, [activeClient]);
+
+  // Automatic Phone/OS Overnight Sleep Window Sync on session open & keep last-active timestamp fresh
+  useEffect(() => {
+    if (!activeClientId) return;
+    const today = getTodayString();
+    const detectedSleep = estimateOvernightSleepHours(today);
+    if (detectedSleep !== null) {
+      setHabits(prev => {
+        const existing = prev.find(h => h.clientId === activeClientId && h.date === today);
+        if (existing && (existing.sleepSource === 'manual' || existing.sleepSource === 'health_import')) {
+          return prev;
+        }
+        if (existing) {
+          const updatedHabit: DailyHabits = {
+            ...existing,
+            sleepHours: detectedSleep,
+            sleepSource: 'os_auto',
+            lastDeviceSyncAt: new Date().toISOString(),
+          };
+          saveDocumentToFirestore('habits', updatedHabit.id, updatedHabit).catch(() => {});
+          return prev.map(h => (h.id === existing.id ? updatedHabit : h));
+        }
+        const created: DailyHabits = {
+          id: `hab-${Date.now()}`,
+          clientId: activeClientId,
+          date: today,
+          steps: 0,
+          targetSteps: 8000,
+          sleepHours: detectedSleep,
+          supplementsTaken: false,
+          saladEaten: false,
+          stretchingDone: false,
+          sleepSource: 'os_auto',
+          lastDeviceSyncAt: new Date().toISOString(),
+        };
+        saveDocumentToFirestore('habits', created.id, created).catch(() => {});
+        return [created, ...prev];
+      });
+    } else {
+      recordDeviceActivityTimestamp();
+    }
+
+    const pingInterval = setInterval(() => recordDeviceActivityTimestamp(), 60000);
+    return () => clearInterval(pingInterval);
+  }, [activeClientId]);
+
   // Appointments Operations (real-time sync to Firestore)
   const addAppointment = (app: Omit<ClinicAppointment, 'id'>) => {
     const newApp: ClinicAppointment = {
@@ -1416,6 +1533,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setViewMode,
         phoneFrameEnabled,
         setPhoneFrameEnabled,
+        language,
+        setLanguage,
+        toggleLanguage,
+        t,
+        tf,
         cloudSyncStatus,
         lastSyncedAt,
         forceCloudSync,
@@ -1463,6 +1585,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addActivity,
         deleteActivity,
         updateDailyHabits,
+        markTipAsRead,
+        markAllTipsAsRead,
+        isTipRead,
         addAppointment,
         updateAppointment,
         deleteAppointment,

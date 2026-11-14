@@ -25,12 +25,17 @@ export const WaterTrackerCard: React.FC = () => {
     deleteWaterLog, 
     resetWaterLogForDate,
     reminders,
-    toggleReminder
+    toggleReminder,
+    language,
+    t
   } = useApp();
 
+  const isMl = language === 'ml';
   const [customMl, setCustomMl] = useState<string>('');
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [alertDismissed, setAlertDismissed] = useState<boolean>(false);
+  const [confirmReset, setConfirmReset] = useState<boolean>(false);
+  const [notifFeedback, setNotifFeedback] = useState<string | null>(null);
 
   // Daily target in ml
   const targetLiters = activeClient?.dailyWaterTargetLiters || 2.5;
@@ -105,7 +110,7 @@ export const WaterTrackerCard: React.FC = () => {
 
   const requestBrowserNotification = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
-      alert('Browser notifications are not supported on this browser or device.');
+      setNotifFeedback(isMl ? 'ഈ ബ്രൗസറിൽ നോട്ടിഫിക്കേഷൻ ലഭ്യമല്ല.' : 'Browser notifications are not supported on this browser or device.');
       return;
     }
 
@@ -113,13 +118,16 @@ export const WaterTrackerCard: React.FC = () => {
     setNotificationStatus(permission);
 
     if (permission === 'granted') {
-      new Notification('💧 Hydration Reminders Active', {
-        body: `Saleem Valanchery Centre: We will alert you whenever 3 hours pass without drinking water.`,
+      new Notification(isMl ? '💧 വെള്ളം കുടി അലേർട്ട് സജീവമായി' : '💧 Hydration Reminders Active', {
+        body: isMl
+          ? 'സലീം വളാഞ്ചേരി സെന്റർ: ഓരോ 3 മണിക്കൂറിലും വെള്ളം കുടിച്ചില്ലെങ്കിൽ ഞങ്ങൾ ഓർമ്മിപ്പിക്കും.'
+          : 'Saleem Valanchery Centre: We will alert you whenever 3 hours pass without drinking water.',
         icon: '/favicon.ico'
       });
       if (clientWaterReminder && !clientWaterReminder.enabled) {
         toggleReminder(clientWaterReminder.id);
       }
+      setNotifFeedback(null);
     }
   };
 
@@ -127,13 +135,15 @@ export const WaterTrackerCard: React.FC = () => {
   useEffect(() => {
     if (isOverdueForWater && notificationStatus === 'granted' && !alertDismissed) {
       try {
-        new Notification('💧 Hydration Inactivity Alert (3 Hours)', {
-          body: `Hi ${activeClient?.name || 'there'}, you haven't logged water for over 3 hours! Please drink a glass of water now.`,
+        new Notification(isMl ? '💧 3-മണിക്കൂർ വെള്ളം കുടി മുന്നറിയിപ്പ്' : '💧 Hydration Inactivity Alert (3 Hours)', {
+          body: isMl
+            ? `ഹലോ ${activeClient?.name || ''}, കഴിഞ്ഞ 3 മണിക്കൂറായി വെള്ളം രേഖപ്പെടുത്തിയിട്ടില്ല! ഇപ്പോൾ ഒരു ഗ്ലാസ് വെള്ളം കുടിക്കുക.`
+            : `Hi ${activeClient?.name || 'there'}, you haven't logged water for over 3 hours! Please drink a glass of water now.`,
           icon: '/favicon.ico'
         });
       } catch {}
     }
-  }, [isOverdueForWater, notificationStatus, alertDismissed, activeClient?.name]);
+  }, [isOverdueForWater, notificationStatus, alertDismissed, activeClient?.name, isMl]);
 
   const handleAddPreset = (ml: number) => {
     addWaterLog(ml, selectedDate);
@@ -159,22 +169,22 @@ export const WaterTrackerCard: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center font-bold shadow-xs">
-            <Droplets className="w-5 h-5 text-cyan-600 animate-pulse" />
+            <Droplets className="w-5 h-5 text-cyan-600" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-extrabold text-slate-900 text-base">
-                Daily Hydration Tracker
+                {t('Daily Hydration Tracker')}
               </h3>
               {isTargetReached && (
-                <span className="bg-cyan-100 text-cyan-800 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 border border-cyan-200">
+                <span className="bg-cyan-100 text-cyan-800 text-[10px] font-black uppercase px-2 py-0.5 rounded-lg flex items-center gap-1 border border-cyan-200">
                   <CheckCircle2 className="w-3 h-3 text-cyan-600" />
-                  Goal Met
+                  {t('Goal Met')}
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 font-medium">
-              Target: <span className="font-bold text-slate-700">{targetLiters} Liters</span> ({targetMl} ml) • Essential for fat oxidation &amp; kidney health
+            <p className="text-xs text-slate-500 font-medium tabular-nums">
+              {targetLiters} L ({targetMl} ml) · {t('Daily Hydration')}
             </p>
           </div>
         </div>
@@ -187,24 +197,48 @@ export const WaterTrackerCard: React.FC = () => {
                 onClick={() => setShowHistory(prev => !prev)}
                 className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
               >
-                {showHistory ? 'Hide Entries' : `${dayLogs.length} Entries`}
+                {showHistory ? t('Hide Entries') : `${dayLogs.length} ${isMl ? 'എണ്ണം' : 'logs'}`}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.confirm("Reset today's water intake?")) {
-                    resetWaterLogForDate(selectedDate);
-                  }
-                }}
-                className="text-xs text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                title="Reset today's water log"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
+              {confirmReset ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetWaterLogForDate(selectedDate);
+                      setConfirmReset(false);
+                    }}
+                    className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 cursor-pointer"
+                  >
+                    {isMl ? 'റീസെറ്റ് ചെയ്യുക' : 'Confirm Reset'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmReset(false)}
+                    className="text-[11px] font-semibold px-2 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                  >
+                    {t('Cancel')}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmReset(true)}
+                  className="text-xs text-slate-400 hover:text-rose-600 p-2 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                  title={isMl ? 'ഇന്നത്തെ വെള്ളം റീസെറ്റ് ചെയ്യുക' : "Reset today's water log"}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {notifFeedback && (
+        <div className="mt-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+          {notifFeedback}
+        </div>
+      )}
 
       {/* 3-Hour Hydration Inactivity On-Screen Alert Banner */}
       {isOverdueForWater && (
@@ -214,16 +248,22 @@ export const WaterTrackerCard: React.FC = () => {
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-black uppercase tracking-wider text-amber-900 bg-amber-200/70 px-2 py-0.5 rounded-md">
-                  3-Hour Hydration Alert
+                  {t('3-Hour Hydration Alert')}
                 </span>
                 <span className="text-xs font-bold text-slate-800">
-                  {hoursSinceLastWater ? `~${Math.round(hoursSinceLastWater)} hrs since last water log` : 'No water logged yet today'}
+                  {hoursSinceLastWater
+                    ? (isMl
+                        ? `അവസാനം കുടിച്ചിട്ട് ~${Math.round(hoursSinceLastWater)} മണിക്കൂർ`
+                        : `~${Math.round(hoursSinceLastWater)} hrs since last water log`)
+                    : (isMl ? 'ഇന്ന് ഇതുവരെ വെള്ളം രേഖപ്പെടുത്തിയിട്ടില്ല' : 'No water logged yet today')}
                 </span>
               </div>
               <p className="text-xs text-slate-700 mt-1">
-                You haven't logged water in the last 3 hours! Please drink a glass of water (250 ml) now to stay hydrated and keep your metabolic fat oxidation optimal.
+                {isMl
+                  ? 'കഴിഞ്ഞ 3 മണിക്കൂറായി നിങ്ങൾ വെള്ളം രേഖപ്പെടുത്തിയിട്ടില്ല! ശരീരത്തിലെ കൊഴുപ്പ് കത്താനും ആരോഗ്യത്തിനുമായി ഇപ്പോൾ ഒരു ഗ്ലാസ് വെള്ളം (250 ml) കുടിക്കുക.'
+                  : "You haven't logged water in the last 3 hours! Please drink a glass of water (250 ml) now to stay hydrated and keep your metabolic fat oxidation optimal."}
               </p>
             </div>
           </div>
@@ -235,15 +275,15 @@ export const WaterTrackerCard: React.FC = () => {
               className="bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Droplets className="w-3.5 h-3.5" />
-              <span>Drink 250 ml Now</span>
+              <span>{t('Drink 250 ml Now')}</span>
             </button>
             <button
               type="button"
               onClick={() => setAlertDismissed(true)}
               className="text-xs text-slate-500 hover:text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 px-2.5 py-2 rounded-xl transition-colors cursor-pointer"
-              title="Dismiss for now"
+              title={isMl ? 'ഇപ്പോൾ ഒഴിവാക്കുക' : 'Dismiss for now'}
             >
-              Dismiss
+              {t('Dismiss')}
             </button>
           </div>
         </div>
@@ -254,11 +294,14 @@ export const WaterTrackerCard: React.FC = () => {
         <div className="flex items-center gap-2 text-slate-700">
           <Clock className="w-3.5 h-3.5 text-cyan-600" />
           <span>
-            <b>3-Hour Interval Tracker:</b> {hoursSinceLastWater !== null ? `Last logged ~${Math.round(hoursSinceLastWater)} hrs ago` : 'Stay hydrated every 2-3 hours'}
+            <b>{isMl ? '3-മണിക്കൂർ ഇടവേള ട്രാക്കർ:' : '3-Hour Interval Tracker:'}</b>{' '}
+            {hoursSinceLastWater !== null
+              ? (isMl ? `അവസാനം കുടിച്ചത് ~${Math.round(hoursSinceLastWater)} മണിക്കൂർ മുമ്പ്` : `Last logged ~${Math.round(hoursSinceLastWater)} hrs ago`)
+              : (isMl ? 'ഓരോ 2-3 മണിക്കൂറിലും വെള്ളം കുടിക്കുക' : 'Stay hydrated every 2-3 hours')}
           </span>
           {clientWaterReminder && (
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${clientWaterReminder.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
-              Reminder {clientWaterReminder.enabled ? 'Active' : 'Muted'}
+            <span className={`text-[11px] font-bold ${clientWaterReminder.enabled ? 'text-emerald-700' : 'text-slate-500'}`}>
+              · {clientWaterReminder.enabled ? t('Active') : (isMl ? 'മ്യൂട്ട് ചെയ്തു' : 'Muted')}
             </span>
           )}
         </div>
@@ -267,17 +310,17 @@ export const WaterTrackerCard: React.FC = () => {
           {notificationStatus === 'granted' ? (
             <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
               <BellRing className="w-3 h-3 text-emerald-600" />
-              Browser Alerts Active
+              {t('Browser Alerts Active')}
             </span>
           ) : (
             <button
               type="button"
               onClick={requestBrowserNotification}
               className="text-[11px] font-bold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-              title="Click to receive on-screen browser notifications every 3 hours if water is not logged"
+              title={isMl ? '3 മണിക്കൂർ കൂടുമ്പോൾ ഫോൺ അലേർട്ട് ലഭിക്കാൻ തൊടുക' : 'Click to receive on-screen browser notifications every 3 hours if water is not logged'}
             >
               <Bell className="w-3 h-3 text-cyan-600" />
-              Enable 3-Hour Browser Alert
+              {t('Enable 3-Hour Browser Alert')}
             </button>
           )}
 
@@ -287,7 +330,9 @@ export const WaterTrackerCard: React.FC = () => {
               onClick={() => toggleReminder(clientWaterReminder.id)}
               className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 underline cursor-pointer"
             >
-              {clientWaterReminder.enabled ? 'Mute' : 'Enable'} Centre Reminder
+              {isMl
+                ? (clientWaterReminder.enabled ? 'സെന്റർ അലേർട്ട് മ്യൂട്ട് ചെയ്യുക' : 'സെന്റർ അലേർട്ട് ഓൺ ചെയ്യുക')
+                : `${clientWaterReminder.enabled ? 'Mute' : 'Enable'} Centre Reminder`}
             </button>
           )}
         </div>
@@ -299,21 +344,21 @@ export const WaterTrackerCard: React.FC = () => {
         <div className="md:col-span-5 bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-50/40 rounded-2xl p-4 border border-cyan-100/80">
           <div className="flex items-baseline justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-cyan-800">
-              Consumed
+              {t('Consumed')}
             </span>
-            <span className="text-xs font-bold text-cyan-700">
-              {percentage}% of goal
+            <span className="text-xs font-bold text-cyan-700 tabular-nums">
+              {percentage}%
             </span>
           </div>
 
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight tabular-nums">
               {(totalConsumedMl / 1000).toFixed(2)}
             </span>
-            <span className="text-sm font-bold text-slate-500">
+            <span className="text-sm font-bold text-slate-500 tabular-nums">
               / {targetLiters} L
             </span>
-            <span className="text-xs font-semibold text-slate-400 ml-auto">
+            <span className="text-xs font-semibold text-slate-400 ml-auto tabular-nums">
               ({totalConsumedMl} ml)
             </span>
           </div>
@@ -329,10 +374,12 @@ export const WaterTrackerCard: React.FC = () => {
           <p className="mt-2 text-[11px] text-slate-500 font-medium flex items-center justify-between">
             {isTargetReached ? (
               <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Excellent! Daily hydration target completed.
+                <CheckCircle2 className="w-3.5 h-3.5" /> {t('Goal Met')}
               </span>
             ) : (
-              <span>💧 <b>{remainingMl} ml</b> remaining to reach your coach target.</span>
+              <span className="tabular-nums">
+                💧 <b>{remainingMl} ml</b> {isMl ? 'ഇനി ബാക്കിയുണ്ട്' : 'left'}
+              </span>
             )}
           </p>
         </div>
@@ -340,7 +387,7 @@ export const WaterTrackerCard: React.FC = () => {
         {/* Quick Add Presets */}
         <div className="md:col-span-7 flex flex-col justify-center gap-2.5">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Quick 1-Tap Log:
+            {t('Quick 1-Tap Log:')}
           </span>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -349,12 +396,12 @@ export const WaterTrackerCard: React.FC = () => {
               onClick={() => handleAddPreset(250)}
               className="group bg-slate-50 hover:bg-cyan-50 border border-slate-200 hover:border-cyan-300 p-2.5 rounded-xl transition-all text-center cursor-pointer shadow-2xs hover:shadow-xs"
             >
-              <div className="text-xs font-extrabold text-slate-800 group-hover:text-cyan-800 flex items-center justify-center gap-1">
+              <div className="text-xs font-extrabold text-slate-800 group-hover:text-cyan-800 flex items-center justify-center gap-1 tabular-nums">
                 <Droplets className="w-3.5 h-3.5 text-cyan-500" />
                 <span>+250 ml</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                Glass
+                {t('Glass')}
               </span>
             </button>
 
@@ -363,12 +410,12 @@ export const WaterTrackerCard: React.FC = () => {
               onClick={() => handleAddPreset(500)}
               className="group bg-slate-50 hover:bg-cyan-50 border border-slate-200 hover:border-cyan-300 p-2.5 rounded-xl transition-all text-center cursor-pointer shadow-2xs hover:shadow-xs"
             >
-              <div className="text-xs font-extrabold text-slate-800 group-hover:text-cyan-800 flex items-center justify-center gap-1">
+              <div className="text-xs font-extrabold text-slate-800 group-hover:text-cyan-800 flex items-center justify-center gap-1 tabular-nums">
                 <Droplets className="w-3.5 h-3.5 text-cyan-600" />
                 <span>+500 ml</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                Bottle
+                {t('Bottle')}
               </span>
             </button>
 
@@ -377,12 +424,12 @@ export const WaterTrackerCard: React.FC = () => {
               onClick={() => handleAddPreset(750)}
               className="group bg-slate-50 hover:bg-cyan-50 border border-slate-200 hover:border-cyan-300 p-2.5 rounded-xl transition-all text-center cursor-pointer shadow-2xs hover:shadow-xs"
             >
-              <div className="text-xs font-extrabold text-slate-800 group-hover:text-cyan-800 flex items-center justify-center gap-1">
+              <div className="text-xs font-extrabold text-slate-800 group-hover:text-cyan-800 flex items-center justify-center gap-1 tabular-nums">
                 <CupSoda className="w-3.5 h-3.5 text-cyan-600" />
                 <span>+750 ml</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                Gym Sipper
+                {t('Gym Sipper')}
               </span>
             </button>
 
@@ -391,12 +438,12 @@ export const WaterTrackerCard: React.FC = () => {
               onClick={() => handleAddPreset(1000)}
               className="group bg-slate-50 hover:bg-cyan-50 border border-slate-200 hover:border-cyan-300 p-2.5 rounded-xl transition-all text-center cursor-pointer shadow-2xs hover:shadow-xs"
             >
-              <div className="text-xs font-extrabold text-slate-800 group-hover:text-cyan-800 flex items-center justify-center gap-1">
+              <div className="text-xs font-extrabold text-slate-800 group-hover:text-cyan-800 flex items-center justify-center gap-1 tabular-nums">
                 <Droplets className="w-3.5 h-3.5 text-blue-600" />
                 <span>+1,000 ml</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                1 Liter Flask
+                {t('1 Liter Flask')}
               </span>
             </button>
           </div>
@@ -408,7 +455,7 @@ export const WaterTrackerCard: React.FC = () => {
               step="50"
               min="50"
               max="3000"
-              placeholder="Custom ml (e.g. 350)"
+              placeholder={isMl ? 'മറ്റ് അളവ് ml (ഉദാ: 350)' : 'Custom ml (e.g. 350)'}
               value={customMl}
               onChange={(e) => setCustomMl(e.target.value)}
               className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-cyan-500"
@@ -418,7 +465,7 @@ export const WaterTrackerCard: React.FC = () => {
               disabled={!customMl}
               className="bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl transition-all cursor-pointer shrink-0"
             >
-              Add Water
+              {t('Add Water')}
             </button>
           </form>
         </div>
@@ -430,10 +477,10 @@ export const WaterTrackerCard: React.FC = () => {
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
-              Logged Intake Times for {selectedDate}
+              {isMl ? `${selectedDate}-ൽ കുടിച്ച സമയം` : `Logged Intake Times for ${selectedDate}`}
             </span>
             <span className="text-[11px] text-slate-400 font-medium">
-              Click trash to remove accidental entry
+              {isMl ? 'തെറ്റായി ചേർത്തത് നീക്കാൻ ഡിലീറ്റ് തൊടുക' : 'Click trash to remove accidental entry'}
             </span>
           </div>
 
@@ -450,7 +497,7 @@ export const WaterTrackerCard: React.FC = () => {
                   type="button"
                   onClick={() => deleteWaterLog(log.id)}
                   className="text-slate-400 hover:text-rose-600 transition-colors ml-1 cursor-pointer"
-                  title="Remove this intake"
+                  title={isMl ? 'ഈ രേഖ നീക്കം ചെയ്യുക' : 'Remove this intake'}
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -464,7 +511,15 @@ export const WaterTrackerCard: React.FC = () => {
       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-[11px] text-slate-500 font-medium">
         <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
         <span>
-          <b>Centre Protocol:</b> Drink 500ml upon waking with a pinch of pink salt or lemon, and avoid drinking large volumes during meals to maintain stomach acid potency.
+          {isMl ? (
+            <>
+              <b>സെന്റർ നിർദ്ദേശം:</b> രാവിലെ ഉണർന്ന ഉടൻ ഒരു നുള്ള് ഉപ്പോ നാരങ്ങയോ ചേർത്ത് 500 ml വെള്ളം കുടിക്കുക; ദഹനം മികച്ചതാക്കാൻ ഭക്ഷണത്തോടൊപ്പം അമിതമായി വെള്ളം കുടിക്കുന്നത് ഒഴിവാക്കുക.
+            </>
+          ) : (
+            <>
+              <b>Centre Protocol:</b> Drink 500ml upon waking with a pinch of pink salt or lemon, and avoid drinking large volumes during meals to maintain stomach acid potency.
+            </>
+          )}
         </span>
       </div>
     </div>

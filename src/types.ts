@@ -53,6 +53,7 @@ export interface ClientProfile {
   lastActiveDate: string;
   avatarUrl?: string;
   medicalNotes?: string;
+  readTipIds?: string[];
 }
 
 export interface DietitianProfile {
@@ -258,6 +259,9 @@ export interface DailyHabits {
   supplementsTaken: boolean;
   saladEaten: boolean;
   stretchingDone: boolean;
+  stepsSource?: 'os_sensor' | 'health_import' | 'manual';
+  sleepSource?: 'os_auto' | 'health_import' | 'manual';
+  lastDeviceSyncAt?: string;
 }
 
 export interface ClinicAppointment {
