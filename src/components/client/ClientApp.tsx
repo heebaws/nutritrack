@@ -735,6 +735,8 @@ export const ClientApp: React.FC = () => {
             onSelectDate={setSelectedDate}
             onOpenLogModal={openLogForSlot}
             onToggleHide={() => setIsTrajectoryProjected(false)}
+            onOpenStepsModal={() => setIsStepsModalOpen(true)}
+            onOpenWorkoutModal={() => setIsActivityModalOpen(true)}
           />
         ) : (
           <button

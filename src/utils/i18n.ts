@@ -380,6 +380,19 @@ const EN_TO_ML: Record<string, string> = {
   'Install App on Phone or Desktop': 'ഫോണിലോ കമ്പ്യൂട്ടറിലോ ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക',
   'Install Now': 'ഇപ്പോൾ ഇൻസ്റ്റാൾ ചെയ്യുക',
   'How to Install': 'ഇൻസ്റ്റാൾ ചെയ്യേണ്ട വിധം',
+
+  // Workouts & Walking Steps Panel inside Trajectory Card
+  'Workouts & Walking Steps': 'വ്യായാമവും നടപ്പും (Workouts & Steps)',
+  'Workouts & Sports': 'വ്യായാമവും കായികവിനോദവും',
+  'Total Burn Today': 'ഇന്ന് കത്തിച്ച ആകെ കലോറി',
+  'No workouts logged today': 'ഇന്ന് വ്യായാമങ്ങൾ രേഖപ്പെടുത്തിയിട്ടില്ല',
+  'Tap to log workout': 'വ്യായാമം ചേർക്കാൻ തൊടുക',
+  'Tap to adjust steps': 'ചുവടുകൾ മാറ്റാൻ തൊടുക',
+  'km walked': 'കി.മീ നടന്നു',
+  'Logged Workouts': 'ചേർത്ത വ്യായാമങ്ങൾ',
+  'Live Sync': 'ലൈവ് സിങ്ക്',
+  'Add Steps': 'ചുവടുകൾ ചേർക്കുക',
+  'Add Workout': 'വ്യായാമം ചേർക്കുക',
 };
 
 const FOOD_KEYWORD_ML: Array<[RegExp, string]> = [

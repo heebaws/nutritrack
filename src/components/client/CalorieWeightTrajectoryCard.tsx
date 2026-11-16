@@ -13,17 +13,19 @@ import {
   PlusCircle, 
   CheckCircle2,
   Scale,
-  Eye,
   EyeOff,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Footprints,
+  Dumbbell,
+  Smartphone,
+  Plus
 } from 'lucide-react';
 import { 
   getTodayString, 
   getYesterdayString, 
   getDaysAgoString, 
-  formatDateDisplay,
-  formatToLocalIsoDate
+  formatDateDisplay
 } from '../../utils/dateUtils';
 
 interface CalorieWeightTrajectoryCardProps {
@@ -33,6 +35,8 @@ interface CalorieWeightTrajectoryCardProps {
   onSelectDate: (date: string) => void;
   onOpenLogModal: (mealType?: any) => void;
   onToggleHide?: () => void;
+  onOpenStepsModal?: () => void;
+  onOpenWorkoutModal?: () => void;
 }
 
 export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardProps> = ({
@@ -41,9 +45,11 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
   selectedDate,
   onSelectDate,
   onOpenLogModal,
-  onToggleHide
+  onToggleHide,
+  onOpenStepsModal,
+  onOpenWorkoutModal,
 }) => {
-  const { activities, habits, t, language } = useApp();
+  const { activities, habits, isPedometerLive, osHealthInfo, t, language } = useApp();
   const isMl = language === 'ml';
   // Option to show/hide the detailed breakdown and previous days table when touching the main point
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -141,8 +147,39 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
   // Determine celebration wording
   const isCelebrated = isWeightGainGoal ? isGained : !isGained;
 
+  // Selected date Workouts & Walking Steps summary (feeds directly into Net Calories & 8,000 kcal projection)
+  const selectedDayActivityData = useMemo(() => {
+    const dayHabit = habits.find(h => h.clientId === client.id && h.date === selectedDate);
+    const steps = dayHabit?.steps || 0;
+    const targetSteps = dayHabit?.targetSteps || 8000;
+    const stepPct = Math.min(100, Math.round((steps / targetSteps) * 100));
+    const stepBurn = calculateStepCalories(steps, client.currentWeightKg);
+    const estKm = (steps * 0.00075).toFixed(1);
+
+    const dayWorkouts = activities.filter(a => a.clientId === client.id && a.date === selectedDate);
+    const workoutBurn = dayWorkouts.reduce((sum, a) => sum + (Number(a.caloriesBurned) || 0), 0);
+    const workoutMins = dayWorkouts.reduce((sum, a) => sum + (Number(a.durationMinutes) || 0), 0);
+    const workoutTargetKcal = 300;
+    const workoutPct = Math.min(100, Math.round((workoutBurn / workoutTargetKcal) * 100));
+
+    const totalBurn = stepBurn + workoutBurn;
+
+    return {
+      steps,
+      targetSteps,
+      stepPct,
+      stepBurn,
+      estKm,
+      dayWorkouts,
+      workoutBurn,
+      workoutMins,
+      workoutPct,
+      totalBurn,
+    };
+  }, [habits, activities, client.id, client.currentWeightKg, selectedDate]);
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-200 dark:border-slate-800 space-y-4 min-w-0 w-full overflow-hidden flex flex-col justify-between">
+    <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-200 dark:border-slate-800 space-y-3.5 min-w-0 w-full overflow-hidden flex flex-col justify-between">
       
       {/* ================= UPPER SECTION: 8,000 CALORIE MAIN POINT ================= */}
       {/* Touchable Main Point Hero Banner */}
@@ -272,6 +309,157 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
             {isDetailsOpen ? t('Collapse') : t('Touch for Details')}
           </span>
         </div>
+      </div>
+
+      {/* ================= MIDDLE SECTION: WORKOUTS & WALKING STEPS LIVE PANEL ================= */}
+      <div className="space-y-3 pt-1 min-w-0">
+        {/* Clean Header Row */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-orange-50 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-800 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
+              <Flame className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
+                {t('Workouts & Walking Steps')}
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate tabular-nums">
+                {formatDateDisplay(selectedDate)}
+                {isPedometerLive ? ` · ${osHealthInfo.osLabel} ${t('Live Sync')}` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right tabular-nums shrink-0">
+            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block">
+              {t('Total Burn Today')}
+            </span>
+            <span className="text-sm sm:text-base font-black text-orange-600 dark:text-orange-400">
+              -{selectedDayActivityData.totalBurn} kcal
+            </span>
+          </div>
+        </div>
+
+        {/* 2-Column Clean Activity Blocks: Walking Steps + Workouts & Sports */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* Walking Steps Block */}
+          <button
+            type="button"
+            onClick={() => onOpenStepsModal?.()}
+            className="text-left rounded-2xl p-3 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-orange-50/60 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-orange-300 dark:hover:border-orange-700 transition-colors space-y-2 cursor-pointer min-w-0"
+          >
+            <div className="flex items-center justify-between gap-1.5 text-xs">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-6 h-6 rounded-lg bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 flex items-center justify-center shrink-0">
+                  <Footprints className="w-3.5 h-3.5" />
+                </span>
+                <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                  {t('Daily Steps')}
+                </span>
+              </div>
+              <span className="text-[11px] font-black text-orange-600 dark:text-orange-400 tabular-nums shrink-0">
+                {selectedDayActivityData.stepPct}%
+              </span>
+            </div>
+
+            <div className="flex items-baseline justify-between gap-1.5 tabular-nums">
+              <div className="truncate">
+                <span className="text-base font-black text-slate-900 dark:text-white">
+                  {selectedDayActivityData.steps.toLocaleString()}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-1">
+                  / {selectedDayActivityData.targetSteps.toLocaleString()}
+                </span>
+              </div>
+              <span className="text-xs font-bold text-orange-700 dark:text-orange-300 shrink-0">
+                -{selectedDayActivityData.stepBurn} kcal
+              </span>
+            </div>
+
+            <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-orange-500 transition-all duration-300"
+                style={{ width: `${selectedDayActivityData.stepPct}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+              <span>~{selectedDayActivityData.estKm} {t('km walked')}</span>
+              <span className="font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-0.5">
+                {isPedometerLive && <Smartphone className="w-3 h-3" />}
+                <span>{t('Add Steps')}</span>
+              </span>
+            </div>
+          </button>
+
+          {/* Workouts & Sports Block */}
+          <button
+            type="button"
+            onClick={() => onOpenWorkoutModal?.()}
+            className="text-left rounded-2xl p-3 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-rose-50/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-rose-300 dark:hover:border-rose-700 transition-colors space-y-2 cursor-pointer min-w-0 flex flex-col justify-between"
+          >
+            <div className="space-y-2 w-full">
+              <div className="flex items-center justify-between gap-1.5 text-xs">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-6 h-6 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center justify-center shrink-0">
+                    <Dumbbell className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                    {t('Workouts & Sports')}
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums shrink-0">
+                  {selectedDayActivityData.dayWorkouts.length}
+                </span>
+              </div>
+
+              <div className="flex items-baseline justify-between gap-1.5 tabular-nums">
+                <div className="truncate">
+                  <span className="text-base font-black text-slate-900 dark:text-white">
+                    -{selectedDayActivityData.workoutBurn}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-1">
+                    kcal
+                  </span>
+                </div>
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">
+                  {selectedDayActivityData.workoutMins} min
+                </span>
+              </div>
+
+              <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-rose-500 transition-all duration-300"
+                  style={{ width: `${selectedDayActivityData.workoutPct}%` }}
+                />
+              </div>
+            </div>
+
+            {selectedDayActivityData.dayWorkouts.length > 0 ? (
+              <div className="text-[11px] text-slate-600 dark:text-slate-300 truncate tabular-nums pt-0.5">
+                {selectedDayActivityData.dayWorkouts
+                  .slice(0, 2)
+                  .map((w) => `${w.activityName} (${w.durationMinutes}m · -${w.caloriesBurned}k)`)
+                  .join(' · ')}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                <span className="truncate">{t('No workouts logged today')}</span>
+                <span className="font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-0.5 shrink-0 ml-1">
+                  <Plus className="w-3 h-3" />
+                  <span>{t('Add Workout')}</span>
+                </span>
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Footer note connecting burn directly to net calorie calculation */}
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-snug tabular-nums">
+          {isMl
+            ? `ആകെ കത്തിച്ച കലോറി (-${selectedDayActivityData.totalBurn} kcal = ചുവടുകൾ -${selectedDayActivityData.stepBurn} + വ്യായാമം -${selectedDayActivityData.workoutBurn}) മുകളിലെ 8,000 kcal കണക്കിൽ കുറച്ചിട്ടുണ്ട്.`
+            : `Net burn subtracted above: -${selectedDayActivityData.totalBurn} kcal (-${selectedDayActivityData.stepBurn} kcal steps · -${selectedDayActivityData.workoutBurn} kcal workouts).`}
+        </p>
       </div>
 
       {/* ================= EXPANDED DETAILED DATA SECTION ================= */}
