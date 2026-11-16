@@ -1,0 +1,461 @@
+import { ClientProfile, FoodCategory, FoodItem, MealLogItem } from '../types';
+
+export interface MicronutrientValues {
+  calcium: number;   // mg
+  iron: number;      // mg
+  magnesium: number; // mg
+  vitaminD: number;  // IU
+}
+
+export interface DailyNutrientTargets {
+  calories: number;
+  protein: number;   // g
+  carbs: number;     // g
+  fat: number;       // g
+  iron: number;      // mg (RDA strictly capped)
+  vitaminD: number;  // IU (RDA strictly capped)
+  magnesium: number; // mg (RDA strictly capped)
+  calcium: number;   // mg (RDA strictly capped)
+  rationaleNote: string;
+}
+
+export interface ConsumedNutrientTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  iron: number;
+  vitaminD: number;
+  magnesium: number;
+  calcium: number;
+}
+
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+/**
+ * Calculates strictly-capped, clinically evidence-based daily nutrient requirements
+ * tailored to the client's weight, height, age, biological sex, and daily calorie budget.
+ * Ensures displayed targets never exceed clinical needed limits.
+ */
+export function calculateDailyNutrientTargets(client: ClientProfile): DailyNutrientTargets {
+  const weight = Math.max(35, Math.min(200, Number(client.currentWeightKg) || 65));
+  const height = Math.max(120, Math.min(220, Number(client.heightCm) || 165));
+  const age = Math.max(10, Math.min(100, Number(client.age) || 30));
+  const gender = client.gender || 'Other';
+
+  const neededCalories = Math.max(
+    1000,
+    Math.round(client.neededCalories || client.targetBmr || 1600)
+  );
+
+  const isLoss =
+    client.goalType === 'loss' ||
+    /loss|fat|reduce|slim|lean|cut/i.test(client.goal || '');
+  const isGain =
+    !isLoss &&
+    (client.goalType === 'gain' ||
+      /gain|bulk|muscle|increase/i.test(client.goal || ''));
+
+  // Reference ideal/healthy body weight from height so severe excess weight doesn't inflate targets
+  const heightM = height / 100;
+  const maxHealthyWeightForHeight = 25 * heightM * heightM;
+  const effectiveWeight = isLoss
+    ? Math.min(weight, Math.max(48, maxHealthyWeightForHeight + 6))
+    : weight;
+
+  // Protein: 1.05 - 1.4 g/kg based on goal, strictly capped at clinical ceiling (1.7 g/kg & 35% kcal)
+  const proteinPerKg = isLoss ? 1.25 : isGain ? 1.4 : 1.05;
+  const sexAdjFactor = gender === 'Female' ? 0.94 : 1.0;
+  const computedProtein = Math.round(effectiveWeight * proteinPerKg * sexAdjFactor);
+  const rawProtein =
+    client.proteinTargetGrams && client.proteinTargetGrams > 0
+      ? Math.round(client.proteinTargetGrams)
+      : computedProtein;
+  const maxProteinCeiling = Math.min(
+    Math.round(effectiveWeight * 1.7),
+    Math.round((neededCalories * 0.35) / 4)
+  );
+  const protein = Math.max(46, Math.min(rawProtein, maxProteinCeiling));
+
+  // Fats: 25-28% of daily needed calories, strictly capped at <= 32% of daily calories
+  const fatRatio = isLoss ? 0.25 : 0.28;
+  const maxFatCeiling = Math.round((neededCalories * 0.32) / 9);
+  const fat = Math.max(30, Math.min(Math.round((neededCalories * fatRatio) / 9), maxFatCeiling));
+
+  // Carbohydrates: Remainder strictly inside daily calorie ceiling
+  const remainingCarbCalories = Math.max(neededCalories * 0.25, neededCalories - protein * 4 - fat * 9);
+  const carbs = Math.max(75, Math.round(remainingCarbCalories / 4));
+
+  // Iron (mg/day) — ICMR / NIH strict RDA by sex & age
+  let iron = 12;
+  if (gender === 'Female') {
+    if (age >= 51) iron = 8;
+    else if (age >= 19) iron = 18;
+    else if (age >= 14) iron = 15;
+    else iron = 8;
+  } else if (gender === 'Male') {
+    if (age >= 19) iron = 8;
+    else if (age >= 14) iron = 11;
+    else iron = 8;
+  } else {
+    iron = age >= 51 ? 8 : 12;
+  }
+
+  // Vitamin D (IU/day) — clinical RDA capped at 600 IU (1–70y) or 800 IU (71+y)
+  const vitaminD = age >= 71 ? 800 : 600;
+
+  // Magnesium (mg/day) — NIH / ICMR RDA capped strictly by sex, age, and modest weight scaling
+  let baseMg = 360;
+  let minMg = 310;
+  let maxMg = 400;
+  if (gender === 'Male') {
+    if (age >= 31) {
+      baseMg = 420;
+      minMg = 390;
+      maxMg = 420;
+    } else if (age >= 19) {
+      baseMg = 400;
+      minMg = 380;
+      maxMg = 400;
+    } else {
+      baseMg = 410;
+      minMg = 360;
+      maxMg = 410;
+    }
+  } else if (gender === 'Female') {
+    if (age >= 31) {
+      baseMg = 320;
+      minMg = 300;
+      maxMg = 320;
+    } else if (age >= 19) {
+      baseMg = 310;
+      minMg = 295;
+      maxMg = 310;
+    } else {
+      baseMg = 360;
+      minMg = 320;
+      maxMg = 360;
+    }
+  }
+  const mgScale = effectiveWeight < 55 ? 0.96 : 1.0;
+  const magnesium = Math.max(minMg, Math.min(maxMg, Math.round(baseMg * mgScale)));
+
+  // Calcium (mg/day) — strictly capped by age & sex
+  let calcium = 1000;
+  if (age >= 71 || (gender === 'Female' && age >= 51)) {
+    calcium = 1200;
+  } else if (age >= 9 && age <= 18) {
+    calcium = 1300;
+  }
+
+  return {
+    calories: neededCalories,
+    protein,
+    carbs,
+    fat,
+    iron,
+    vitaminD,
+    magnesium,
+    calcium,
+    rationaleNote: `${gender}, ${age}y, ${weight} kg, ${height} cm · ${neededCalories} kcal`,
+  };
+}
+
+/**
+ * Estimates Iron (mg), Vitamin D (IU), Magnesium (mg), and Calcium (mg) per serving
+ * for any food in the 841+ library, custom food, or AI-detected meal item.
+ */
+export function estimateFoodMicronutrients(input: {
+  name: string;
+  category?: FoodCategory | string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  fiber?: number;
+  servingGrams?: number;
+  description?: string;
+}): MicronutrientValues {
+  const name = (input.name || '').toLowerCase();
+  const desc = (input.description || '').toLowerCase();
+  const combined = `${name} ${desc}`;
+  const cat = input.category || 'Beverages & Snacks';
+  const cal = Math.max(0, Number(input.calories) || 0);
+  const prot = Math.max(0, Number(input.protein) || 0);
+  const carbs = Math.max(0, Number(input.carbs) || 0);
+  const fiber = Math.max(0, Number(input.fiber) || 0);
+
+  // Near-zero calorie drinks/water
+  if (
+    cal <= 5 &&
+    (name.includes('water') ||
+      name.includes('vellam') ||
+      name.includes('jeeraka') ||
+      name.includes('pathimugam'))
+  ) {
+    return { calcium: 2, iron: 0, magnesium: 1, vitaminD: 0 };
+  }
+
+  // Parse explicit Calcium value if documented in library description (e.g. "Calcium: 120 mg")
+  let parsedCalcium: number | null = null;
+  const calMatch = desc.match(/calcium:\s*(\d+(?:\.\d+)?)\s*mg/i);
+  if (calMatch) {
+    parsedCalcium = Number(calMatch[1]);
+  }
+  let parsedIron: number | null = null;
+  const ironMatch = desc.match(/iron:\s*(\d+(?:\.\d+)?)\s*mg/i);
+  if (ironMatch) {
+    parsedIron = Number(ironMatch[1]);
+  }
+  let parsedMg: number | null = null;
+  const mgMatch = desc.match(/magnesium:\s*(\d+(?:\.\d+)?)\s*mg/i);
+  if (mgMatch) {
+    parsedMg = Number(mgMatch[1]);
+  }
+  let parsedVitD: number | null = null;
+  const vitDMatch = desc.match(/vitamin\s*d:\s*(\d+(?:\.\d+)?)\s*iu/i);
+  if (vitDMatch) {
+    parsedVitD = Number(vitDMatch[1]);
+  }
+
+  // Portion factor relative to a standard ~150 kcal serving
+  const scale = Math.max(0.35, Math.min(2.8, cal > 0 ? cal / 150 : 1));
+
+  // Defaults by broad food category
+  let calcium = 18 * scale;
+  let iron = 0.8 * scale;
+  let magnesium = 18 * scale;
+  let vitaminD = 2;
+
+  if (cat === 'Dairy & Alternatives') {
+    calcium = 165 * Math.min(2.0, scale);
+    iron = 0.25 * scale;
+    magnesium = 22 * scale;
+    vitaminD = combined.includes('butter') || combined.includes('ghee') ? 18 : 38;
+  } else if (cat === 'Proteins') {
+    calcium = 28 * scale;
+    iron = 1.6 * scale;
+    magnesium = 28 * scale;
+    vitaminD = 16;
+  } else if (cat === 'Vegetables') {
+    calcium = 58 * Math.min(2.2, scale);
+    iron = 1.6 * scale;
+    magnesium = 34 * scale;
+    vitaminD = 0;
+  } else if (cat === 'Grains & Breads') {
+    calcium = 22 * scale;
+    iron = 1.2 * scale;
+    magnesium = 28 * scale;
+    vitaminD = 0;
+  } else if (cat === 'Fruits') {
+    calcium = 20 * scale;
+    iron = 0.45 * scale;
+    magnesium = 22 * scale;
+    vitaminD = 0;
+  } else if (cat === 'Nuts & Healthy Fats') {
+    calcium = 38 * Math.min(2.0, scale);
+    iron = 1.2 * scale;
+    magnesium = 48 * Math.min(2.2, scale);
+    vitaminD = 0;
+  }
+
+  // Specific nutrient-dense food keyword calibrations
+  if (
+    /mathi|sardine|ayala|mackerel|salmon|tuna|pomfret|seer|neymeen|fish|meen|karimeen|prawn|chemmeen|crab|shrimp|oyster|mussel/i.test(
+      combined
+    )
+  ) {
+    const isFattyFish = /mathi|sardine|ayala|mackerel|salmon|tuna/i.test(combined);
+    vitaminD = isFattyFish ? Math.round(180 * Math.min(1.8, scale)) : Math.round(65 * Math.min(1.6, scale));
+    calcium = /mathi|sardine/i.test(combined) ? 140 : 48;
+    iron = Math.max(iron, 1.5);
+    magnesium = Math.max(magnesium, 38);
+  }
+
+  if (/\begg\b|mutta|omelet|omelette|scrambled|poached|boiled egg/i.test(combined)) {
+    const eggCountApprox = Math.max(1, Math.round(prot / 6) || 1);
+    const isWhiteOnly = /egg white|white only/i.test(combined);
+    vitaminD = isWhiteOnly ? 0 : Math.min(160, eggCountApprox * 44);
+    iron = isWhiteOnly ? 0.1 : r1(eggCountApprox * 0.9);
+    calcium = isWhiteOnly ? 4 : Math.round(eggCountApprox * 28);
+    magnesium = Math.round(eggCountApprox * 6);
+  }
+
+  if (/mushroom|koon/i.test(combined)) {
+    vitaminD = Math.max(vitaminD, 85);
+    magnesium = Math.max(magnesium, 18);
+  }
+
+  if (/liver|beef|mutton|pork|goat|red meat|irachi/i.test(combined)) {
+    iron = Math.max(iron, /liver/i.test(combined) ? 6.2 : 3.2 * Math.min(1.8, scale));
+    magnesium = Math.max(magnesium, 28);
+    vitaminD = Math.max(vitaminD, 14);
+  }
+
+  if (/spinach|cheera|moringa|muringa|drumstick leaf|greens|palak|kale|broccoli|cabbage|thoran/i.test(combined)) {
+    iron = Math.max(iron, /moringa|muringa|cheera|spinach|palak/i.test(combined) ? 3.2 : 1.8);
+    calcium = Math.max(calcium, /moringa|muringa|cheera|spinach/i.test(combined) ? 135 : 68);
+    magnesium = Math.max(magnesium, 48);
+  }
+
+  if (/ragi|finger millet|kozhikodan|sesame|ellu|til/i.test(combined)) {
+    calcium = Math.max(calcium, /sesame|ellu/i.test(combined) ? 180 : 145);
+    iron = Math.max(iron, 2.4);
+    magnesium = Math.max(magnesium, 55);
+  }
+
+  if (/kadala|chickpea|chana|lentil|dal|parippu|rajma|beans|moong|cherupayar|vanpayar|cowpea|soy|tofu/i.test(combined)) {
+    iron = Math.max(iron, 2.5);
+    magnesium = Math.max(magnesium, 52);
+    calcium = Math.max(calcium, /tofu|soy/i.test(combined) ? 120 : 42);
+  }
+
+  if (/paneer|milk|curd|yogurt|dahi|lassi|buttermilk|sambharam|cheese|whey|payasam/i.test(combined)) {
+    calcium = Math.max(calcium, /whey|milk|paneer|yogurt|curd/i.test(combined) ? 175 : 95);
+    vitaminD = Math.max(vitaminD, /milk|whey|yogurt/i.test(combined) ? 42 : 18);
+    magnesium = Math.max(magnesium, 24);
+  }
+
+  if (/almond|badam|cashew|walnut|pistachio|peanut|flax|chia|pumpkin seed|sunflower/i.test(combined)) {
+    magnesium = Math.max(magnesium, 54);
+    calcium = Math.max(calcium, 44);
+    iron = Math.max(iron, 1.3);
+  }
+
+  if (/matta|red rice|oats|oatmeal|brown rice|wheat|roti|chapati|ragi/i.test(combined)) {
+    magnesium = Math.max(magnesium, 36);
+    iron = Math.max(iron, 1.3);
+  }
+
+  if (/banana|pazham|nendran|karikku|tender coconut|avocado|dates|fig/i.test(combined)) {
+    magnesium = Math.max(magnesium, 29);
+    iron = Math.max(iron, /dates|fig/i.test(combined) ? 1.4 : 0.5);
+  }
+
+  if (/jaggery|sharkara|aval|beaten rice/i.test(combined)) {
+    iron = Math.max(iron, 2.1);
+    magnesium = Math.max(magnesium, 32);
+  }
+
+  // Fiber boost gently correlates with plant mineral density
+  if (fiber >= 4) {
+    magnesium = Math.max(magnesium, 38);
+    iron = Math.max(iron, 1.4);
+  }
+  if (carbs > 25 && prot < 3 && cat === 'Beverages & Snacks' && /cake|halwa|sugar|candy|soda/i.test(combined)) {
+    calcium = Math.min(calcium, 16);
+    iron = Math.min(iron, 0.5);
+    magnesium = Math.min(magnesium, 12);
+    vitaminD = 0;
+  }
+
+  return {
+    calcium: Math.round(parsedCalcium !== null ? parsedCalcium : calcium),
+    iron: r1(parsedIron !== null ? parsedIron : iron),
+    magnesium: Math.round(parsedMg !== null ? parsedMg : magnesium),
+    vitaminD: Math.round(parsedVitD !== null ? parsedVitD : vitaminD),
+  };
+}
+
+/**
+ * Ensures any FoodItem carries complete calcium, magnesium, vitaminD, and iron fields.
+ */
+export function enrichFoodWithMicronutrients(food: FoodItem): FoodItem {
+  const est = estimateFoodMicronutrients(food);
+  return {
+    ...food,
+    calcium: food.calcium !== undefined ? food.calcium : est.calcium,
+    iron: food.iron !== undefined ? food.iron : est.iron,
+    magnesium: food.magnesium !== undefined ? food.magnesium : est.magnesium,
+    vitaminD: food.vitaminD !== undefined ? food.vitaminD : est.vitaminD,
+  };
+}
+
+/**
+ * Aggregates all daily macronutrients & micronutrients from today's logged meals.
+ * Automatically resolves missing micronutrients from the food library or estimator
+ * so previously logged meals also show complete mineral & vitamin bars.
+ */
+export function aggregateConsumedNutrients(
+  logs: MealLogItem[],
+  foodsLibrary: FoodItem[]
+): ConsumedNutrientTotals {
+  const byId = new Map<string, FoodItem>();
+  const byName = new Map<string, FoodItem>();
+  for (const f of foodsLibrary) {
+    if (f.id) byId.set(f.id, f);
+    if (f.name) byName.set(f.name.toLowerCase().trim(), f);
+  }
+
+  const totals: ConsumedNutrientTotals = {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    iron: 0,
+    vitaminD: 0,
+    magnesium: 0,
+    calcium: 0,
+  };
+
+  for (const log of logs) {
+    totals.calories += Number(log.calories) || 0;
+    totals.protein += Number(log.protein) || 0;
+    totals.carbs += Number(log.carbs) || 0;
+    totals.fat += Number(log.fat) || 0;
+
+    const matchedFood =
+      byId.get(log.foodId) || byName.get((log.foodName || '').toLowerCase().trim());
+    const qty = Math.max(0.1, Number(log.quantity) || 1);
+
+    if (
+      log.iron !== undefined ||
+      log.vitaminD !== undefined ||
+      log.magnesium !== undefined ||
+      log.calcium !== undefined
+    ) {
+      const est = matchedFood
+        ? estimateFoodMicronutrients(matchedFood)
+        : estimateFoodMicronutrients({
+            name: log.foodName,
+            calories: log.calories / qty,
+            protein: log.protein / qty,
+            carbs: log.carbs / qty,
+            fat: log.fat / qty,
+          });
+      totals.iron += log.iron !== undefined ? Number(log.iron) || 0 : est.iron * qty;
+      totals.vitaminD += log.vitaminD !== undefined ? Number(log.vitaminD) || 0 : est.vitaminD * qty;
+      totals.magnesium += log.magnesium !== undefined ? Number(log.magnesium) || 0 : est.magnesium * qty;
+      totals.calcium += log.calcium !== undefined ? Number(log.calcium) || 0 : est.calcium * qty;
+    } else if (matchedFood) {
+      const enriched = enrichFoodWithMicronutrients(matchedFood);
+      totals.iron += (enriched.iron || 0) * qty;
+      totals.vitaminD += (enriched.vitaminD || 0) * qty;
+      totals.magnesium += (enriched.magnesium || 0) * qty;
+      totals.calcium += (enriched.calcium || 0) * qty;
+    } else {
+      const est = estimateFoodMicronutrients({
+        name: log.foodName,
+        calories: log.calories,
+        protein: log.protein,
+        carbs: log.carbs,
+        fat: log.fat,
+      });
+      totals.iron += est.iron;
+      totals.vitaminD += est.vitaminD;
+      totals.magnesium += est.magnesium;
+      totals.calcium += est.calcium;
+    }
+  }
+
+  return {
+    calories: Math.round(totals.calories),
+    protein: r1(totals.protein),
+    carbs: r1(totals.carbs),
+    fat: r1(totals.fat),
+    iron: r1(totals.iron),
+    vitaminD: Math.round(totals.vitaminD),
+    magnesium: Math.round(totals.magnesium),
+    calcium: Math.round(totals.calcium),
+  };
+}

@@ -11,6 +11,11 @@ import {
 import { NutriTrackLogo } from './NutriTrackLogo';
 import { getFoodImageUrl, FOOD_FALLBACK_SVG } from '../../utils/foodImages';
 import {
+  calculateDailyNutrientTargets,
+  aggregateConsumedNutrients,
+  estimateFoodMicronutrients
+} from '../../utils/micronutrients';
+import {
   Bot,
   Sparkles,
   X,
@@ -58,6 +63,10 @@ interface FoodData {
   carbs: number;
   fat: number;
   fiber?: number;
+  calcium?: number;
+  iron?: number;
+  magnesium?: number;
+  vitaminD?: number;
   glycemicIndex?: string;
   verdict?: string;
   recommendation?: string;
@@ -283,6 +292,7 @@ export const AIChatBot: React.FC = () => {
     addMealLog,
     addFoodItem,
     foods,
+    habits,
     viewMode,
     addSuggestedMeal,
     t,
@@ -580,7 +590,7 @@ export const AIChatBot: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Calculate active client's current context
+  // Calculate active client's full personalized context for intelligent AI responses
   const clientContext = useMemo(() => {
     if (!activeClient) {
       return {
@@ -590,22 +600,32 @@ export const AIChatBot: React.FC = () => {
     }
 
     const assignedPlan = dietPlans.find(p => p.id === activeClient.dietPlanId);
-    const targetCalories = assignedPlan?.targetCalories || 1600;
+    const targetCalories = activeClient.neededCalories || assignedPlan?.targetCalories || 1600;
     const clientLogsToday = mealLogs.filter(m => m.clientId === activeClient.id && m.date === selectedDate);
-    const consumedCalories = clientLogsToday.reduce((sum, item) => sum + item.calories, 0);
+    const consumedNutrients = aggregateConsumedNutrients(clientLogsToday, foods);
+    const dailyNutrientTargets = calculateDailyNutrientTargets(activeClient);
+    const todayHabit = habits.find(h => h.clientId === activeClient.id && h.date === selectedDate);
 
     return {
       isClient: true,
       name: activeClient.name,
+      gender: activeClient.gender || 'Other',
+      age: activeClient.age,
+      heightCm: activeClient.heightCm,
       goal: activeClient.goal,
+      goalType: activeClient.goalType,
       currentWeightKg: activeClient.currentWeightKg,
       targetWeightKg: activeClient.targetWeightKg,
       targetCalories,
-      consumedCalories,
-      remainingCalories: Math.max(0, targetCalories - consumedCalories),
-      foodsLoggedTodayCount: clientLogsToday.length
+      consumedCalories: consumedNutrients.calories,
+      remainingCalories: Math.max(0, targetCalories - consumedNutrients.calories),
+      foodsLoggedTodayCount: clientLogsToday.length,
+      dailyNutrientTargets,
+      consumedNutrients,
+      stepsToday: todayHabit?.steps ?? 0,
+      sleepHoursToday: todayHabit?.sleepHours ?? 0
     };
-  }, [activeClient, dietPlans, mealLogs, selectedDate, viewMode]);
+  }, [activeClient, dietPlans, mealLogs, foods, habits, selectedDate, viewMode]);
 
   // Initial welcome message
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -692,6 +712,16 @@ I am ready to help you with:
         ? (foodItem.category as FoodCategory)
         : 'Beverages & Snacks';
 
+      const micro = estimateFoodMicronutrients({
+        name: foodItem.name,
+        category,
+        calories: foodItem.calories,
+        protein: foodItem.protein,
+        carbs: foodItem.carbs,
+        fat: foodItem.fat,
+        fiber: foodItem.fiber || 1,
+      });
+
       addFoodItem({
         name: foodItem.name,
         category,
@@ -700,6 +730,10 @@ I am ready to help you with:
         carbs: foodItem.carbs,
         fat: foodItem.fat,
         fiber: foodItem.fiber || 1,
+        calcium: foodItem.calcium ?? micro.calcium,
+        iron: foodItem.iron ?? micro.iron,
+        magnesium: foodItem.magnesium ?? micro.magnesium,
+        vitaminD: foodItem.vitaminD ?? micro.vitaminD,
         glycemicIndex: (foodItem.glycemicIndex || 'Medium') as any,
         servingUnit: foodItem.servingUnit || '1 serving',
         standardServingUnit: foodItem.servingUnit || '1 serving',
@@ -1084,8 +1118,16 @@ What food or snack would you like to check?`
 
     try {
       const controller = new AbortController();
-      // Generous 30-second timeout for full Gemini 3.8 Flash multimodal vision & recipe analysis
+      // Generous 30-second timeout for multimodal vision & nutrition AI analysis
       const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const conversationHistory = messages
+        .filter(m => m.id !== 'welcome-1' && m.text)
+        .slice(-8)
+        .map(m => ({
+          role: m.sender === 'bot' ? ('model' as const) : ('user' as const),
+          text: m.text
+        }));
 
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -1095,7 +1137,8 @@ What food or snack would you like to check?`
           message: textToSend || "Analyze this meal photo, state each food calories first in bold, calculate 3 oil options, and stage for meal logging.",
           imageBase64: currentImg?.base64,
           mimeType: currentImg?.mimeType,
-          clientContext
+          clientContext,
+          conversationHistory
         })
       });
       clearTimeout(timeoutId);
@@ -1113,6 +1156,14 @@ What food or snack would you like to check?`
         autoAdded = autoAddFoodToLibrary(data.food);
       } else if (data.mealLogData?.foods) {
         data.mealLogData.foods.forEach((f: any) => {
+          const micro = estimateFoodMicronutrients({
+            name: f.name,
+            category: f.category || 'Beverages & Snacks',
+            calories: f.calories,
+            protein: f.protein,
+            carbs: f.carbs,
+            fat: f.fat,
+          });
           autoAddFoodToLibrary({
             name: f.name,
             category: f.category || 'Beverages & Snacks',
@@ -1120,7 +1171,11 @@ What food or snack would you like to check?`
             calories: f.calories,
             protein: f.protein,
             carbs: f.carbs,
-            fat: f.fat
+            fat: f.fat,
+            calcium: f.calcium ?? micro.calcium,
+            iron: f.iron ?? micro.iron,
+            magnesium: f.magnesium ?? micro.magnesium,
+            vitaminD: f.vitaminD ?? micro.vitaminD,
           });
         });
         autoAdded = true;
@@ -1322,6 +1377,16 @@ What food or snack would you like to check?`
       ? `${portion}x [${measureLabel}]`
       : food.servingUnit;
 
+    const baseMicro = estimateFoodMicronutrients({
+      name: food.name,
+      category: food.category,
+      calories: food.calories,
+      protein: food.protein,
+      carbs: food.carbs,
+      fat: food.fat,
+      fiber: food.fiber,
+    });
+
     // Add to daily meal logs in AppContext (Column 3 / Client Daily Diary)
     addMealLog({
       clientId: activeClient.id,
@@ -1334,7 +1399,11 @@ What food or snack would you like to check?`
       calories: adjustedCalories,
       protein: adjustedProtein,
       carbs: adjustedCarbs,
-      fat: adjustedFat
+      fat: adjustedFat,
+      calcium: Math.round((food.calcium ?? baseMicro.calcium) * portion),
+      iron: Math.round((food.iron ?? baseMicro.iron) * portion * 10) / 10,
+      magnesium: Math.round((food.magnesium ?? baseMicro.magnesium) * portion),
+      vitaminD: Math.round((food.vitaminD ?? baseMicro.vitaminD) * portion),
     });
 
     // Mark message as logged
@@ -1360,18 +1429,31 @@ What food or snack would you like to check?`
     const oilFat = oilOption === 'fried' ? 13 : oilOption === 'medium' ? 5 : 0;
 
     mealLogData.foods.forEach((f, idx) => {
+      const qty = Math.max(0.1, Number(f.quantity) || 1);
+      const baseMicro = estimateFoodMicronutrients({
+        name: f.name,
+        category: f.category,
+        calories: f.calories / qty,
+        protein: f.protein / qty,
+        carbs: f.carbs / qty,
+        fat: f.fat / qty,
+      });
       addMealLog({
         clientId: activeClient.id,
         date: selectedDate,
         mealType: mealLogData.detectedMealType,
         foodId: `food-ai-${Date.now()}-${idx}`,
         foodName: `${f.name} (${oilOption === 'fried' ? 'Deep Fried' : oilOption === 'medium' ? 'Medium Sauté' : 'Steamed'})`,
-        quantity: f.quantity || 1,
+        quantity: qty,
         servingUnit: f.servingUnit || '1 serving',
         calories: f.calories + oilCal,
         protein: f.protein,
         carbs: f.carbs,
         fat: Number((f.fat + oilFat).toFixed(1)),
+        calcium: Math.round((f.calcium ?? baseMicro.calcium) * qty),
+        iron: Math.round((f.iron ?? baseMicro.iron) * qty * 10) / 10,
+        magnesium: Math.round((f.magnesium ?? baseMicro.magnesium) * qty),
+        vitaminD: Math.round((f.vitaminD ?? baseMicro.vitaminD) * qty),
       });
     });
 
@@ -2015,6 +2097,35 @@ What food or snack would you like to check?`
                           </div>
                         </div>
 
+                        {/* Micronutrients Row: Ca, Fe, Mg, Vit D */}
+                        {(() => {
+                          const microBase = estimateFoodMicronutrients(msg.food!);
+                          const mCa = Math.round((msg.food!.calcium ?? microBase.calcium) * adjusted.totalMultiplier);
+                          const mFe = Math.round((msg.food!.iron ?? microBase.iron) * adjusted.totalMultiplier * 10) / 10;
+                          const mMg = Math.round((msg.food!.magnesium ?? microBase.magnesium) * adjusted.totalMultiplier);
+                          const mVitD = Math.round((msg.food!.vitaminD ?? microBase.vitaminD) * adjusted.totalMultiplier);
+                          return (
+                            <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+                              <div className="bg-slate-50 dark:bg-slate-900 px-1.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <span className="text-slate-500 dark:text-slate-400 block">Ca</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-100 tabular-nums">{mCa} mg</span>
+                              </div>
+                              <div className="bg-slate-50 dark:bg-slate-900 px-1.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <span className="text-slate-500 dark:text-slate-400 block">Iron</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-100 tabular-nums">{mFe} mg</span>
+                              </div>
+                              <div className="bg-slate-50 dark:bg-slate-900 px-1.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <span className="text-slate-500 dark:text-slate-400 block">Mg</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-100 tabular-nums">{mMg} mg</span>
+                              </div>
+                              <div className="bg-slate-50 dark:bg-slate-900 px-1.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <span className="text-slate-500 dark:text-slate-400 block">Vit D</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-100 tabular-nums">{mVitD} IU</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         {/* 5. Options of Qty & One Food Measure */}
                         <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-800/60 shadow-2xs space-y-2.5">
                           <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-100 dark:border-slate-700">
@@ -2257,7 +2368,7 @@ What food or snack would you like to check?`
                 <img src={selectedImage.preview} alt="Meal preview" className="w-9 h-9 rounded-lg object-cover border border-emerald-300 dark:border-emerald-700 shadow-2xs" />
                 <div>
                   <span className="font-bold text-emerald-900 dark:text-emerald-200 block text-xs">📸 Meal Photo Attached</span>
-                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400">Gemini 3.8 Flash will analyze plate & calories</span>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400">NutriAI Vision will analyze plate & calories</span>
                 </div>
               </div>
               <button
@@ -2329,7 +2440,7 @@ What food or snack would you like to check?`
                   ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 ring-2 ring-emerald-400' 
                   : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 text-slate-500 dark:text-slate-300'
               }`}
-              title="Upload or snap meal photo for Gemini 3.8 Flash AI analysis"
+              title="Upload or snap meal photo for NutriAI Vision analysis"
             >
               <Camera className="w-4 h-4" />
             </button>

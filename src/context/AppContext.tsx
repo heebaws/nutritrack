@@ -40,6 +40,10 @@ import {
   startStepPedometer
 } from '../utils/deviceHealthSync';
 import {
+  enrichFoodWithMicronutrients,
+  estimateFoodMicronutrients
+} from '../utils/micronutrients';
+import {
   testFirestoreConnection,
   subscribeToCollection,
   saveDocumentToFirestore,
@@ -94,6 +98,7 @@ interface AppContextType {
   quickSwitchTeamRole: (role: 'dietitian' | 'admin' | 'super_admin', id?: string) => void;
   updateDietitian: (profile: DietitianProfile) => void;
   addDietitian: (profile: Omit<DietitianProfile, 'id'>) => void;
+  deleteDietitian: (id: string) => void;
 
   // Selected Working Date (for meal logs)
   selectedDate: string;
@@ -338,25 +343,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [foods, setFoods] = useState<FoodItem[]>(() => {
     const stored = loadStored<FoodItem[]>('foods', INITIAL_FOODS);
     const map = new Map<string, FoodItem>();
-    // Ensure all canonical foods are present
-    INITIAL_FOODS.forEach(f => map.set(f.id, f));
+    // Ensure all canonical 841+ foods are present & micronutrient-enriched
+    INITIAL_FOODS.forEach(f => map.set(f.id, enrichFoodWithMicronutrients(f)));
     if (Array.isArray(stored)) {
       stored.forEach(f => {
         if (f && f.id) {
           if (!map.has(f.id)) {
-            map.set(f.id, f);
+            map.set(f.id, enrichFoodWithMicronutrients(f));
           } else {
             const canonical = map.get(f.id)!;
             if (canonical.clinicVerified) {
               map.set(f.id, canonical);
             } else {
-              map.set(f.id, { ...canonical, ...f });
+              map.set(f.id, enrichFoodWithMicronutrients({ ...canonical, ...f }));
             }
           }
         }
       });
     }
-    return deduplicateFoodList(Array.from(map.values())).unique;
+    return deduplicateFoodList(Array.from(map.values())).unique.map(enrichFoodWithMicronutrients);
   });
   const [dietPlans, setDietPlans] = useState<DietPlan[]>(() => loadStored('dietPlans', INITIAL_DIET_PLANS));
   const [mealLogs, setMealLogs] = useState<MealLogItem[]>(() => loadStored('mealLogs', INITIAL_MEAL_LOGS));
@@ -487,15 +492,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (items && items.length > 0) {
             setFoods(prev => {
               const map = new Map<string, FoodItem>();
-              INITIAL_FOODS.forEach(f => map.set(f.id, f));
-              prev.forEach(f => { if (f?.id) map.set(f.id, f); });
+              INITIAL_FOODS.forEach(f => map.set(f.id, enrichFoodWithMicronutrients(f)));
+              prev.forEach(f => { if (f?.id) map.set(f.id, enrichFoodWithMicronutrients(f)); });
               items.forEach(f => {
                 if (f?.id) {
                   const canonical = map.get(f.id);
                   if (canonical && canonical.clinicVerified) {
                     map.set(f.id, canonical);
                   } else {
-                    map.set(f.id, { ...canonical, ...f });
+                    map.set(f.id, enrichFoodWithMicronutrients({ ...canonical, ...f }));
                   }
                 }
               });
@@ -506,7 +511,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   deleteDocumentFromFirestore('foods', d.id).catch(() => {});
                 });
               }
-              return unique;
+              return unique.map(enrichFoodWithMicronutrients);
             });
           }
         });
@@ -930,8 +935,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addMealLog = (meal: Omit<MealLogItem, 'id' | 'timeLogged'>) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const qty = Math.max(0.1, Number(meal.quantity) || 1);
+    const matchedCatalog = foods.find(
+      f => f.id === meal.foodId || f.name.toLowerCase().trim() === (meal.foodName || '').replace(/\s*\([^)]*\)\s*$/g, '').toLowerCase().trim()
+    );
+    const estMicro = matchedCatalog
+      ? {
+          calcium: (matchedCatalog.calcium ?? estimateFoodMicronutrients(matchedCatalog).calcium) * qty,
+          iron: (matchedCatalog.iron ?? estimateFoodMicronutrients(matchedCatalog).iron) * qty,
+          magnesium: (matchedCatalog.magnesium ?? estimateFoodMicronutrients(matchedCatalog).magnesium) * qty,
+          vitaminD: (matchedCatalog.vitaminD ?? estimateFoodMicronutrients(matchedCatalog).vitaminD) * qty,
+        }
+      : estimateFoodMicronutrients({
+          name: meal.foodName,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbs: meal.carbs,
+          fat: meal.fat,
+        });
+
     const newLog: MealLogItem = {
       ...meal,
+      calcium: meal.calcium !== undefined ? meal.calcium : Math.round(estMicro.calcium),
+      iron: meal.iron !== undefined ? meal.iron : Math.round(estMicro.iron * 10) / 10,
+      magnesium: meal.magnesium !== undefined ? meal.magnesium : Math.round(estMicro.magnesium),
+      vitaminD: meal.vitaminD !== undefined ? meal.vitaminD : Math.round(estMicro.vitaminD),
       id: `ml-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
       timeLogged: timeStr,
     };
@@ -1016,6 +1044,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     suggestion.foods.forEach((f, idx) => {
       const timeStr = suggestion.timeGiven || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const qty = Math.max(0.1, Number(f.quantity) || 1);
+      const estMicro = estimateFoodMicronutrients({
+        name: f.name,
+        category: f.category,
+        calories: f.calories / qty,
+        protein: f.protein / qty,
+        carbs: f.carbs / qty,
+        fat: f.fat / qty,
+      });
       const newLog: MealLogItem = {
         id: `ml-sugg-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 5)}`,
         clientId: suggestion.clientId,
@@ -1023,12 +1060,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         mealType: suggestion.mealType,
         foodId: `food-ai-${Date.now()}-${idx}`,
         foodName: f.name,
-        quantity: f.quantity || 1,
+        quantity: qty,
         servingUnit: f.servingUnit || '1 serving',
         calories: f.calories,
         protein: f.protein,
         carbs: f.carbs,
         fat: f.fat,
+        calcium: f.calcium !== undefined ? f.calcium : Math.round(estMicro.calcium * qty),
+        iron: f.iron !== undefined ? f.iron : Math.round(estMicro.iron * qty * 10) / 10,
+        magnesium: f.magnesium !== undefined ? f.magnesium : Math.round(estMicro.magnesium * qty),
+        vitaminD: f.vitaminD !== undefined ? f.vitaminD : Math.round(estMicro.vitaminD * qty),
         timeLogged: timeStr,
       };
       setMealLogs(prev => [newLog, ...prev]);
@@ -1414,6 +1455,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveDocumentToFirestore('dietitians', newDietitian.id, newDietitian).catch(() => {});
   };
 
+  const deleteDietitian = (id: string) => {
+    if (!id || id === 'admin-1') return;
+    setDietitians(prev => prev.filter(d => d.id !== id));
+    deleteDocumentFromFirestore('dietitians', id).catch(() => {});
+    if (activeTeamUserId === id) {
+      setActiveTeamUserId('admin-1');
+    }
+  };
+
   // Team: Add Client
   const addClient = (clientData: Omit<ClientProfile, 'id' | 'joinedDate' | 'lastActiveDate' | 'status'>) => {
     const today = getTodayString();
@@ -1527,14 +1577,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetKey = normalize(foodData.name);
     const existing = foods.find(f => normalize(f.name) === targetKey);
     if (existing) {
-      return existing;
+      return enrichFoodWithMicronutrients(existing);
     }
 
-    const newFood: FoodItem = {
+    const newFood: FoodItem = enrichFoodWithMicronutrients({
       ...foodData,
       id: `f-${Date.now()}`,
       isCustom: true
-    };
+    });
     setFoods(prev => [newFood, ...prev]);
     saveDocumentToFirestore('foods', newFood.id, newFood).catch(() => {});
     return newFood;
@@ -1546,14 +1596,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       for (const dupe of duplicates) {
         deleteDocumentFromFirestore('foods', dupe.id).catch(() => {});
       }
-      setFoods(unique);
+      setFoods(unique.map(enrichFoodWithMicronutrients));
     }
     return { count: duplicates.length };
   };
 
   const updateFoodItem = (food: FoodItem) => {
-    setFoods(prev => prev.map(f => f.id === food.id ? food : f));
-    saveDocumentToFirestore('foods', food.id, food).catch(() => {});
+    const enriched = enrichFoodWithMicronutrients(food);
+    setFoods(prev => prev.map(f => f.id === enriched.id ? enriched : f));
+    saveDocumentToFirestore('foods', enriched.id, enriched).catch(() => {});
   };
 
   const deleteFoodItem = (id: string) => {
@@ -1666,7 +1717,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Reset in-memory React states immediately
       setClients(INITIAL_CLIENTS);
       setDietitians(INITIAL_DIETITIANS);
-      setFoods(INITIAL_FOODS);
+      setFoods(INITIAL_FOODS.map(enrichFoodWithMicronutrients));
       setDietPlans(INITIAL_DIET_PLANS);
       setMealLogs(INITIAL_MEAL_LOGS);
       setMeasurements(INITIAL_MEASUREMENTS);
@@ -1734,6 +1785,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         quickSwitchTeamRole,
         updateDietitian,
         addDietitian,
+        deleteDietitian,
         selectedDate,
         setSelectedDate,
         clients,

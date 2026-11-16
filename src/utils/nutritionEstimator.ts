@@ -1,5 +1,6 @@
 import { FoodCategory, MealType } from '../types';
 import { INITIAL_FOODS } from '../data/mockData';
+import { estimateFoodMicronutrients } from './micronutrients';
 
 export interface EstimatedFood {
   name: string;
@@ -10,6 +11,10 @@ export interface EstimatedFood {
   carbs: number;
   fat: number;
   fiber: number;
+  calcium?: number;
+  iron?: number;
+  magnesium?: number;
+  vitaminD?: number;
   glycemicIndex: string;
   verdict: string;
   recommendation: string;
@@ -1487,6 +1492,26 @@ function cleanSearchQuery(query: string): string {
  * Resolves ANY food query by name using database lookup, alias matching, or intelligent clinical heuristics.
  */
 export function estimateNutrition(rawQuery: string): EstimatedFood {
+  const base = estimateNutritionCore(rawQuery);
+  const micro = estimateFoodMicronutrients({
+    name: base.name,
+    category: base.category,
+    calories: base.calories,
+    protein: base.protein,
+    carbs: base.carbs,
+    fat: base.fat,
+    fiber: base.fiber,
+  });
+  return {
+    ...base,
+    calcium: base.calcium ?? micro.calcium,
+    iron: base.iron ?? micro.iron,
+    magnesium: base.magnesium ?? micro.magnesium,
+    vitaminD: base.vitaminD ?? micro.vitaminD,
+  };
+}
+
+function estimateNutritionCore(rawQuery: string): EstimatedFood {
   const clean = cleanSearchQuery(rawQuery);
   const words = clean.split(' ').filter(Boolean);
 

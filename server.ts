@@ -1551,23 +1551,22 @@ async function startServer() {
   // AI Chat & Food Inquiry Endpoint
   app.post("/api/ai/chat", async (req, res) => {
     try {
-      const { message, imageBase64, mimeType, clientContext } = req.body;
+      const { message, imageBase64, mimeType, clientContext, conversationHistory } = req.body;
 
       if ((!message || typeof message !== "string") && !imageBase64) {
         return res.status(400).json({ error: "Message or image is required" });
       }
 
-      const lowerMsg = (message || "").toLowerCase().trim();
-      const isMalayalam = /[\u0D00-\u0D7F]/.test(message || "") || /\b(engane|enthu|ethra|kazhikkam|und|parayumo|kurakkan|kootan|njan|nammude|choodu|vellam)\b/i.test(message || "");
+      const trimmedMsg = (message || "").trim();
+      const lowerMsg = trimmedMsg.toLowerCase();
+      const isMalayalam = /[\u0D00-\u0D7F]/.test(trimmedMsg) || /\b(engane|enthu|ethra|kazhikkam|und|parayumo|kurakkan|kootan|njan|nammude|choodu|vellam)\b/i.test(trimmedMsg);
       const ai = getAI();
 
-      // Check if this inquiry matches common foods or is an explicit food lookup
+      // Explicit food/calorie lookup detection
       const isFoodQueryKeywords = [
-        "calorie", "calories", "macro", "macros", "protein", "carbs", "carb", "fat",
-        "nutrition", "nutritional", "eat", "food", "diet", "grams", "serving",
-        "can i eat", "how many calories in", "what about", "is it good", "tell me about"
+        "calorie", "calories", "macro", "macros", "kcal",
+        "how many calories in", "calories in", "nutrition of", "nutritional value"
       ];
-      
       const hasFoodKeyword = isFoodQueryKeywords.some(kw => lowerMsg.includes(kw));
 
       // Attempt matching in built-in clinical food lookup
@@ -1579,67 +1578,35 @@ async function startServer() {
         }
       }
 
-      // If Gemini is available, we query Gemini to give comprehensive answers
-      // and explicitly format the first section with EXACT nutrition data if food is inquired!
+      // If Gemini is available, query real Gemini AI with conversation history & full client context
       if (ai) {
-        const systemPrompt = `You are "NutriBot", the official AI Nutrition & Clinical Wellness Assistant of the Saleem Valanchery Wellness Centre (led by Wellness Coaches Saleem Valanchery and Faseela Saleem).
+        const systemInstruction = `You are "NutriBot", a genuinely intelligent, warm, clinically accurate AI Nutritionist & Wellness Coach at Saleem Valanchery Wellness Centre (led by Coach Saleem Valanchery and Faseela Saleem).
 
-STRICT USER MANDATES:
-1. CHECK AND SAY EACH FOOD'S CALORIES FIRST:
-   - When ANY food, multiple foods, recipe with ingredients, or eaten meal is inquired, you MUST ALWAYS state each food's calories FIRST at the very top of your answer!
-   - For a single food inquiry:
-     "🔥 **Calories:** **[Calories] kcal** (per [serving unit])"
-   - For multiple foods or recipe ingredients or a meal eaten:
+HOW TO UNDERSTAND & ANSWER THE USER'S QUESTION:
+- Carefully read the user's ACTUAL question AND the prior conversation history. Think critically and directly answer whatever they are asking—never paste a generic template or refuse a valid wellness/nutrition question.
+- Distinguish clearly between:
+  (A) SPECIFIC FOOD / MEAL / RECIPE / PHOTO INQUIRY or EATEN MEAL REPORT -> set "isFoodInquiry": true (or "isMealLogReport": true when they say they ate/drank something with optional time), and populate "food" / "foodsList" / "mealLogData" with realistic calories, protein, carbs, fat, fiber, AND micronutrients (calcium mg, iron mg, magnesium mg, vitaminD IU).
+  (B) GENERAL QUESTIONS (e.g. nutrition advice, fat loss, muscle gain, medical/metabolic questions, micronutrient deficiencies, sleep, steps, 8,000 kcal projection, app help, comparison questions like "which has more protein X or Y", conversational follow-ups like "what should I eat for dinner?" or "why am I tired?") -> set "isFoodInquiry": false, "isMealLogReport": false, "food": null, "foodsList": null, "mealLogData": null, and provide a thoughtful, clear, personalized answer tailored to their exact question and their Active Client Profile & today's remaining nutrients!
+
+STRICT FORMATTING FOR FOOD/MEAL INQUIRIES (Case A only):
+1. When ANY food, recipe, or meal is analyzed, state its calories FIRST at the top:
+   - Single food: "🔥 **Calories:** **[Calories] kcal** (per [serving unit])"
+   - Multiple foods / recipe / eaten meal:
      "🔥 **Each Food's Calories:**
-     - **[Food 1 Name] ([Portion]):** **[Calories] kcal**
-     - **[Food 2 Name] ([Portion]):** **[Calories] kcal**
+     - **[Food 1] ([Portion]):** **[Calories] kcal**
      - **Total Calories:** **[Total] kcal**"
+2. Include key micronutrients (Iron mg, Calcium mg, Magnesium mg, Vitamin D IU) and the 3 oil preparation options (+0 steamed, +45 medium sauté, +120 deep fried) when helpful.
+3. For recipes with ingredients, break down each ingredient in "foodsList" and set "mealLogData".
+4. For eaten meals with time (e.g. "I ate 2 eggs at 8:30 am"), set "isMealLogReport": true and populate "mealLogData".
 
-2. ALL HEADINGS MUST BE BOLD:
-   - Every single heading, section title, and nutrient label MUST be formatted in **bold** markdown!
+MALAYALAM / ENGLISH SUPPORT:
+- If the user writes in Malayalam or Manglish or requests Malayalam, respond completely in natural, client-friendly Malayalam script (while keeping JSON keys in English). Otherwise respond in clear, helpful English.
+- Use **bold** markdown headings cleanly. Keep answers focused and easy to read.
 
-3. CLIENT-FRIENDLY TONE & MALAYALAM SUPPORT:
-   - Always be warm, encouraging, client-friendly, and speak in simple, clear everyday language without overwhelming medical jargon.
-   - If the user asks in Malayalam (using Malayalam script or Manglish e.g. "ethra calorie und", "njan kazhicho", "parayumo") OR explicitly asks for Malayalam:
-     - You MUST reply in warm, client-friendly, natural Malayalam (using clear Malayalam script).
-     - State calories FIRST in bold:
-       "🔥 **കാലറി (Calories):** **[Calories] kcal**"
-     - Format headings in bold Malayalam:
-       ### **ഭക്ഷണ വിവരങ്ങൾ (Nutrition Breakdown)**
-       - **പ്രോട്ടീൻ (Protein):** **[X] g**
-       - **കാർബോഹൈഡ്രേറ്റ് (Carbs):** **[X] g**
-       - **ഫാറ്റ് (Healthy Fats):** **[X] g**
-       - **നാരുകൾ (Fiber):** **[X] g**
-       ### **ഓയിൽ ഓപ്ഷനുകൾ (Was it oily? - 3 Options)**
-       - 🟢 എണ്ണയില്ലാതെ / ആവിയിൽ വേവിച്ചത്: **[Base] kcal**
-       - 🟡 കുറഞ്ഞ എണ്ണയിൽ / വീട്ടിൽ വഴറ്റിയത്: **[Base+45] kcal**
-       - 🔴 നല്ലെണ്ണയിൽ വറുത്തത് (Deep Fried): **[Base+120] kcal**
-       ### **സലീം വളാഞ്ചേരി വെൽനസ്സ് സെന്റർ കോച്ച് നിർദ്ദേശം**
-       [Encouraging advice in simple Malayalam]
-       ### **മീൽ ഡയറിയിലേക്ക് ചേർക്കാം (Log to Diary)**
-       ✨ ഈ ഭക്ഷണം നിങ്ങളുടെ ഡയറിയിലേക്ക് ചേർക്കാനായി താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്യാം!
-   - If the user writes in English, reply in friendly, simple, conversational English.
-
-4. MULTI-INGREDIENT RECIPES & DISH INGREDIENTS CALCULATION:
-   - When a client types a food with its ingredients (e.g. "I cooked chicken curry with 200g chicken, 1 onion, 1 tbsp oil, 1 tomato" or "Oats bowl: 50g oats, 1 cup milk, 1 banana"):
-     - Break down and calculate EACH ingredient's calories and macros proportionally.
-     - State each ingredient's calories FIRST in bold.
-     - Sum the overall recipe calories, protein, carbs, fat, fiber.
-     - Populate "mealLogData" and "foodsList" with each ingredient and the dish so the client can log it with 1-click!
-
-5. FOOD EATEN WITH TIME SUGGESTION:
-   - If user types what they ate and includes a time (e.g. "I ate 2 boiled eggs and 1 bread at 8:30 am", "had 1 apple at 4pm", "njan 2 mutta kazhichu"):
-     - Extract time and meal slot (Breakfast, Morning Snack, Lunch, Evening Snack, Dinner).
-     - Set "isMealLogReport": true and populate "mealLogData".
-
-6. DYNAMIC OIL & GOOD/BAD CALORIES (NOT PERMANENTLY FIXED):
-   - Always remember: oil adjustments (+0, +45, +120 kcal) and Good vs Bad/Treat calorie classifications are selected per meal log. They never permanently alter or contaminate the base food in the clinic library.
-
-Active Client Context:
+Active Client Profile & Today's Live Progress:
 ${clientContext ? JSON.stringify(clientContext) : 'Anonymous / General Wellness Visitor'}
 
-Output format:
-Return a JSON object with this EXACT schema:
+Return a valid JSON object matching this exact schema:
 {
   "isFoodInquiry": boolean,
   "isMealLogReport": boolean,
@@ -1655,6 +1622,10 @@ Return a JSON object with this EXACT schema:
         "protein": number,
         "carbs": number,
         "fat": number,
+        "calcium": number,
+        "iron": number,
+        "magnesium": number,
+        "vitaminD": number,
         "category": string
       }
     ],
@@ -1672,6 +1643,10 @@ Return a JSON object with this EXACT schema:
     "carbs": number,
     "fat": number,
     "fiber": number,
+    "calcium": number,
+    "iron": number,
+    "magnesium": number,
+    "vitaminD": number,
     "glycemicIndex": string,
     "verdict": string,
     "recommendation": string
@@ -1685,47 +1660,68 @@ Return a JSON object with this EXACT schema:
       "protein": number,
       "carbs": number,
       "fat": number,
+      "calcium": number,
+      "iron": number,
+      "magnesium": number,
+      "vitaminD": number,
       "category": string
     }
   ] | null,
   "answer": string
 }`;
 
-        // Use standard models per @google/genai guidelines:
-        // Basic Text Tasks & Multimodal: 'gemini-3.8-flash' is the standard model
-        const modelsToTry = ['gemini-3.8-flash', 'gemini-3.8-pro'];
-        
+        const modelsToTry = ['gemini-4-hydrogen', 'gemini-3.1-flash-lite'];
+
+        // Build real multi-turn conversation contents so follow-up questions make complete sense
+        const historyTurns: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+        if (Array.isArray(conversationHistory)) {
+          for (const item of conversationHistory.slice(-8)) {
+            if (!item || typeof item.text !== 'string' || !item.text.trim()) continue;
+            const role: 'user' | 'model' = item.role === 'model' || item.role === 'assistant' || item.role === 'bot' ? 'model' : 'user';
+            historyTurns.push({
+              role,
+              parts: [{ text: item.text.slice(0, 1200) }]
+            });
+          }
+        }
+
+        const currentUserParts: any[] = [
+          {
+            text: trimmedMsg || "Analyze this meal photo and provide calories first in bold, macronutrients, key micronutrients (Calcium, Iron, Magnesium, Vitamin D), and oil options."
+          }
+        ];
+
+        if (imageBase64) {
+          currentUserParts.push({
+            inlineData: {
+              mimeType: mimeType || 'image/jpeg',
+              data: imageBase64.replace(/^data:image\/\w+;base64,/, '')
+            }
+          });
+        }
+
+        const contentsPayload = [
+          ...historyTurns,
+          { role: 'user', parts: currentUserParts }
+        ];
+
         for (const modelName of modelsToTry) {
           try {
-            const promptParts: any[] = [
-              { text: `${systemPrompt}\n\nUser Question/Input: ${message || "Analyze this meal photo and provide accurate calories stated first in bold, nutritional breakdown, and the 3 oil options."}` }
-            ];
-
-            if (imageBase64) {
-              promptParts.push({
-                inlineData: {
-                  mimeType: mimeType || 'image/jpeg',
-                  data: imageBase64.replace(/^data:image\/\w+;base64,/, '')
-                }
-              });
-            }
-
             const geminiResponse = await ai.models.generateContent({
               model: modelName,
-              contents: [
-                { role: 'user', parts: promptParts }
-              ],
+              contents: contentsPayload,
               config: {
+                systemInstruction,
                 responseMimeType: 'application/json',
-                temperature: 0.3,
               }
             });
 
-            const rawText = geminiResponse.text || "{}";
+            const rawText = (geminiResponse.text || "").trim();
+            const cleanedJson = rawText.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
             try {
-              const parsed = JSON.parse(rawText);
-              if (parsed && (parsed.answer || parsed.food || parsed.mealLogData)) {
-                if (!parsed.oilImpact) {
+              const parsed = JSON.parse(cleanedJson || "{}");
+              if (parsed && typeof parsed.answer === 'string' && parsed.answer.trim().length > 0) {
+                if ((parsed.isFoodInquiry || parsed.food) && !parsed.oilImpact) {
                   parsed.oilImpact = {
                     question: "Was it oily?",
                     options: [
@@ -1737,10 +1733,11 @@ Return a JSON object with this EXACT schema:
                 }
                 return res.json(parsed);
               }
-            } catch (e) {
-              if (rawText.trim()) {
+            } catch {
+              if (rawText) {
                 return res.json({
                   isFoodInquiry: false,
+                  isMealLogReport: false,
                   food: null,
                   answer: rawText
                 });
@@ -1759,7 +1756,7 @@ Return a JSON object with this EXACT schema:
         return res.json(mealEatenFallback);
       }
 
-      // Fallback: Local Clinic Knowledge & Food Engine (always responsive and reliable)
+      // Fallback: Local Clinic Knowledge & Food Engine
       if (matchedKey) {
         const item = CLINIC_FOOD_LOOKUP[matchedKey];
         return res.json({
@@ -1836,172 +1833,148 @@ ${item.tips}
 ### **Was it oily? (3 Cooking Options Calculation)**
 - 🟢 **No Oil / Steamed (Ela Ada, Kozhukatta, Kinnathappam):** Base calories, 0g added trans fats. Perfect for daily tea-time!
 - 🟡 **Medium / Home Sauté (Tawa roasted or shallow pan):** Add **+45 kcal** (+5g healthy coconut oil).
-- 🔴 **Deep Fried / Very Oily (Tea-shop Pazham Pori, Parippu Vada):** Add **+120 kcal** (+13g oil absorption).
-
-### **Clinic Food Library Integration**
-✨ **Every food or snack you type here is automatically synchronized into your Clinic Food Library.** You can log any of these snacks to your daily meal tracker with 1-click!`
+- 🔴 **Deep Fried / Very Oily (Tea-shop Pazham Pori, Parippu Vada):** Add **+120 kcal** (+13g oil absorption).`
         });
       }
 
-      // If user asks if chatbot is working / troubleshooting / greetings:
+      // If user asks about greetings / troubleshooting:
       if (lowerMsg.includes("not working") || lowerMsg === "hi" || lowerMsg === "hello" || lowerMsg.includes("working") || lowerMsg.includes("help") || lowerMsg === "test") {
         return res.json({
           isFoodInquiry: false,
           food: null,
           answer: `👋 **NutriBot is Active & Ready to Assist You!**
 
-Welcome to the **Saleem Valanchery Wellness Clinic Assistant**! I am fully operational and equipped with our comprehensive Kerala & Indian nutrition database.
+Ask me any nutrition, fitness, micronutrient, or Kerala food question—or snap a photo of your plate.
 
-### **What You Can Do Right Now:**
-1. **Kerala Snacks & Food Calories:** Ask about any food (e.g. *"Pazham Pori calories"*, *"Parippu Vada"*, *"Ela Ada"*, *"Kerala Matta Rice"*), and I will state the **calories first in bold**!
-2. **"Was it oily?" 3-Options Calculator:** I will instantly calculate calories and fat for:
-   - 🟢 **No Oil / Steamed** (Base calories)
-   - 🟡 **Medium / Home Sauté** (+45 kcal, +5g fat)
-   - 🔴 **Deep Fried / Very Oily** (+120 kcal, +13g fat)
-3. **Automatic Clinic Food Library Sync:** Any food or snack you write is **automatically added to your Clinic Food Library** so you can log it into your meal diary anytime.
-4. **Log What You Ate With Time:** Type for example *"I ate 2 Pazham Pori at 4:30 pm"* and I will stage it for 1-click logging into your **Evening Snack**!
-
-What Kerala snack or meal would you like to check?`
+- **Daily Targets & Nutrients:** Ask how much Protein, Iron, Calcium, Magnesium, Vitamin D, or calories you need today.
+- **Food Calories & Oil Calculator:** Ask about any food or drink for base + medium sauté (+45 kcal) + fried (+120 kcal) numbers.
+- **Quick Meal Logging:** Tell me *"I ate 2 eggs and 1 appam at 8:30 am"* to stage it directly for 1-click logging.`
         });
       }
 
-      // If user asks about visceral fat / InBody scan:
       if (lowerMsg.includes("visceral") || lowerMsg.includes("inbody") || lowerMsg.includes("body fat")) {
         return res.json({
           isFoodInquiry: false,
           food: null,
-          answer: `### Visceral Fat & InBody Health Insights (Saleem Valanchery Wellness Clinic)\n\n**Why Visceral Fat is Crucial:**\nVisceral fat surrounds your abdominal internal organs (liver, pancreas, intestines). Unlike subcutaneous fat under the skin, visceral fat is metabolically active and secretes inflammatory adipokines that increase the risk of insulin resistance, fatty liver, hypertension, and cardiovascular issues.\n\n**Key Steps to Safely Reduce Visceral Fat:**\n1. **Maintain a Calorie Deficit with High Protein:** Target 1.2–1.6g of protein per kg of body weight to preserve lean muscle while mobilizing visceral fat.\n2. **Eliminate Refined Sugars & Ultra-Processed Foods:** Reduce sweet beverages, maida/refined flour, and late-night heavy carb dinners.\n3. **Engage in Resistance Training + Zone 2 Cardio:** 3–4 days of resistance exercises combined with brisk walking (8,000–10,000 steps daily) is clinically proven to target deep abdominal adipose tissue.\n4. **Optimize Sleep & Stress:** High cortisol triggers abdominal fat storage. Aim for 7–8 hours of restful sleep.\n\nTrack your progress monthly using our clinic's InBody 270/770 Body Composition Analyzer to observe your visceral fat level drop below 9-10.`
+          answer: `### **Visceral Fat & InBody Health Insights**
+
+Visceral fat surrounds internal abdominal organs and drives metabolic inflammation and insulin resistance.
+
+1. **Prioritize Protein Within Your Calorie Target:** Preserve lean muscle while keeping a steady deficit.
+2. **Cut Liquid Sugars & Refined Flour:** Limit sweetened tea/juices and refined bakery snacks.
+3. **Daily Steps + Strength Work:** Consistent 8,000–10,000 steps plus 3–4 resistance sessions/week directly mobilize abdominal fat.
+4. **Sleep 7–8 Hours:** Short sleep raises cortisol and increases visceral storage.`
         });
       }
 
-      // If user asks about water / hydration:
       if (lowerMsg.includes("water") || lowerMsg.includes("hydration") || lowerMsg.includes("litres") || lowerMsg.includes("drink")) {
         return res.json({
           isFoodInquiry: false,
           food: null,
-          answer: `### Hydration Guidelines from Coach Saleem & Faseela Saleem\n\n- **Daily Target:** Aim for **2.5 to 3.5 Litres** of fresh water daily (approx. 35ml per kg of body weight).\n- **Timing Tip:** Drink 1–2 glasses (500ml) upon waking up to jumpstart metabolism and cellular rehydration.\n- **Meal Timing:** Avoid drinking large volumes of water immediately during or within 20 minutes after heavy meals to preserve optimal digestive enzyme concentration.\n- **Signs of Good Hydration:** Pale straw-colored urine, sustained afternoon energy, and reduced false hunger cravings.`
+          answer: `### **Daily Hydration Guidelines**
+
+- **Target:** **2.5 to 3.5 Litres** daily (roughly 35 ml per kg of body weight).
+- **Morning:** Start with 500 ml of fresh water upon waking.
+- **Around Meals:** Sip lightly during meals and hydrate mainly between meals.`
         });
       }
 
-      // If user asks about remaining calories or today's status:
-      if (lowerMsg.includes("remaining") || lowerMsg.includes("my calories") || lowerMsg.includes("today's plan")) {
+      if (lowerMsg.includes("remaining") || lowerMsg.includes("my calories") || lowerMsg.includes("today's plan") || lowerMsg.includes("nutrient") || lowerMsg.includes("protein") || lowerMsg.includes("iron") || lowerMsg.includes("vitamin") || lowerMsg.includes("magnesium") || lowerMsg.includes("calcium")) {
         const clientName = clientContext?.name || "Member";
         const target = clientContext?.targetCalories || 1600;
         const consumed = clientContext?.consumedCalories || 0;
         const remaining = Math.max(0, target - consumed);
+        const dt = clientContext?.dailyNutrientTargets;
+        const cn = clientContext?.consumedNutrients;
+
+        const microSummary = dt && cn
+          ? `\n\n### **Your Today's Nutrient Targets vs Intake**\n- **Protein:** ${cn.protein}g / ${dt.protein}g\n- **Carbs:** ${cn.carbs}g / ${dt.carbs}g\n- **Fats:** ${cn.fat}g / ${dt.fat}g\n- **Iron:** ${cn.iron} mg / ${dt.iron} mg\n- **Calcium:** ${cn.calcium} mg / ${dt.calcium} mg\n- **Magnesium:** ${cn.magnesium} mg / ${dt.magnesium} mg\n- **Vitamin D:** ${cn.vitaminD} IU / ${dt.vitaminD} IU`
+          : '';
 
         return res.json({
           isFoodInquiry: false,
           food: null,
-          answer: `Hello **${clientName}**! Here is your real-time nutrition status for today:\n\n- **Target Calories:** ${target} kcal\n- **Logged Today:** ${consumed} kcal\n- **Remaining Allowance:** **${remaining} kcal**\n\n${
-            remaining > 500 
-              ? "You have plenty of room for balanced dinner or healthy evening snacks. Ensure you meet your protein targets!" 
-              : remaining > 0 
-                ? "You are right on track! Prioritize light salads, water, or a protein shake to finish off the day."
-                : "You have reached your daily caloric target. Focus on hydration and herbal tea for the rest of the evening."
-          }`
+          answer: `Hello **${clientName}**! Here is your real-time daily nutrition snapshot:\n\n- **Daily Target:** **${target} kcal**\n- **Logged Today:** **${consumed} kcal**\n- **Remaining Budget:** **${remaining} kcal**${microSummary}`
         });
       }
 
-      // If user asks about intermittent fasting / eating window:
-      if (lowerMsg.includes("fasting") || lowerMsg.includes("16:8") || lowerMsg.includes("eating window") || lowerMsg.includes("fast")) {
+      if (lowerMsg.includes("fasting") || lowerMsg.includes("16:8") || lowerMsg.includes("eating window")) {
         return res.json({
           isFoodInquiry: false,
           food: null,
-          answer: `### **Intermittent Fasting (16:8 Protocol) • Saleem Valanchery Wellness Clinic**
+          answer: `### **Intermittent Fasting (16:8 Protocol)**
 
-- **Recommended Fasting Window:** **16 Hours Fasting / 8 Hours Eating Window** (e.g., Fast from 8:00 PM to 12:00 PM next day; Eat between 12:00 PM and 8:00 PM).
-- **During the Fast:** Hydrate with fresh water, black coffee (no sugar/milk), green tea, or warm lemon water with a pinch of Himalayan pink salt.
-- **Breaking the Fast:** Break with lean protein and fiber (e.g. 2 boiled eggs with cucumber/almonds, or light vegetable soup) to prevent sudden insulin spikes.
-- **Clinical Benefits:** Enhances cellular autophagy, improves insulin sensitivity, accelerates stubborn visceral fat breakdown, and eliminates late-night cravings.`
+- **Window:** 16 hours fasting (e.g., 8:00 PM to 12:00 PM), 8 hours eating.
+- **During Fast:** Plain water, unsweetened black coffee, or green tea.
+- **Break Fast Gently:** Begin with protein + fiber (eggs, soaked almonds, or cucumber + sprouts) rather than sugary tea or white flour.`
         });
       }
 
-      // If user asks about diabetes, blood sugar, or HbA1c:
       if (lowerMsg.includes("sugar") || lowerMsg.includes("diabetes") || lowerMsg.includes("diabetic") || lowerMsg.includes("glucose") || lowerMsg.includes("hba1c")) {
         return res.json({
           isFoodInquiry: false,
           food: null,
-          answer: `### **Blood Sugar & Diabetes Nutrition Guidance • Saleem Valanchery Wellness Centre**
+          answer: `### **Blood Sugar & Glucose Control Guide**
 
-1. **Plate Composition Strategy:**
-   - 🥗 **50% Fiber:** Non-starchy vegetables (cucumber, cabbage, thoran, cheera, beans, salads).
-   - 🥩 **25% Clean Protein:** Boiled eggs, fish, skinless chicken breast, paneer, sprouts, or chana dal.
-   - 🌾 **25% Low GI Carbs:** Kerala Matta Rice (1 medium cup / 120g), oats, or multigrain chapati.
-2. **Food Sequencing:** Always eat vegetables/salad and protein FIRST before touching carbohydrates to blunt post-meal glucose spikes by up to 40%.
-3. **Avoid Liquid Sugars:** Completely eliminate sweetened sodas, sugary tea, fruit juices (eat whole fruits with pulp instead).
-4. **Post-Meal Walk:** Take a light 10–15 minute walk after lunch and dinner to stimulate muscular glucose uptake without requiring extra insulin.`
+1. **Plate Rule:** 50% non-starchy vegetables (thoran/salad), 25% protein (fish/eggs/chicken/legumes), 25% complex carbs (matta rice/oats).
+2. **Eat Veggies & Protein First:** Reduces post-meal glucose spikes significantly.
+3. **Post-Meal Walk:** 10–15 minutes of gentle walking after lunch and dinner boosts muscular glucose uptake.`
         });
       }
 
-      // If user asks about workouts, gym, muscle gain, or pre/post workout meals:
-      if (lowerMsg.includes("workout") || lowerMsg.includes("gym") || lowerMsg.includes("exercise") || lowerMsg.includes("muscle") || lowerMsg.includes("pre workout") || lowerMsg.includes("post workout")) {
+      if (lowerMsg.includes("workout") || lowerMsg.includes("gym") || lowerMsg.includes("exercise") || lowerMsg.includes("muscle") || lowerMsg.includes("step")) {
         return res.json({
           isFoodInquiry: false,
           food: null,
-          answer: `### **Fitness & Workout Nutrition Protocol • Saleem Valanchery Wellness Centre**
+          answer: `### **Activity, Steps & Recovery Protocol**
 
-- **Daily Protein Target:** Aim for **1.2 to 1.6 grams of protein per kilogram of body weight** (e.g., a 70kg individual targets 85g–110g protein daily).
-- **Pre-Workout Fuel (45–60 mins before):** 
-  - 1 banana or 1 slice whole wheat bread with 1 tsp peanut butter, or black coffee for sustained energy.
-- **Post-Workout Recovery (Within 45 mins):** 
-  - 3–4 egg whites + 1 whole egg, or 1 scoop whey protein, or 150g grilled chicken breast + small bowl of boiled sweet potato or rice.
-- **Hydration during training:** Drink 200–300ml water every 15–20 minutes of intense physical activity.`
+- **Daily Steps:** Aim for **8,000–10,000 steps/day** to maximize daily NEAT burn toward your 8,000 kcal trajectory.
+- **Strength & Muscle:** Target **1.1–1.4g protein/kg** with whole foods spread across meals.
+- **Pre/Post Workout:** Light fruit before training; lean protein (eggs, fish, chicken, whey, or paneer) within 45–60 minutes after.`
         });
       }
 
-      // If user asks about sleep, tiredness, energy, or stress:
       if (lowerMsg.includes("sleep") || lowerMsg.includes("tired") || lowerMsg.includes("energy") || lowerMsg.includes("fatigue") || lowerMsg.includes("stress")) {
         return res.json({
           isFoodInquiry: false,
           food: null,
-          answer: `### **Sleep, Cortisol & Metabolic Energy • Saleem Valanchery Wellness Centre**
+          answer: `### **Sleep, Energy & Cortisol Recovery**
 
-- **Target Sleep Duration:** **7 to 8 hours** of continuous, deep restorative sleep.
-- **Why Sleep Impacts Weight:** Poor sleep elevates cortisol (stress hormone) and ghrelin (hunger hormone), triggering intense cravings for high-calorie sugary/greasy snacks.
-- **Evening Wind-down Routine:** 
-  1. Have dinner at least 2.5–3 hours before bedtime.
-  2. Avoid caffeine after 3:00 PM.
-  3. Turn off bright phone/tablet screens 45 minutes before sleeping.
-  4. Keep the bedroom cool and dark.`
+- **Target:** **7–8 hours** of uninterrupted sleep each night.
+- **Why It Matters:** Sleep debt raises ghrelin (hunger) and evening sugar cravings while slowing recovery.
+- **Tips:** Finish dinner 2.5–3 hours before bed, skip caffeine after 3:00 PM, and dim screens 45 minutes prior.`
         });
       }
 
-      // If user asks about weight loss plateaus or belly fat:
-      if (lowerMsg.includes("belly") || lowerMsg.includes("plateau") || lowerMsg.includes("thadi") || lowerMsg.includes("weight loss") || lowerMsg.includes("kurayan")) {
-        return res.json({
-          isFoodInquiry: false,
-          food: null,
-          answer: `### **Belly Fat Reduction & Overcoming Weight Plateaus • Saleem Valanchery Wellness Centre**
-
-1. **Audit Hidden Cooking Oils:** 1 tablespoon of coconut oil or sunflower oil adds **120 kcal**! Use our "Was it oily?" tracker to log light sauté or steamed preparations.
-2. **Prioritize Daily Steps:** Target **8,000 to 10,000 steps** daily. Non-Exercise Activity Thermogenesis (NEAT) accounts for more daily calorie burn than gym workouts!
-3. **High-Protein Breakfast:** Start your morning with boiled eggs, moong dal sprouts, or Greek yogurt to curb afternoon snacking.
-4. **Hydration Check:** Drink 3 Litres of fresh water daily to prevent fluid retention and false hunger cravings.
-5. **Progress Review:** Schedule a monthly InBody 270/770 Body Composition scan with Coach Saleem to assess visceral fat rating and lean muscle mass.`
-        });
-      }
-
-      // If user asks in Malayalam on health / wellness / lifestyle:
       if (isMalayalam && (lowerMsg.includes("engane") || lowerMsg.includes("enthu") || lowerMsg.includes("kurakkan") || lowerMsg.includes("kootan") || lowerMsg.includes("samayam"))) {
         return res.json({
           isFoodInquiry: false,
           food: null,
-          answer: `### **സലീം വളാഞ്ചേരി വെൽനസ്സ് സെന്റർ കോച്ച് നിർദ്ദേശം**
+          answer: `### **സലീം വളാഞ്ചേരി വെൽനസ്സ് സെന്റർ നിർദ്ദേശങ്ങൾ**
 
-നമസ്കാരം! നിങ്ങളുടെ ആരോഗ്യവും ഫിറ്റ്നസും മെച്ചപ്പെടുത്താൻ ഇതാ പ്രധാന നിർദ്ദേശങ്ങൾ:
+നമസ്കാരം! നിങ്ങളുടെ ആരോഗ്യവും ഭക്ഷണക്രമവും മെച്ചപ്പെടുത്താൻ പ്രധാന കാര്യങ്ങൾ:
 
-1. **ഭക്ഷണ ക്രമം:** ഭക്ഷണത്തിൽ ആവശ്യത്തിന് പ്രോട്ടീൻ (മുട്ട, പയറുവർഗ്ഗങ്ങൾ, മീൻ, ചിക്കൻ) ഉൾപ്പെടുത്തുക. ചോറിന്റെ അളവ് കുറച്ച് പച്ചക്കറികളും തോരനും കൂടുതൽ കഴിക്കുക.
-2. **എണ്ണയുടെ അളവ്:** ചായക്കടയിലെ വറുത്ത പലഹാരങ്ങൾ (പഴംപൊരി, ഉള്ളിവട) ഒഴിവാക്കുക. വീട്ടിൽ ആവിയിൽ വെച്ച ഇലയട, കൊഴുക്കട്ട, പുട്ട് എന്നിവ തിരഞ്ഞെടുക്കാം.
-3. **വെള്ളം കുടിക്കൽ:** ദിവസവും **3 ലിറ്റർ വെള്ളം** കൃത്യമായി കുടിക്കുക.
-4. **നടത്തം:** ദിവസവും 8,000–10,000 സ്റ്റെപ്പുകൾ നടക്കുക.
-5. **ഡയറിയിൽ രേഖപ്പെടുത്തുക:** നിങ്ങൾ കഴിക്കുന്ന ഓരോ ഭക്ഷണവും NutriBot വഴി നിങ്ങളുടെ ഡയറിയിൽ രേഖപ്പെടുത്താം!`
+1. **സമീകൃത ഭക്ഷണം:** ഓരോ നേരവും പ്രോട്ടീൻ (മുട്ട, മീൻ, ചിക്കൻ, പയറുവർഗ്ഗങ്ങൾ) ഉൾപ്പെടുത്തുക; ചോറ് മിതമാക്കി തോരനും സാലഡും കൂട്ടുക.
+2. **എണ്ണയുടെ നിയന്ത്രണം:** വറുത്ത പലഹാരങ്ങൾക്ക് പകരം ആവിയിൽ വെച്ച ഭക്ഷണം (ഇഡ്ഡലി, പുട്ട്, ഇലയട) തിരഞ്ഞെടുക്കുക.
+3. **വെള്ളം & നടത്തം:** ദിവസവും **3 ലിറ്റർ വെള്ളം**, **8,000–10,000 സ്റ്റെപ്പുകൾ**, **7–8 മണിക്കൂർ ഉറക്കം** എന്നിവ പാലിക്കുക.`
         });
       }
 
-      // Intelligent Nutritional Resolution for ANY food inquiry:
-      // Calibrates exact calories, protein, carbs, healthy fats, fiber, GI, and 3 oil options
-      const cleanFoodName = (message || "").replace(/how many calories in|how many calories|calories in|calories|macro|macros|what is|tell me about|is|can i eat/gi, '').trim() || (message || "Food Item").trim();
+      // Only emit a structured food card in offline fallback when user clearly inquired about a food item
+      const isGeneralQuestion = /\b(why|how|when|should i|what is the difference|explain|meaning|why am i|help me understand|app|notification|sleep|steps|weight trajectory|8000)\b/i.test(lowerMsg) && !hasFoodKeyword;
+      if (isGeneralQuestion || (!hasFoodKeyword && trimmedMsg.split(/\s+/).length > 5)) {
+        return res.json({
+          isFoodInquiry: false,
+          isMealLogReport: false,
+          food: null,
+          answer: isMalayalam
+            ? `നിങ്ങളുടെ ചോദ്യം ("${trimmedMsg}") മനസ്സിലാക്കി. ഇപ്പോൾ ക്ലൗഡ് AI താൽക്കാലികമായി ലഭ്യമല്ലാത്തതിനാൽ വിശദമായ മറുപടി തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല—ദയവായി അല്പസമയത്തിന് ശേഷം വീണ്ടും ശ്രമിക്കുക, അല്ലെങ്കിൽ ഏതെങ്കിലും ഭക്ഷണത്തിന്റെ പേരോ കാലറിയോ ചോദിക്കൂ.`
+            : `I read your question ("${trimmedMsg}"). Live Gemini reasoning is temporarily unavailable right now, so I want to avoid giving a canned guess—please retry in a moment, or ask me about any specific food/meal's calories, protein, carbs, fats, and micronutrients.`
+        });
+      }
+
+      // Intelligent offline nutrition resolution for concrete short food inquiries
+      const cleanFoodName = trimmedMsg.replace(/how many calories in|how many calories|calories in|calories|macro|macros|what is|tell me about|is|can i eat/gi, '').trim() || trimmedMsg || "Food Item";
       const lowFood = cleanFoodName.toLowerCase();
 
       let cat = "Beverages & Snacks";
@@ -2023,7 +1996,7 @@ What Kerala snack or meal would you like to check?`
         f = 9.2;
         fib = 0;
         gi = "Low (<10)";
-        clinicalNote = `Rich in Omega-3 anti-inflammatory fatty acids and high-biological value protein. Ideal for cardiovascular and metabolic health.`;
+        clinicalNote = `Rich in Omega-3 anti-inflammatory fatty acids and high-biological value protein.`;
       } else if (lowFood.includes('chicken') || lowFood.includes('turkey') || lowFood.includes('kozhi')) {
         cat = "Proteins";
         serving = "1 portion (120g)";
@@ -2033,7 +2006,7 @@ What Kerala snack or meal would you like to check?`
         f = 8.5;
         fib = 0;
         gi = "Low (<10)";
-        clinicalNote = `High-protein lean poultry. Choose steamed, tawa-grilled, or home curry over deep-fried preparations.`;
+        clinicalNote = `High-protein lean poultry. Prefer steamed, grilled, or light home curry.`;
       } else if (lowFood.includes('beef') || lowFood.includes('mutton') || lowFood.includes('meat') || lowFood.includes('irachi')) {
         cat = "Proteins";
         serving = "1 portion (120g)";
@@ -2043,7 +2016,7 @@ What Kerala snack or meal would you like to check?`
         f = 14.8;
         fib = 0.5;
         gi = "Low (<15)";
-        clinicalNote = `Dense source of iron, zinc, and B12. Pair with fiber-rich vegetable salads to optimize digestion.`;
+        clinicalNote = `Dense source of iron, zinc, and B12. Pair with fiber-rich vegetables.`;
       } else if (lowFood.includes('egg') || lowFood.includes('mutta') || lowFood.includes('omelet')) {
         cat = "Proteins";
         serving = "1 large egg (55g)";
@@ -2053,7 +2026,7 @@ What Kerala snack or meal would you like to check?`
         f = 5.0;
         fib = 0;
         gi = "Low (<10)";
-        clinicalNote = `Gold standard complete amino acid profile with bioavailable choline. Excellent morning satiety booster.`;
+        clinicalNote = `Complete amino acid profile with vitamin D and choline.`;
       } else if (lowFood.includes('paneer') || lowFood.includes('tofu') || lowFood.includes('soya')) {
         cat = "Proteins";
         serving = "1 portion (100g)";
@@ -2063,7 +2036,7 @@ What Kerala snack or meal would you like to check?`
         f = 20.0;
         fib = 0.8;
         gi = "Low (25)";
-        clinicalNote = `High calcium and vegetarian protein source. Light tawa grilling recommended over deep frying.`;
+        clinicalNote = `High calcium and vegetarian protein source. Prefer light grilling over deep frying.`;
       } else if (lowFood.includes('rice') || lowFood.includes('choru') || lowFood.includes('biriyani') || lowFood.includes('mandi') || lowFood.includes('kanji')) {
         cat = "Grains & Breads";
         serving = "1 bowl / cup (150g)";
@@ -2073,7 +2046,7 @@ What Kerala snack or meal would you like to check?`
         f = 1.2;
         fib = 2.4;
         gi = "Medium (60)";
-        clinicalNote = `Kerala Matta / whole grain complex carbohydrate. Pair with 1 cup dal or thoran to slow glucose absorption.`;
+        clinicalNote = `Pair with protein curry and vegetables to blunt glucose spikes.`;
       } else if (lowFood.includes('porotta') || lowFood.includes('parotta') || lowFood.includes('roti') || lowFood.includes('chapati') || lowFood.includes('bread') || lowFood.includes('appam') || lowFood.includes('puttu')) {
         cat = "Grains & Breads";
         serving = "1 piece (75g)";
@@ -2083,7 +2056,7 @@ What Kerala snack or meal would you like to check?`
         f = lowFood.includes('porotta') ? 11.5 : 2.0;
         fib = 2.0;
         gi = lowFood.includes('porotta') ? "High (70)" : "Medium (58)";
-        clinicalNote = `Staple bread item. Pair with high-protein curry (kadala, egg roast, or chicken) and fresh greens.`;
+        clinicalNote = `Pair with protein curry (kadala, egg roast, or chicken) and greens.`;
       } else if (lowFood.includes('salad') || lowFood.includes('vegetable') || lowFood.includes('cabbage') || lowFood.includes('beans') || lowFood.includes('cheera') || lowFood.includes('cucumber')) {
         cat = "Vegetables";
         serving = "1 bowl (150g)";
@@ -2093,7 +2066,7 @@ What Kerala snack or meal would you like to check?`
         f = 1.0;
         fib = 4.2;
         gi = "Low (15)";
-        clinicalNote = `High-volume, micronutrient-dense gut prebiotic food. Enhances metabolic satiety and regulates blood pressure.`;
+        clinicalNote = `High-volume, micronutrient-dense food rich in iron, calcium, and magnesium.`;
       } else if (lowFood.includes('apple') || lowFood.includes('banana') || lowFood.includes('orange') || lowFood.includes('mango') || lowFood.includes('fruit') || lowFood.includes('pazham')) {
         cat = "Fruits";
         serving = "1 medium fruit (130g)";
@@ -2103,7 +2076,7 @@ What Kerala snack or meal would you like to check?`
         f = 0.3;
         fib = 3.5;
         gi = "Low-Medium (48)";
-        clinicalNote = `Rich in bioactive flavonoids, pectin fiber, and natural hydration electrolytes.`;
+        clinicalNote = `Rich in bioactive flavonoids, fiber, and natural potassium.`;
       } else if (lowFood.includes('tea') || lowFood.includes('coffee') || lowFood.includes('sulaimani') || lowFood.includes('sambaram')) {
         cat = "Beverages & Snacks";
         serving = "1 cup / glass (180ml)";
@@ -2113,7 +2086,7 @@ What Kerala snack or meal would you like to check?`
         f = 1.2;
         fib = 0.5;
         gi = "Low (25)";
-        clinicalNote = `Digestive beverage. Sambaram provides natural gut-healthy probiotics; Sulaimani aids post-meal digestion.`;
+        clinicalNote = `Best enjoyed unsweetened or lightly spiced.`;
       }
 
       return res.json({
@@ -2157,9 +2130,7 @@ What Kerala snack or meal would you like to check?`
 - **Glycemic Index:** **${gi}**
 
 ### **Saleem Valanchery Wellness Centre Advice**
-${clinicalNote}
-
-✨ **${cleanFoodName}** is automatically registered into your **Clinic Food Library**! Tap any meal slot above to log it with 1-click.`
+${clinicalNote}`
       });
 
     } catch (err: any) {
@@ -2167,12 +2138,12 @@ ${clinicalNote}
       return res.json({
         isFoodInquiry: false,
         food: null,
-        answer: `### **NutriBot (Kerala Food AI • Powered by NutriAI)**\n\nI am ready to assist you!\n- **Kerala Food Calories:** Ask for any food or snack to view calibrated calories.\n- **Was it oily? (3 Options):** Calculate live (+0, +45, +120 kcal)\n- **Direct Log to Diary:** Log searched foods directly to your meal diary.`
+        answer: `### **NutriBot • Powered by NutriAI**\n\nI am ready to assist you with any nutrition, lifestyle, or Kerala food question.`
       });
     }
   });
 
-  // AI Voice Transcription Endpoint (Gemini 3.8 Flash / Gemini 3.5 Transcribe with Multimodal Audio)
+  // AI Voice Transcription Endpoint (Multimodal Audio)
   app.post("/api/ai/transcribe", async (req, res) => {
     try {
       const { audioBase64, mimeType } = req.body;
@@ -2190,28 +2161,37 @@ ${clinicalNote}
       const cleanBase64 = audioBase64.replace(/^data:audio\/\w+;base64,/, '');
       const cleanMime = mimeType || 'audio/webm';
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: [
+      for (const modelName of ['gemini-4-hydrogen', 'gemini-3.1-flash-lite']) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: [
               {
-                inlineData: {
-                  mimeType: cleanMime,
-                  data: cleanBase64
-                }
-              },
-              {
-                text: "Transcribe this audio note accurately. The speaker may speak in Malayalam (in Malayalam script or phonetic Manglish) or English about Kerala food, meal logging, or calorie questions. Return ONLY the transcribed text. Do not add markdown headers or conversational commentary."
+                role: 'user',
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: cleanMime,
+                      data: cleanBase64
+                    }
+                  },
+                  {
+                    text: "Transcribe this audio note accurately. The speaker may speak in Malayalam (in Malayalam script or phonetic Manglish) or English about Kerala food, meal logging, or wellness questions. Return ONLY the transcribed text."
+                  }
+                ]
               }
             ]
+          });
+          const transcript = response.text?.trim() || "";
+          if (transcript) {
+            return res.json({ transcript });
           }
-        ]
-      });
+        } catch (err) {
+          console.warn(`Audio transcription model ${modelName} error:`, err);
+        }
+      }
 
-      const transcript = response.text?.trim() || "";
-      return res.json({ transcript });
+      return res.json({ transcript: "" });
     } catch (err: any) {
       console.error("Voice transcription failed:", err?.message || err);
       return res.status(500).json({ error: err?.message || "Failed to transcribe audio" });
@@ -2253,6 +2233,31 @@ ${clinicalNote}
             recommendation: matched.tips
           }
         });
+      }
+
+      const ai = getAI();
+      if (ai) {
+        for (const modelName of ['gemini-4-hydrogen', 'gemini-3.1-flash-lite']) {
+          try {
+            const estRes = await ai.models.generateContent({
+              model: modelName,
+              contents: [{
+                role: 'user',
+                parts: [{
+                  text: `Estimate accurate nutrition per standard single serving for food "${foodName}". Return ONLY JSON matching: { "name": string, "category": "Proteins"|"Grains & Breads"|"Vegetables"|"Fruits"|"Dairy & Alternatives"|"Nuts & Healthy Fats"|"Beverages & Snacks", "servingUnit": string, "calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "calcium": number, "iron": number, "magnesium": number, "vitaminD": number, "glycemicIndex": string, "verdict": string, "recommendation": string }`
+                }]
+              }],
+              config: { responseMimeType: 'application/json' }
+            });
+            const cleaned = (estRes.text || "").replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+            const parsed = JSON.parse(cleaned || "{}");
+            if (parsed && parsed.name && parsed.calories !== undefined) {
+              return res.json({ food: parsed });
+            }
+          } catch {
+            continue;
+          }
+        }
       }
 
       // Dynamic fallback estimation
@@ -2338,7 +2343,7 @@ ${clinicalNote}
 
       const prompt = `You are NutriBot, expert clinical dietitian at Saleem Valanchery Wellness Clinic.
 Analyze this meal plate (from photo or description: "${description || 'Food image'}").
-Identify all individual food items present, estimate realistic portions in grams or standard clinic units, calculate accurate macronutrients and calories, and determine if it appears steamed/boiled, lightly sauteed, or deep-fried.
+Identify all individual food items present, estimate realistic portions in grams or standard clinic units, calculate accurate macronutrients, micronutrients (calcium mg, iron mg, magnesium mg, vitaminD IU), and calories, and determine if it appears steamed/boiled, lightly sauteed, or deep-fried.
 
 Return a JSON object with this exact schema:
 {
@@ -2355,6 +2360,10 @@ Return a JSON object with this exact schema:
       "protein": number,
       "carbs": number,
       "fat": number,
+      "calcium": number,
+      "iron": number,
+      "magnesium": number,
+      "vitaminD": number,
       "category": string
     }
   ],
@@ -2376,17 +2385,26 @@ Return a JSON object with this exact schema:
         });
       }
 
-      const result = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: [{ role: 'user', parts: promptParts }],
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.2
+      for (const modelName of ['gemini-4-hydrogen', 'gemini-3.1-flash-lite']) {
+        try {
+          const result = await ai.models.generateContent({
+            model: modelName,
+            contents: [{ role: 'user', parts: promptParts }],
+            config: {
+              responseMimeType: 'application/json'
+            }
+          });
+          const cleaned = (result.text || "{}").replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+          const parsed = JSON.parse(cleaned || "{}");
+          if (parsed && (parsed.plateSummary || parsed.foods)) {
+            return res.json(parsed);
+          }
+        } catch (modelErr) {
+          console.warn(`Meal analyzer model ${modelName} error:`, modelErr);
         }
-      });
+      }
 
-      const parsed = JSON.parse(result.text || "{}");
-      return res.json(parsed);
+      return res.status(500).json({ error: "Meal analysis failed" });
     } catch (err: any) {
       console.error("Meal analyzer error:", err);
       return res.status(500).json({ error: err.message || "Meal analysis failed" });
@@ -2441,17 +2459,26 @@ Return a JSON object with this EXACT schema:
   ]
 }`;
 
-      const result = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.3
+      for (const modelName of ['gemini-4-hydrogen', 'gemini-3.1-flash-lite']) {
+        try {
+          const result = await ai.models.generateContent({
+            model: modelName,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+              responseMimeType: 'application/json'
+            }
+          });
+          const cleaned = (result.text || "{}").replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+          const parsed = JSON.parse(cleaned || "{}");
+          if (parsed && parsed.title) {
+            return res.json(parsed);
+          }
+        } catch (modelErr) {
+          console.warn(`Diet plan model ${modelName} error:`, modelErr);
         }
-      });
+      }
 
-      const parsed = JSON.parse(result.text || "{}");
-      return res.json(parsed);
+      return res.status(500).json({ error: "Failed to generate diet plan" });
     } catch (err: any) {
       console.error("Generate diet plan error:", err);
       return res.status(500).json({ error: err.message || "Failed to generate diet plan" });
@@ -2481,17 +2508,26 @@ Return a JSON object with:
   "message": string (2-3 sentences, direct, motivating, clinically actionable)
 }`;
 
-      const result = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.4
+      for (const modelName of ['gemini-4-hydrogen', 'gemini-3.1-flash-lite']) {
+        try {
+          const result = await ai.models.generateContent({
+            model: modelName,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+              responseMimeType: 'application/json'
+            }
+          });
+          const cleaned = (result.text || "{}").replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+          const parsed = JSON.parse(cleaned || "{}");
+          if (parsed && parsed.message) {
+            return res.json(parsed);
+          }
+        } catch (modelErr) {
+          console.warn(`Generate tip model ${modelName} error:`, modelErr);
         }
-      });
+      }
 
-      const parsed = JSON.parse(result.text || "{}");
-      return res.json(parsed);
+      return res.status(500).json({ error: "Failed to generate tip" });
     } catch (err: any) {
       console.error("Generate tip error:", err);
       return res.status(500).json({ error: err.message || "Failed to generate tip" });

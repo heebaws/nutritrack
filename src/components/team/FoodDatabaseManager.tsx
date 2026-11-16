@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { FoodCategory, FoodItem } from '../../types';
 import { Search, Plus, Edit2, Trash2, X, Check, UtensilsCrossed, Sparkles, CheckCircle2, RefreshCw } from 'lucide-react';
 import { estimateNutrition } from '../../utils/nutritionEstimator';
+import { estimateFoodMicronutrients } from '../../utils/micronutrients';
 
 export const FoodDatabaseManager: React.FC = () => {
   const { foods, addFoodItem, updateFoodItem, deleteFoodItem, removeDuplicateFoods } = useApp();
@@ -26,6 +27,10 @@ export const FoodDatabaseManager: React.FC = () => {
   const [carbs, setCarbs] = useState<number>(10);
   const [fat, setFat] = useState<number>(2);
   const [fiber, setFiber] = useState<number>(0);
+  const [calcium, setCalcium] = useState<number>(20);
+  const [iron, setIron] = useState<number>(1);
+  const [magnesium, setMagnesium] = useState<number>(20);
+  const [vitaminD, setVitaminD] = useState<number>(0);
 
   // Duplicate detection count
   const duplicateCount = useMemo(() => {
@@ -69,6 +74,10 @@ export const FoodDatabaseManager: React.FC = () => {
       setCarbs(est.carbs);
       setFat(est.fat);
       setFiber(est.fiber || 0);
+      setCalcium(est.calcium ?? 20);
+      setIron(est.iron ?? 1);
+      setMagnesium(est.magnesium ?? 20);
+      setVitaminD(est.vitaminD ?? 0);
       setServingUnit(est.servingUnit);
       if (est.category) setCategory(est.category as FoodCategory);
       setAiNote(`✨ AI Verified: Calibrated accurately for ${est.servingUnit}`);
@@ -112,10 +121,15 @@ export const FoodDatabaseManager: React.FC = () => {
     setCarbs(10);
     setFat(2);
     setFiber(0);
+    setCalcium(20);
+    setIron(1);
+    setMagnesium(20);
+    setVitaminD(0);
     setIsEditModalOpen(true);
   };
 
   const openEditModal = (food: FoodItem) => {
+    const est = estimateFoodMicronutrients(food);
     setEditingFood(food);
     setName(food.name);
     setCategory(food.category);
@@ -125,6 +139,10 @@ export const FoodDatabaseManager: React.FC = () => {
     setCarbs(food.carbs);
     setFat(food.fat);
     setFiber(food.fiber || 0);
+    setCalcium(food.calcium ?? est.calcium);
+    setIron(food.iron ?? est.iron);
+    setMagnesium(food.magnesium ?? est.magnesium);
+    setVitaminD(food.vitaminD ?? est.vitaminD);
     setIsEditModalOpen(true);
   };
 
@@ -143,6 +161,10 @@ export const FoodDatabaseManager: React.FC = () => {
         carbs: Number(carbs) || 0,
         fat: Number(fat) || 0,
         fiber: Number(fiber) || 0,
+        calcium: Number(calcium) || 0,
+        iron: Number(iron) || 0,
+        magnesium: Number(magnesium) || 0,
+        vitaminD: Number(vitaminD) || 0,
       });
     } else {
       addFoodItem({
@@ -154,6 +176,10 @@ export const FoodDatabaseManager: React.FC = () => {
         carbs: Number(carbs) || 0,
         fat: Number(fat) || 0,
         fiber: Number(fiber) || 0,
+        calcium: Number(calcium) || 0,
+        iron: Number(iron) || 0,
+        magnesium: Number(magnesium) || 0,
+        vitaminD: Number(vitaminD) || 0,
       });
     }
 
@@ -292,6 +318,10 @@ export const FoodDatabaseManager: React.FC = () => {
                 <th className="py-2.5 px-3 text-right">Protein</th>
                 <th className="py-2.5 px-3 text-right">Carbs</th>
                 <th className="py-2.5 px-3 text-right">Fat</th>
+                <th className="py-2.5 px-2.5 text-right">Ca (mg)</th>
+                <th className="py-2.5 px-2.5 text-right">Iron (mg)</th>
+                <th className="py-2.5 px-2.5 text-right">Mg (mg)</th>
+                <th className="py-2.5 px-2.5 text-right">Vit D (IU)</th>
                 <th className="py-2.5 px-3 text-center">Actions</th>
               </tr>
             </thead>
@@ -313,6 +343,10 @@ export const FoodDatabaseManager: React.FC = () => {
                     <td className="py-2.5 px-3 text-right text-emerald-700 dark:text-emerald-400 font-medium tabular-nums">{item.protein}g</td>
                     <td className="py-2.5 px-3 text-right text-blue-700 dark:text-blue-400 font-medium tabular-nums">{item.carbs}g</td>
                     <td className="py-2.5 px-3 text-right text-slate-700 dark:text-slate-300 font-medium tabular-nums">{item.fat}g</td>
+                    <td className="py-2.5 px-2.5 text-right text-slate-600 dark:text-slate-300 tabular-nums">{item.calcium ?? 0}</td>
+                    <td className="py-2.5 px-2.5 text-right text-rose-700 dark:text-rose-300 tabular-nums">{item.iron ?? 0}</td>
+                    <td className="py-2.5 px-2.5 text-right text-indigo-700 dark:text-indigo-300 tabular-nums">{item.magnesium ?? 0}</td>
+                    <td className="py-2.5 px-2.5 text-right text-amber-700 dark:text-amber-300 tabular-nums">{item.vitaminD ?? 0}</td>
                     <td className="py-2.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
@@ -337,7 +371,7 @@ export const FoodDatabaseManager: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                  <td colSpan={12} className="py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                     No foods found matching "{searchQuery}". Click "Add New Food" above to add one.
                   </td>
                 </tr>
@@ -480,6 +514,54 @@ export const FoodDatabaseManager: React.FC = () => {
                     onChange={(e) => setFat(parseFloat(e.target.value) || 0)}
                     className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-medium text-slate-700 dark:text-slate-200"
                     required
+                  />
+                </div>
+              </div>
+
+              {/* Micronutrient Inputs */}
+              <div className="grid grid-cols-4 gap-2 bg-slate-50 dark:bg-slate-800/70 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Calcium (mg)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={calcium}
+                    onChange={(e) => setCalcium(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-medium text-slate-700 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-rose-700 dark:text-rose-400 mb-1">Iron (mg)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={iron}
+                    onChange={(e) => setIron(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-medium text-rose-700 dark:text-rose-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Mg (mg)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={magnesium}
+                    onChange={(e) => setMagnesium(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-medium text-indigo-700 dark:text-indigo-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 mb-1">Vit D (IU)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={vitaminD}
+                    onChange={(e) => setVitaminD(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 font-medium text-amber-700 dark:text-amber-300"
                   />
                 </div>
               </div>

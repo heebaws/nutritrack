@@ -50,7 +50,7 @@ export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
     : 'text-slate-500 dark:text-emerald-200/80';
 
   return (
-    <div className={`inline-flex items-center gap-3 select-none ${className}`}>
+    <div className={`inline-flex items-center gap-2 sm:gap-3 select-none max-w-full min-w-0 ${className}`}>
       {/* Icon Mark: Standalone SVG */}
       <div 
         className="relative shrink-0 flex items-center justify-center transition-transform hover:scale-105"
@@ -135,23 +135,23 @@ export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
 
       {/* Typography Section */}
       {showText && (
-        <div className="flex flex-col leading-tight">
-          <div className="flex items-center gap-1.5">
-            <span className={`font-black tracking-tight ${dimensions.fontSize} ${titleColorClass}`}>
+        <div className="flex flex-col leading-tight min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className={`font-black tracking-tight truncate ${dimensions.fontSize} ${titleColorClass}`}>
               Nutri<span className="text-emerald-500 font-extrabold">Track</span>
             </span>
             {badge && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 uppercase tracking-wider">
+              <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 uppercase tracking-wider shrink-0">
                 {badge}
               </span>
             )}
           </div>
           {subtitle !== undefined ? (
-            <p className={`font-medium tracking-normal ${dimensions.subSize} ${subColorClass}`}>
+            <p className={`font-medium tracking-normal truncate ${dimensions.subSize} ${subColorClass}`}>
               {subtitle}
             </p>
           ) : (
-            <p className={`font-medium tracking-normal ${dimensions.subSize} ${subColorClass}`}>
+            <p className={`font-medium tracking-normal truncate ${dimensions.subSize} ${subColorClass}`}>
               Diet &amp; Nutrition Management
             </p>
           )}

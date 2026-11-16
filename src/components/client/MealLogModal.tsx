@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { FoodCategory, FoodItem, MealType } from '../../types';
 import { estimateNutrition } from '../../utils/nutritionEstimator';
+import { estimateFoodMicronutrients } from '../../utils/micronutrients';
 import { determineCalorieQuality, CalorieQuality } from '../../utils/calorieQuality';
 import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
 import { getFoodImageUrl, FOOD_FALLBACK_SVG } from '../../utils/foodImages';
@@ -88,6 +89,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
   const [customProtein, setCustomProtein] = useState('');
   const [customCarbs, setCustomCarbs] = useState('');
   const [customFat, setCustomFat] = useState('');
+  const [customCalcium, setCustomCalcium] = useState('');
+  const [customIron, setCustomIron] = useState('');
+  const [customMagnesium, setCustomMagnesium] = useState('');
+  const [customVitaminD, setCustomVitaminD] = useState('');
   const [saveToLibrary, setSaveToLibrary] = useState(true);
   const [isAiEstimating, setIsAiEstimating] = useState(false);
   const [aiEstimateNote, setAiEstimateNote] = useState<string | null>(null);
@@ -120,6 +125,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       setCustomProtein(String(est.protein));
       setCustomCarbs(String(est.carbs));
       setCustomFat(String(est.fat));
+      setCustomCalcium(String(est.calcium ?? 0));
+      setCustomIron(String(est.iron ?? 0));
+      setCustomMagnesium(String(est.magnesium ?? 0));
+      setCustomVitaminD(String(est.vitaminD ?? 0));
       setCustomServing(est.servingUnit);
       setCustomCategory(est.category);
       setAiEstimateNote(`✨ NutriBot Extension: Auto-filled by name (${est.servingUnit})`);
@@ -161,6 +170,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       carbs: searchExtensionFood.carbs,
       fat: searchExtensionFood.fat,
       fiber: searchExtensionFood.fiber,
+      calcium: searchExtensionFood.calcium,
+      iron: searchExtensionFood.iron,
+      magnesium: searchExtensionFood.magnesium,
+      vitaminD: searchExtensionFood.vitaminD,
       glycemicIndex: searchExtensionFood.glycemicIndex as any,
       calorieQuality: quality
     });
@@ -178,6 +191,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       protein: totalProt,
       carbs: totalCarb,
       fat: totalFat,
+      calcium: Math.round((searchExtensionFood.calcium ?? 0) * qty),
+      iron: Math.round((searchExtensionFood.iron ?? 0) * qty * 10) / 10,
+      magnesium: Math.round((searchExtensionFood.magnesium ?? 0) * qty),
+      vitaminD: Math.round((searchExtensionFood.vitaminD ?? 0) * qty),
       calorieQuality: searchExtensionQuality
     });
 
@@ -200,6 +217,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       setCustomProtein(String(localEst.protein));
       setCustomCarbs(String(localEst.carbs));
       setCustomFat(String(localEst.fat));
+      setCustomCalcium(String(localEst.calcium ?? 0));
+      setCustomIron(String(localEst.iron ?? 0));
+      setCustomMagnesium(String(localEst.magnesium ?? 0));
+      setCustomVitaminD(String(localEst.vitaminD ?? 0));
       setCustomServing(localEst.servingUnit);
       setCustomCategory(localEst.category);
       setAiEstimateNote(`✨ Auto-filled by NutriBot AI (${localEst.servingUnit})`);
@@ -217,6 +238,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
           setCustomProtein(String(data.food.protein));
           setCustomCarbs(String(data.food.carbs));
           setCustomFat(String(data.food.fat));
+          if (data.food.calcium !== undefined) setCustomCalcium(String(data.food.calcium));
+          if (data.food.iron !== undefined) setCustomIron(String(data.food.iron));
+          if (data.food.magnesium !== undefined) setCustomMagnesium(String(data.food.magnesium));
+          if (data.food.vitaminD !== undefined) setCustomVitaminD(String(data.food.vitaminD));
           if (data.food.servingUnit) setCustomServing(data.food.servingUnit);
           if (data.food.category) setCustomCategory(data.food.category as FoodCategory);
         }
@@ -264,7 +289,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
           else if (data.cookingMethod === 'Medium Sauté') setOilOption('medium');
           else setOilOption('steamed');
 
-          setAiEstimateNote(`✨ Plate scanned by Gemini 3.8 Flash: ${data.dietitianVerdict || 'Nutrition calibrated'}`);
+          setAiEstimateNote(`✨ Plate scanned by NutriAI Vision: ${data.dietitianVerdict || 'Nutrition calibrated'}`);
         }
       } catch (err) {
         console.error(err);
@@ -290,6 +315,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       setCustomProtein('');
       setCustomCarbs('');
       setCustomFat('');
+      setCustomCalcium('');
+      setCustomIron('');
+      setCustomMagnesium('');
+      setCustomVitaminD('');
       setCustomServing('1 serving');
       setSaveToLibrary(true);
       setOilOption('steamed');
@@ -390,11 +419,16 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
   const calculatedNutrition = useMemo(() => {
     if (!selectedFood) return null;
     const qty = Math.max(0.1, Number(quantity) || 1);
+    const estMicro = estimateFoodMicronutrients(selectedFood);
     return {
       calories: Math.round((selectedFood.calories + oilCal) * qty),
       protein: Number((selectedFood.protein * qty).toFixed(1)),
       carbs: Number((selectedFood.carbs * qty).toFixed(1)),
       fat: Number(((selectedFood.fat + oilFat) * qty).toFixed(1)),
+      calcium: Math.round((selectedFood.calcium ?? estMicro.calcium) * qty),
+      iron: Number(((selectedFood.iron ?? estMicro.iron) * qty).toFixed(1)),
+      magnesium: Math.round((selectedFood.magnesium ?? estMicro.magnesium) * qty),
+      vitaminD: Math.round((selectedFood.vitaminD ?? estMicro.vitaminD) * qty),
     };
   }, [selectedFood, quantity, oilCal, oilFat]);
 
@@ -404,14 +438,30 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
     const cCarb = parseFloat(customCarbs) || 0;
     const cFat = (parseFloat(customFat) || 0) + oilFat;
     const qty = Math.max(0.1, Number(quantity) || 1);
+    const estMicro = estimateFoodMicronutrients({
+      name: customName,
+      category: customCategory,
+      calories: cCal,
+      protein: cProt,
+      carbs: cCarb,
+      fat: cFat,
+    });
+    const baseCa = customCalcium !== '' ? parseFloat(customCalcium) || 0 : estMicro.calcium;
+    const baseFe = customIron !== '' ? parseFloat(customIron) || 0 : estMicro.iron;
+    const baseMg = customMagnesium !== '' ? parseFloat(customMagnesium) || 0 : estMicro.magnesium;
+    const baseVitD = customVitaminD !== '' ? parseFloat(customVitaminD) || 0 : estMicro.vitaminD;
 
     return {
       calories: Math.round(cCal * qty),
       protein: Number((cProt * qty).toFixed(1)),
       carbs: Number((cCarb * qty).toFixed(1)),
       fat: Number((cFat * qty).toFixed(1)),
+      calcium: Math.round(baseCa * qty),
+      iron: Number((baseFe * qty).toFixed(1)),
+      magnesium: Math.round(baseMg * qty),
+      vitaminD: Math.round(baseVitD * qty),
     };
-  }, [customCalories, customProtein, customCarbs, customFat, quantity, oilCal, oilFat]);
+  }, [customName, customCategory, customCalories, customProtein, customCarbs, customFat, customCalcium, customIron, customMagnesium, customVitaminD, quantity, oilCal, oilFat]);
 
   if (!isOpen) return null;
 
@@ -443,6 +493,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         protein: calculatedNutrition.protein,
         carbs: calculatedNutrition.carbs,
         fat: calculatedNutrition.fat,
+        calcium: calculatedNutrition.calcium,
+        iron: calculatedNutrition.iron,
+        magnesium: calculatedNutrition.magnesium,
+        vitaminD: calculatedNutrition.vitaminD,
         calorieQuality: mealCalorieQuality
       });
     } else {
@@ -453,6 +507,18 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       const cProt = parseFloat(customProtein) || 0;
       const cCarb = parseFloat(customCarbs) || 0;
       const cFat = parseFloat(customFat) || 0;
+      const estMicro = estimateFoodMicronutrients({
+        name: customName.trim(),
+        category: customCategory,
+        calories: cCal,
+        protein: cProt,
+        carbs: cCarb,
+        fat: cFat,
+      });
+      const cCalcium = customCalcium !== '' ? parseFloat(customCalcium) || 0 : estMicro.calcium;
+      const cIron = customIron !== '' ? parseFloat(customIron) || 0 : estMicro.iron;
+      const cMg = customMagnesium !== '' ? parseFloat(customMagnesium) || 0 : estMicro.magnesium;
+      const cVitD = customVitaminD !== '' ? parseFloat(customVitaminD) || 0 : estMicro.vitaminD;
 
       let foodId = `custom-${Date.now()}`;
 
@@ -466,6 +532,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
           carbs: cCarb,
           fat: cFat,
           fiber: 0,
+          calcium: cCalcium,
+          iron: cIron,
+          magnesium: cMg,
+          vitaminD: cVitD,
           glycemicIndex: 'medium',
           allergenInfo: 'None',
           clinicVerified: true,
@@ -487,6 +557,10 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         protein: customCalculatedNutrition.protein,
         carbs: customCalculatedNutrition.carbs,
         fat: customCalculatedNutrition.fat,
+        calcium: customCalculatedNutrition.calcium,
+        iron: customCalculatedNutrition.iron,
+        magnesium: customCalculatedNutrition.magnesium,
+        vitaminD: customCalculatedNutrition.vitaminD,
         calorieQuality: customQuality
       });
     }
@@ -874,6 +948,24 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                           <span className="font-bold text-rose-700 dark:text-rose-400">{calculatedNutrition.fat}g</span>
                         </div>
                       </div>
+                      <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700 text-center text-[10px] tabular-nums">
+                        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg py-1">
+                          <span className="text-slate-400 block">{t('Calcium')}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{calculatedNutrition.calcium} mg</span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg py-1">
+                          <span className="text-slate-400 block">{t('Iron')}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{calculatedNutrition.iron} mg</span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg py-1">
+                          <span className="text-slate-400 block">{t('Magnesium')}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{calculatedNutrition.magnesium} mg</span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg py-1">
+                          <span className="text-slate-400 block">{t('Vitamin D')}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{calculatedNutrition.vitaminD} IU</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1094,6 +1186,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                                 <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums truncate">
                                   {food.servingUnit} · <strong className="text-slate-900 dark:text-slate-100">{food.calories} kcal</strong> · P:{food.protein}g C:{food.carbs}g F:{food.fat}g
                                 </div>
+                                <div className="text-[10px] text-slate-400 dark:text-slate-400 tabular-nums truncate">
+                                  Ca:{food.calcium ?? 0}mg · Fe:{food.iron ?? 0}mg · Mg:{food.magnesium ?? 0}mg · Vit D:{food.vitaminD ?? 0}IU
+                                </div>
                               </div>
                             </div>
 
@@ -1149,7 +1244,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       onClick={() => photoInputRef.current?.click()}
                       disabled={isPhotoScanning}
                       className="text-[11px] font-bold text-teal-800 dark:text-teal-200 bg-teal-100 dark:bg-teal-900/60 hover:bg-teal-200 dark:hover:bg-teal-800/60 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-40 border border-teal-300 dark:border-teal-700 shadow-2xs"
-                      title="Take or upload food photo to analyze with Gemini 3.8 Flash"
+                      title="Take or upload food photo to analyze with NutriAI Vision"
                     >
                       <Camera className="w-3 h-3 text-teal-700 dark:text-teal-300" />
                       <span>{isPhotoScanning ? 'Scanning Plate...' : '📸 Scan Plate Photo'}</span>
@@ -1272,6 +1367,66 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     placeholder="e.g. 8"
                     value={customFat}
                     onChange={(e) => setCustomFat(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Micronutrients: Calcium, Iron, Magnesium, Vitamin D */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    {t('Calcium')} (mg)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="mg"
+                    value={customCalcium}
+                    onChange={(e) => setCustomCalcium(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    {t('Iron')} (mg)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="mg"
+                    value={customIron}
+                    onChange={(e) => setCustomIron(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    {t('Magnesium')} (mg)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="mg"
+                    value={customMagnesium}
+                    onChange={(e) => setCustomMagnesium(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    {t('Vitamin D')} (IU)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="IU"
+                    value={customVitaminD}
+                    onChange={(e) => setCustomVitaminD(e.target.value)}
                     className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>

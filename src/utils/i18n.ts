@@ -361,6 +361,25 @@ const EN_TO_ML: Record<string, string> = {
   'Centre Library': 'സെന്റർ ഫുഡ് ലൈബ്രറി',
   'Auto-synced foods': 'ഓട്ടോ-സേവ് ചെയ്തവ',
   'Type, speak, or snap a meal (EN / മലയാളം)...': 'ഭക്ഷണം ടൈപ്പ് ചെയ്യുക, പറയുക അല്ലെങ്കിൽ ഫോട്ടോ എടുക്കുക...',
+
+  // Steps, Sleep, Micronutrients & PWA Install
+  'Daily Steps': 'ദിവസേന ചുവടുകൾ',
+  'Sleep Tracker': 'ഉറക്ക ട്രാക്കർ',
+  'Daily Nutrient Targets': 'പ്രതിദിന പോഷക ലക്ഷ്യങ്ങൾ',
+  'Iron': 'അയൺ (Iron)',
+  'Vitamin D': 'വിറ്റാമിൻ D',
+  'Magnesium': 'മഗ്നീഷ്യം',
+  'Calcium': 'കാൽസ്യം',
+  'Fats': 'കൊഴുപ്പ് (Fats)',
+  'Goal Cap': 'പരമാവധി പരിധി',
+  'Daily Needed': 'ആവശ്യമായത്',
+  'App Installed': 'ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്തു',
+  'Installed App Mode Active': 'ഇൻസ്റ്റാൾ ചെയ്ത ആപ്പ് സജീവം',
+  'Install NutriTrack App': 'ന്യൂട്രിട്രാക്ക് ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക',
+  'Install App': 'ആപ്പ് ഇൻസ്റ്റാൾ',
+  'Install App on Phone or Desktop': 'ഫോണിലോ കമ്പ്യൂട്ടറിലോ ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക',
+  'Install Now': 'ഇപ്പോൾ ഇൻസ്റ്റാൾ ചെയ്യുക',
+  'How to Install': 'ഇൻസ്റ്റാൾ ചെയ്യേണ്ട വിധം',
 };
 
 const FOOD_KEYWORD_ML: Array<[RegExp, string]> = [

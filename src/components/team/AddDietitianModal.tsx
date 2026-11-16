@@ -8,10 +8,10 @@ interface AddDietitianModalProps {
 }
 
 export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, onClose }) => {
-  const { addDietitian } = useApp();
+  const { addDietitian, activeTeamUser } = useApp();
 
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'dietitian' | 'admin'>('dietitian');
+  const [role, setRole] = useState<'dietitian' | 'admin' | 'super_admin'>('dietitian');
   const [title, setTitle] = useState('Wellness Coach & Nutritionist');
   const [specialization, setSpecialization] = useState('Weight Management & Clinical Nutrition');
   const [email, setEmail] = useState('');
@@ -186,11 +186,14 @@ export const AddDietitianModal: React.FC<AddDietitianModalProps> = ({ isOpen, on
               </label>
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as 'admin' | 'dietitian')}
+                onChange={(e) => setRole(e.target.value as 'super_admin' | 'admin' | 'dietitian')}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 font-semibold focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
               >
                 <option value="dietitian">Wellness Coach / Dietitian</option>
                 <option value="admin">Centre Administrator</option>
+                {activeTeamUser?.role === 'super_admin' && (
+                  <option value="super_admin">Super Admin (Owner)</option>
+                )}
               </select>
             </div>
           </div>

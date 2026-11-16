@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { FoodDatabaseManager } from './FoodDatabaseManager';
 import { CentreDeviceModal } from './CentreDeviceModal';
@@ -80,6 +80,7 @@ export const TeamPortal: React.FC = () => {
     staffSignOut,
     deleteClient,
     addDietitian,
+    deleteDietitian,
     resetAllData,
     t,
     language,
@@ -93,6 +94,7 @@ export const TeamPortal: React.FC = () => {
     | null
     | { type: 'reset' }
     | { type: 'delete-client'; clientId: string; clientName: string }
+    | { type: 'delete-dietitian'; staffId: string; staffName: string }
     | { type: 'switch-staff'; staffName: string }
   >(null);
 
@@ -109,6 +111,16 @@ export const TeamPortal: React.FC = () => {
   const [activeWorkspace, setActiveWorkspace] = useState<
     null | 'reports' | 'live-feed' | 'clients' | 'foods' | 'plans' | 'centre' | 'broadcast' | 'staff' | 'more'
   >(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveWorkspace(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Search and filters for clients
   const [clientSearch, setClientSearch] = useState('');
@@ -218,7 +230,7 @@ export const TeamPortal: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5 min-w-0 overflow-x-clip">
       
       {/* Toast Feedback when Coach clicks "Remind on Phone" */}
       {notificationSentMessage && (
@@ -266,9 +278,15 @@ export const TeamPortal: React.FC = () => {
                 </h1>
                 <span className="text-slate-300 dark:text-slate-600">·</span>
                 <span className={`text-xs font-bold ${
-                  currentCoach?.role === 'admin' ? 'text-purple-700 dark:text-purple-400' : 'text-emerald-700 dark:text-emerald-400'
+                  currentCoach?.role === 'super_admin' || currentCoach?.role === 'admin'
+                    ? 'text-purple-700 dark:text-purple-400'
+                    : 'text-emerald-700 dark:text-emerald-400'
                 }`}>
-                  {currentCoach?.role === 'admin' ? t('Centre Administrator') : t('Clinical Dietitian')}
+                  {currentCoach?.role === 'super_admin'
+                    ? t('Super Admin')
+                    : currentCoach?.role === 'admin'
+                    ? t('Centre Administrator')
+                    : t('Clinical Dietitian')}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
@@ -486,6 +504,53 @@ export const TeamPortal: React.FC = () => {
         </div>
       </div>
 
+      {/* ================= IMMEDIATE CENTERED WORKSPACE OVERLAY (OPENS DIRECTLY ON ICON TAP) ================= */}
+      {activeWorkspace && (
+        <div
+          className="fixed inset-0 z-[45] bg-slate-900/65 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => setActiveWorkspace(null)}
+        >
+          <div
+            className="bg-slate-50 dark:bg-slate-950 w-full max-w-6xl max-h-[90vh] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Sticky Overlay Header */}
+            <div className="px-4 sm:px-6 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                {activeWorkspace === 'more' && <SlidersHorizontal className="w-4 h-4 text-slate-700 dark:text-slate-300 shrink-0" />}
+                {activeWorkspace === 'reports' && <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />}
+                {activeWorkspace === 'live-feed' && <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                {activeWorkspace === 'clients' && <Users className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />}
+                {activeWorkspace === 'foods' && <UtensilsCrossed className="w-4 h-4 text-teal-700 dark:text-teal-400 shrink-0" />}
+                {activeWorkspace === 'plans' && <CalendarDays className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />}
+                {activeWorkspace === 'centre' && <Building2 className="w-4 h-4 text-slate-800 dark:text-slate-300 shrink-0" />}
+                {activeWorkspace === 'broadcast' && <Send className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />}
+                {activeWorkspace === 'staff' && <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />}
+                <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate">
+                  {activeWorkspace === 'more' && t('Additional Admin & Broadcast Controls')}
+                  {activeWorkspace === 'reports' && t('Inactive Alerts')}
+                  {activeWorkspace === 'live-feed' && t('Live Feed')}
+                  {activeWorkspace === 'clients' && `${t('Clients')} (${filteredClients.length})`}
+                  {activeWorkspace === 'foods' && `${t('Food Library')} (${foods.length})`}
+                  {activeWorkspace === 'plans' && `${t('Diet Plans')} (${dietPlans.length})`}
+                  {activeWorkspace === 'centre' && t('Centre Scan')}
+                  {activeWorkspace === 'broadcast' && `Broadcast Alerts (${tips.length})`}
+                  {activeWorkspace === 'staff' && t('Staff & Roles')}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveWorkspace(null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer shrink-0"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>{t('Close')}</span>
+              </button>
+            </div>
+
+            {/* Scrollable Body Inside Overlay */}
+            <div className="overflow-y-auto p-3.5 sm:p-6 flex-1 space-y-5 min-w-0">
+
       {/* ================= VIEW 0: MORE & ADMIN SQUARE DRAWER ================= */}
       {activeWorkspace === 'more' && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-5 animate-in fade-in duration-150">
@@ -564,7 +629,7 @@ export const TeamPortal: React.FC = () => {
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Edit Profile')}</span>
             </button>
 
-            {currentCoach?.role === 'admin' && (
+            {(currentCoach?.role === 'admin' || currentCoach?.role === 'super_admin') && (
               <button
                 type="button"
                 onClick={() => setIsAddDietitianOpen(true)}
@@ -1096,7 +1161,9 @@ export const TeamPortal: React.FC = () => {
                 >
                   <option value="all">All Wellness Coaches</option>
                   {dietitians.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name} ({d.role === 'admin' ? 'Admin' : 'Coach'})</option>
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.role === 'super_admin' ? 'Super Admin' : d.role === 'admin' ? 'Admin' : 'Coach'})
+                    </option>
                   ))}
                 </select>
 
@@ -2044,9 +2111,11 @@ export const TeamPortal: React.FC = () => {
                       />
                       <div className="flex items-center gap-1.5">
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                          staff.role === 'admin' ? 'bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300'
+                          staff.role === 'super_admin' || staff.role === 'admin'
+                            ? 'bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300'
+                            : 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300'
                         }`}>
-                          {staff.role === 'admin' ? 'Main Admin' : 'Wellness Coach'}
+                          {staff.role === 'super_admin' ? 'Super Admin' : staff.role === 'admin' ? 'Main Admin' : 'Wellness Coach'}
                         </span>
                       </div>
                     </div>
@@ -2117,6 +2186,23 @@ export const TeamPortal: React.FC = () => {
                       >
                         Edit
                       </button>
+
+                      {(currentCoach?.role === 'admin' || currentCoach?.role === 'super_admin') && !isCurrent && staff.id !== 'admin-1' && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setConfirmAction({
+                              type: 'delete-dietitian',
+                              staffId: staff.id,
+                              staffName: staff.name,
+                            })
+                          }
+                          className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl transition-colors cursor-pointer"
+                          title="Remove Coach / Admin"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
 
                     {isCurrent ? (
@@ -2157,6 +2243,10 @@ export const TeamPortal: React.FC = () => {
               <span className="mt-3 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 px-3 py-1 rounded-lg">
                 + Register Coach
               </span>
+            </div>
+          </div>
+        </div>
+      )}
             </div>
           </div>
         </div>
@@ -2247,7 +2337,7 @@ export const TeamPortal: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-start gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                confirmAction.type === 'delete-client' || confirmAction.type === 'reset'
+                confirmAction.type === 'delete-client' || confirmAction.type === 'delete-dietitian' || confirmAction.type === 'reset'
                   ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400'
                   : 'bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400'
               }`}>
@@ -2259,6 +2349,8 @@ export const TeamPortal: React.FC = () => {
                     ? 'Reset Centre Records?'
                     : confirmAction.type === 'delete-client'
                     ? 'Remove Client?'
+                    : confirmAction.type === 'delete-dietitian'
+                    ? 'Remove Coach / Admin?'
                     : 'Switch Coach Session?'}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
@@ -2266,6 +2358,8 @@ export const TeamPortal: React.FC = () => {
                     ? 'Reset all centre records (clients, meal logs, weights, diet plans, food database) back to default pristine setup?'
                     : confirmAction.type === 'delete-client'
                     ? `Are you sure you want to remove ${confirmAction.clientName} from the centre system?`
+                    : confirmAction.type === 'delete-dietitian'
+                    ? `Are you sure you want to remove coach/admin ${confirmAction.staffName} from the centre system?`
                     : `Sign out of ${currentCoach.name} to sign in as ${confirmAction.staffName} using username and password?`}
                 </p>
               </div>
@@ -2288,6 +2382,8 @@ export const TeamPortal: React.FC = () => {
                     await executeResetData();
                   } else if (action.type === 'delete-client') {
                     deleteClient(action.clientId);
+                  } else if (action.type === 'delete-dietitian') {
+                    deleteDietitian(action.staffId);
                   } else if (action.type === 'switch-staff') {
                     staffSignOut();
                   }
@@ -2302,6 +2398,8 @@ export const TeamPortal: React.FC = () => {
                   ? 'Confirm Reset'
                   : confirmAction.type === 'delete-client'
                   ? 'Remove Client'
+                  : confirmAction.type === 'delete-dietitian'
+                  ? 'Remove Coach'
                   : 'Sign Out & Switch'}
               </button>
             </div>

@@ -142,13 +142,13 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
   const isCelebrated = isWeightGainGoal ? isGained : !isGained;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 shadow-xs border border-slate-200 dark:border-slate-800 space-y-4">
+    <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-200 dark:border-slate-800 space-y-4 min-w-0 w-full overflow-hidden flex flex-col justify-between">
       
       {/* ================= UPPER SECTION: 8,000 CALORIE MAIN POINT ================= */}
       {/* Touchable Main Point Hero Banner */}
       <div 
         onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-        className={`rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer group select-none shadow-xs hover:shadow-md ${
+        className={`rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer group select-none shadow-xs hover:shadow-md min-w-0 ${
           isCelebrated
             ? 'bg-linear-to-r from-emerald-50 via-teal-50/80 to-emerald-100/60 dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 hover:border-emerald-400'
             : 'bg-linear-to-r from-rose-50 via-red-50/80 to-orange-50/60 dark:from-rose-950/60 dark:via-red-950/40 dark:to-slate-900 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100 hover:border-rose-400'
@@ -156,12 +156,12 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
         title="Touch / Click to show or hide the detailed previous days breakdown"
       >
         {/* Top Badges & Hide Line Tool */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-black/5 dark:border-white/10">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-8 h-8 rounded-xl bg-white/90 dark:bg-slate-900 shadow-2xs flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-black/5 dark:border-white/10 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-white/90 dark:bg-slate-900 shadow-2xs flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold shrink-0">
               <Scale className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base tracking-tight">
+            <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
               {t('Calorie Trajectory & Weight Projection')}
             </span>
             <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
@@ -169,7 +169,7 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg shadow-2xs ${
               isWeightGainGoal 
                 ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 

@@ -2,7 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ClientProfile, ClientReminder, DietitianTip, MealLogItem, MealType } from '../../types';
 import { CoachClinicalAlertsCard } from './CoachClinicalAlertsCard';
-import { getNotificationStatus, requestOSNotificationPermission, showOSNotification } from '../../utils/notifications';
+import { PWAInstallButton } from '../common/PWAInstallButton';
+import {
+  getNotificationStatus,
+  requestOSNotificationPermission,
+  showOSNotification,
+  isInstalledPWA,
+  wasNotificationOnceAllowed,
+} from '../../utils/notifications';
 import {
   Bell,
   BellRing,
@@ -51,6 +58,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   const isMl = language === 'ml';
   const [notifPermission, setNotifPermission] = useState<'default' | 'granted' | 'denied' | 'unsupported'>(() => getNotificationStatus());
   const [testSentBanner, setTestSentBanner] = useState(false);
+  const installedPWA = isInstalledPWA();
+  const onceAllowed = wasNotificationOnceAllowed();
 
   const requestPhonePermission = async () => {
     const perm = await requestOSNotificationPermission();
@@ -170,8 +179,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 </p>
                 <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 font-medium">
                   {isMl
-                    ? 'സെർവീസ് വർക്കർ (PWA) വഴി Android/Desktop നോട്ടിഫിക്കേഷനുകൾ പ്രവർത്തിക്കുന്നു.'
-                    : 'Delivered via Service Worker (PWA) for mobile & desktop reliability.'}
+                    ? `സെർവീസ് വർക്കർ (PWA) വഴി ${installedPWA ? 'ഇൻസ്റ്റാൾ ചെയ്ത ആപ്പിലും' : 'മൊബൈലിലും'} ഡെസ്ക്ടോപ്പിലും ഒരിക്കൽ അനുവദിച്ചാൽ അലേർട്ടുകൾ ലഭിക്കും.`
+                    : `Delivered via Service Worker (${installedPWA ? 'Installed App' : 'Mobile & Desktop PWA'}) — allow once for reliable alerts.`}
+                  {onceAllowed && notifPermission !== 'granted' && (
+                    <span className="block text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                      {isMl
+                        ? 'നിങ്ങളുടെ സിസ്റ്റം/ആപ്പ് സെറ്റിംഗ്സിൽ നോട്ടിഫിക്കേഷൻ സജീവമാണെന്ന് ഉറപ്പാക്കുക.'
+                        : 'You previously enabled alerts — tap Enable Phone Alerts if your installed app uses a fresh permission container.'}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -198,6 +214,9 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               ) : null}
             </div>
           </div>
+
+          {/* Install App / Desktop & Installed App Parity Status */}
+          <PWAInstallButton variant="card" />
 
           {testSentBanner && (
             <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">

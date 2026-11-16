@@ -91,6 +91,10 @@ export interface FoodItem {
   carbs: number;    // grams
   fat: number;      // grams
   fiber?: number;   // grams
+  calcium?: number; // mg
+  iron?: number;    // mg
+  magnesium?: number; // mg
+  vitaminD?: number;  // IU
   glycemicIndex?: 'low' | 'medium' | 'high' | string;
   allergenInfo?: string;
   clinicVerified?: boolean;
@@ -123,6 +127,10 @@ export interface MealLogItem {
   protein: number;
   carbs: number;
   fat: number;
+  calcium?: number;
+  iron?: number;
+  magnesium?: number;
+  vitaminD?: number;
   timeLogged: string;
   calorieQuality?: 'good' | 'bad'; // Good calories vs Bad calories
 }
@@ -211,6 +219,10 @@ export interface AISuggestedMealFood {
   protein: number;
   carbs: number;
   fat: number;
+  calcium?: number;
+  iron?: number;
+  magnesium?: number;
+  vitaminD?: number;
   category?: FoodCategory | string;
 }
 
