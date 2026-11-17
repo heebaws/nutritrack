@@ -12,6 +12,7 @@ export interface DailyNutrientTargets {
   protein: number;   // g
   carbs: number;     // g
   fat: number;       // g
+  fiber: number;     // g (RDA strictly capped)
   iron: number;      // mg (RDA strictly capped)
   vitaminD: number;  // IU (RDA strictly capped)
   magnesium: number; // mg (RDA strictly capped)
@@ -24,6 +25,7 @@ export interface ConsumedNutrientTotals {
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
   iron: number;
   vitaminD: number;
   magnesium: number;
@@ -140,6 +142,35 @@ export function calculateDailyNutrientTargets(client: ClientProfile): DailyNutri
   const mgScale = effectiveWeight < 55 ? 0.96 : 1.0;
   const magnesium = Math.max(minMg, Math.min(maxMg, Math.round(baseMg * mgScale)));
 
+  // Fiber (g/day) — ICMR / IOM 14g per 1,000 kcal rule, strictly capped by sex & age
+  const rawCalFiber = Math.round((neededCalories / 1000) * 14);
+  let minFiber = 22;
+  let maxFiber = 30;
+  if (gender === 'Male') {
+    if (age >= 51) {
+      minFiber = 22;
+      maxFiber = 30;
+    } else if (age >= 19) {
+      minFiber = 24;
+      maxFiber = 38;
+    } else {
+      minFiber = 22;
+      maxFiber = 31;
+    }
+  } else if (gender === 'Female') {
+    if (age >= 51) {
+      minFiber = 18;
+      maxFiber = 21;
+    } else if (age >= 19) {
+      minFiber = 20;
+      maxFiber = 25;
+    } else {
+      minFiber = 19;
+      maxFiber = 26;
+    }
+  }
+  const fiber = Math.max(minFiber, Math.min(maxFiber, rawCalFiber));
+
   // Calcium (mg/day) — strictly capped by age & sex
   let calcium = 1000;
   if (age >= 71 || (gender === 'Female' && age >= 51)) {
@@ -153,6 +184,7 @@ export function calculateDailyNutrientTargets(client: ClientProfile): DailyNutri
     protein,
     carbs,
     fat,
+    fiber,
     iron,
     vitaminD,
     magnesium,
@@ -358,12 +390,71 @@ export function estimateFoodMicronutrients(input: {
 }
 
 /**
+ * Estimates dietary fiber (g) per serving when explicit fiber is not specified.
+ */
+export function estimateFoodFiber(input: {
+  name: string;
+  category?: FoodCategory | string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fiber?: number;
+  description?: string;
+}): number {
+  if (input.fiber !== undefined && input.fiber !== null && !Number.isNaN(Number(input.fiber))) {
+    return r1(Math.max(0, Number(input.fiber)));
+  }
+
+  const name = (input.name || '').toLowerCase();
+  const desc = (input.description || '').toLowerCase();
+  const combined = `${name} ${desc}`;
+  const cat = input.category || 'Beverages & Snacks';
+  const cal = Math.max(0, Number(input.calories) || 0);
+  const carbs = Math.max(0, Number(input.carbs) || 0);
+
+  if (cal <= 10 || /water|vellam|black tea|black coffee|kattan|ghee|oil|butter\b/.test(name)) {
+    return 0;
+  }
+
+  // Zero/low-carb animal foods unless prepared in a vegetable curry
+  if (
+    carbs <= 2 &&
+    /\begg\b|mutta|chicken|beef|mutton|fish|meen|prawn|paneer|milk|curd|yogurt|whey|cheese/i.test(name) &&
+    !/curry|masala|roast|stew|thoran/i.test(name)
+  ) {
+    return 0;
+  }
+
+  if (/chia|flax|psyllium|isabgol/i.test(combined)) return 7.5;
+  if (/kadala|chickpea|chana|rajma|moong|cherupayar|vanpayar|cowpea|lentil|dal|parippu|sambar|avial|koottu/i.test(combined)) {
+    return r1(Math.max(2.5, carbs * 0.22));
+  }
+  if (/oats|oatmeal|ragi|moringa|muringa|cheera|spinach|palak|thoran|broccoli|beans|salad|greens|cabbage|carrot/i.test(combined)) {
+    return r1(Math.max(2.4, carbs * 0.2));
+  }
+  if (/almond|badam|walnut|pistachio|peanut|cashew|dates|fig|guava|pera|apple|papaya|orange|pear|berries/i.test(combined)) {
+    return r1(Math.max(1.8, Math.min(6, carbs * 0.16)));
+  }
+  if (/matta|red rice|brown rice|whole wheat|chapati|roti|puttu|ragi|banana|pazham|nendran/i.test(combined)) {
+    return r1(Math.max(1.6, Math.min(5.5, carbs * 0.11)));
+  }
+  if (cat === 'Vegetables') return r1(Math.max(2.0, carbs * 0.25));
+  if (cat === 'Fruits') return r1(Math.max(1.5, carbs * 0.14));
+  if (cat === 'Grains & Breads') return r1(Math.max(1.0, carbs * 0.08));
+  if (cat === 'Nuts & Healthy Fats') return r1(Math.max(1.2, carbs * 0.2));
+
+  if (carbs <= 1) return 0;
+  return r1(Math.min(4.5, carbs * 0.07));
+}
+
+/**
  * Ensures any FoodItem carries complete calcium, magnesium, vitaminD, and iron fields.
  */
 export function enrichFoodWithMicronutrients(food: FoodItem): FoodItem {
   const est = estimateFoodMicronutrients(food);
   return {
     ...food,
+    fiber: food.fiber !== undefined ? food.fiber : estimateFoodFiber(food),
     calcium: food.calcium !== undefined ? food.calcium : est.calcium,
     iron: food.iron !== undefined ? food.iron : est.iron,
     magnesium: food.magnesium !== undefined ? food.magnesium : est.magnesium,
@@ -392,6 +483,7 @@ export function aggregateConsumedNutrients(
     protein: 0,
     carbs: 0,
     fat: 0,
+    fiber: 0,
     iron: 0,
     vitaminD: 0,
     magnesium: 0,
@@ -407,6 +499,19 @@ export function aggregateConsumedNutrients(
     const matchedFood =
       byId.get(log.foodId) || byName.get((log.foodName || '').toLowerCase().trim());
     const qty = Math.max(0.1, Number(log.quantity) || 1);
+
+    if (log.fiber !== undefined) {
+      totals.fiber += Number(log.fiber) || 0;
+    } else if (matchedFood) {
+      totals.fiber += estimateFoodFiber(matchedFood) * qty;
+    } else {
+      totals.fiber += estimateFoodFiber({
+        name: log.foodName,
+        calories: log.calories,
+        protein: log.protein,
+        carbs: log.carbs,
+      });
+    }
 
     if (
       log.iron !== undefined ||
@@ -453,6 +558,7 @@ export function aggregateConsumedNutrients(
     protein: r1(totals.protein),
     carbs: r1(totals.carbs),
     fat: r1(totals.fat),
+    fiber: r1(totals.fiber),
     iron: r1(totals.iron),
     vitaminD: Math.round(totals.vitaminD),
     magnesium: Math.round(totals.magnesium),

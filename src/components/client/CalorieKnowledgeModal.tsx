@@ -516,6 +516,30 @@ export const CalorieKnowledgeModal: React.FC<CalorieKnowledgeModalProps> = ({
                 </div>
               </div>
 
+              {/* Live AI Food & Photo Calorie Detector Launcher */}
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                    {isMl ? 'ഇപ്പോൾ തന്നെ ഭക്ഷണത്തിന്റെ കലോറി AI വഴി പരിശോധിക്കൂ' : 'Try Live AI Calorie & Photo Detector'}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                    {isMl
+                      ? 'ഭക്ഷണത്തിന്റെ പേരോ ഫോട്ടോയോ നൽകിയാൽ AI തത്സമയം കലോറിയും പ്രോട്ടീനും വിറ്റാമിനുകളും കണക്കാക്കും.'
+                      : 'Ask NutriAI about any meal, paste a recipe, or upload a plate photo for instant calorie & micronutrient detection.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    window.dispatchEvent(new CustomEvent('open-nutribot'));
+                  }}
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                >
+                  {isMl ? 'AI കലോറി ഡിറ്റക്ടർ തുറക്കുക →' : 'Open AI Calorie Detector →'}
+                </button>
+              </div>
+
               {/* Navigation Action */}
               <div className="flex justify-between items-center pt-2">
                 <button

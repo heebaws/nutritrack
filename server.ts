@@ -4,6 +4,7 @@ import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
+import * as webpush from "web-push";
 import { KERALA_SERVER_LOOKUP } from "./src/data/keralaServerLookup";
 
 dotenv.config();
@@ -1505,9 +1506,226 @@ async function startServer() {
 
   app.use(express.json({ limit: "15mb" }));
 
+  // Web Push (VAPID) Store & Persistent Phone Notification Scheduler
+  const PUSH_FILE = path.join(process.cwd(), "push_store.json");
+  interface StoredPushEntry {
+    endpoint: string;
+    clientId: string;
+    subscription: any;
+    timezoneOffsetMinutes: number;
+    reminders: Array<{ id: string; title: string; message: string; hour: number; minute: number; enabled: boolean }>;
+    firedMap: Record<string, number>;
+    updatedAt: number;
+  }
+  interface PushStoreData {
+    vapidKeys: { publicKey: string; privateKey: string };
+    subscriptions: StoredPushEntry[];
+  }
+
+  let pushStore: PushStoreData = {
+    vapidKeys: webpush.generateVAPIDKeys(),
+    subscriptions: [],
+  };
+  try {
+    if (fs.existsSync(PUSH_FILE)) {
+      const loaded = JSON.parse(fs.readFileSync(PUSH_FILE, "utf-8"));
+      if (loaded?.vapidKeys?.publicKey && loaded?.vapidKeys?.privateKey) {
+        pushStore = {
+          vapidKeys: loaded.vapidKeys,
+          subscriptions: Array.isArray(loaded.subscriptions) ? loaded.subscriptions : [],
+        };
+      }
+    } else {
+      fs.writeFileSync(PUSH_FILE, JSON.stringify(pushStore, null, 2), "utf-8");
+    }
+  } catch (err) {
+    console.warn("Could not initialize push_store.json:", err);
+  }
+
+  const savePushStoreToDisk = () => {
+    try {
+      fs.writeFileSync(PUSH_FILE, JSON.stringify(pushStore, null, 2), "utf-8");
+    } catch (err) {
+      console.warn("Could not save push_store.json:", err);
+    }
+  };
+
+  webpush.setVapidDetails(
+    "mailto:care@saleemvalanchery.com",
+    pushStore.vapidKeys.publicKey,
+    pushStore.vapidKeys.privateKey
+  );
+
+  const sendWebPushToEntry = async (
+    entry: StoredPushEntry,
+    payload: { title: string; body: string; tag?: string; url?: string }
+  ): Promise<boolean> => {
+    try {
+      await webpush.sendNotification(entry.subscription, JSON.stringify(payload));
+      return true;
+    } catch (err: any) {
+      if (err?.statusCode === 404 || err?.statusCode === 410) {
+        pushStore.subscriptions = pushStore.subscriptions.filter((s) => s.endpoint !== entry.endpoint);
+        savePushStoreToDisk();
+      }
+      return false;
+    }
+  };
+
+  app.get("/api/push/vapid-public-key", (req, res) => {
+    res.json({ publicKey: pushStore.vapidKeys.publicKey });
+  });
+
+  app.post("/api/push/subscribe", (req, res) => {
+    try {
+      const { clientId, subscription, timezoneOffsetMinutes, reminders } = req.body || {};
+      if (!subscription?.endpoint) {
+        return res.status(400).json({ error: "Valid push subscription is required" });
+      }
+      const existing = pushStore.subscriptions.find((s) => s.endpoint === subscription.endpoint);
+      if (existing) {
+        existing.clientId = clientId || existing.clientId || "cl-1";
+        existing.subscription = subscription;
+        if (typeof timezoneOffsetMinutes === "number") {
+          existing.timezoneOffsetMinutes = timezoneOffsetMinutes;
+        }
+        if (Array.isArray(reminders)) {
+          existing.reminders = reminders;
+        }
+        existing.updatedAt = Date.now();
+      } else {
+        pushStore.subscriptions.push({
+          endpoint: subscription.endpoint,
+          clientId: clientId || "cl-1",
+          subscription,
+          timezoneOffsetMinutes: typeof timezoneOffsetMinutes === "number" ? timezoneOffsetMinutes : -330,
+          reminders: Array.isArray(reminders) ? reminders : [],
+          firedMap: {},
+          updatedAt: Date.now(),
+        });
+      }
+      savePushStoreToDisk();
+      res.json({ success: true, subscribedCount: pushStore.subscriptions.length });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Subscription error" });
+    }
+  });
+
+  app.post("/api/push/sync-reminders", (req, res) => {
+    try {
+      const { clientId, endpoint, timezoneOffsetMinutes, reminders } = req.body || {};
+      let updated = 0;
+      for (const entry of pushStore.subscriptions) {
+        if ((endpoint && entry.endpoint === endpoint) || (clientId && entry.clientId === clientId)) {
+          if (Array.isArray(reminders)) entry.reminders = reminders;
+          if (typeof timezoneOffsetMinutes === "number") entry.timezoneOffsetMinutes = timezoneOffsetMinutes;
+          entry.updatedAt = Date.now();
+          updated++;
+        }
+      }
+      if (updated > 0) savePushStoreToDisk();
+      res.json({ success: true, updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Sync error" });
+    }
+  });
+
+  app.post("/api/push/test", async (req, res) => {
+    try {
+      const { clientId, endpoint, title, body } = req.body || {};
+      const targets = pushStore.subscriptions.filter(
+        (s) => (endpoint && s.endpoint === endpoint) || (clientId && s.clientId === clientId)
+      );
+      if (targets.length === 0) {
+        return res.json({ success: false, sent: 0, message: "No subscribed device yet" });
+      }
+      const results = await Promise.all(
+        targets.map((entry) =>
+          sendWebPushToEntry(entry, {
+            title: title || "NutriTrack Pro · Phone Alert Active",
+            body: body || "You will receive meal reminders at 8:00 AM, 1:00 PM, 7:30 PM & coach notes directly on your phone.",
+            tag: `nutritrack-push-test-${Date.now()}`,
+            url: "/",
+          })
+        )
+      );
+      const sent = results.filter(Boolean).length;
+      res.json({ success: sent > 0, sent });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Test push error" });
+    }
+  });
+
+  app.post("/api/push/send-coach-alert", async (req, res) => {
+    try {
+      const { clientId, title, body, tag } = req.body || {};
+      const targets = pushStore.subscriptions.filter(
+        (s) => clientId === "all" || s.clientId === clientId
+      );
+      if (targets.length === 0) {
+        return res.json({ success: true, sent: 0 });
+      }
+      const results = await Promise.all(
+        targets.map((entry) =>
+          sendWebPushToEntry(entry, {
+            title: title || "Coach Reminder · NutriTrack Pro",
+            body: body || "You have a new nutrition reminder from your coach.",
+            tag: tag || `coach-alert-${Date.now()}`,
+            url: "/",
+          })
+        )
+      );
+      res.json({ success: true, sent: results.filter(Boolean).length });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Coach push error" });
+    }
+  });
+
+  // Background Phone Notification Scheduler (fires scheduled meal alerts via Web Push even when browser tab is closed)
+  const checkScheduledWebPushes = async () => {
+    if (!pushStore.subscriptions.length) return;
+    const nowUtcMs = Date.now();
+    let changed = false;
+
+    for (const entry of pushStore.subscriptions) {
+      if (!Array.isArray(entry.reminders) || entry.reminders.length === 0) continue;
+      const offsetMins = typeof entry.timezoneOffsetMinutes === "number" ? entry.timezoneOffsetMinutes : -330;
+      const localDate = new Date(nowUtcMs - offsetMins * 60000);
+      const y = localDate.getUTCFullYear();
+      const m = String(localDate.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(localDate.getUTCDate()).padStart(2, "0");
+      const todayKey = `${y}-${m}-${d}`;
+      const localMinutes = localDate.getUTCHours() * 60 + localDate.getUTCMinutes();
+
+      for (const rem of entry.reminders) {
+        if (!rem?.enabled || typeof rem.hour !== "number" || typeof rem.minute !== "number") continue;
+        const fireKey = `${rem.id}:${todayKey}`;
+        if (entry.firedMap[fireKey]) continue;
+
+        const targetMinutes = rem.hour * 60 + rem.minute;
+        if (localMinutes >= targetMinutes && localMinutes <= targetMinutes + 15) {
+          entry.firedMap[fireKey] = nowUtcMs;
+          changed = true;
+          await sendWebPushToEntry(entry, {
+            title: rem.title || "NutriTrack Pro Meal Reminder",
+            body: rem.message || "Time for your scheduled nutrition check-in.",
+            tag: `nutritrack-sched-${rem.id}-${todayKey}`,
+            url: "/",
+          });
+        }
+      }
+    }
+
+    if (changed) savePushStoreToDisk();
+  };
+
+  setInterval(() => {
+    checkScheduledWebPushes().catch(() => {});
+  }, 30000);
+
   // Health check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", service: "NutriTrack AI Clinic Assistant" });
+    res.json({ status: "ok", service: "NutriTrack AI Clinic Assistant", aiEnabled: Boolean(getAI()) });
   });
 
   // Global Clinic Sync Endpoints for Multi-Device Access (Clients & Dietitians across any mobile or desktop)
@@ -1600,7 +1818,7 @@ STRICT FORMATTING FOR FOOD/MEAL INQUIRIES (Case A only):
 4. For eaten meals with time (e.g. "I ate 2 eggs at 8:30 am"), set "isMealLogReport": true and populate "mealLogData".
 
 MALAYALAM / ENGLISH SUPPORT:
-- If the user writes in Malayalam or Manglish or requests Malayalam, respond completely in natural, client-friendly Malayalam script (while keeping JSON keys in English). Otherwise respond in clear, helpful English.
+- If clientContext.language is "ml" OR the user writes in Malayalam/Manglish or requests Malayalam, respond completely in natural, client-friendly Malayalam script (while keeping JSON keys in English). Otherwise respond in clear, helpful English.
 - Use **bold** markdown headings cleanly. Keep answers focused and easy to read.
 
 Active Client Profile & Today's Live Progress:
@@ -1670,17 +1888,17 @@ Return a valid JSON object matching this exact schema:
   "answer": string
 }`;
 
-        const modelsToTry = ['gemini-4-hydrogen', 'gemini-3.1-flash-lite'];
+        const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-4-hydrogen'];
 
         // Build real multi-turn conversation contents so follow-up questions make complete sense
         const historyTurns: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
         if (Array.isArray(conversationHistory)) {
-          for (const item of conversationHistory.slice(-8)) {
+          for (const item of conversationHistory.slice(-10)) {
             if (!item || typeof item.text !== 'string' || !item.text.trim()) continue;
             const role: 'user' | 'model' = item.role === 'model' || item.role === 'assistant' || item.role === 'bot' ? 'model' : 'user';
             historyTurns.push({
               role,
-              parts: [{ text: item.text.slice(0, 1200) }]
+              parts: [{ text: item.text.slice(0, 1500) }]
             });
           }
         }
@@ -1721,6 +1939,8 @@ Return a valid JSON object matching this exact schema:
             try {
               const parsed = JSON.parse(cleanedJson || "{}");
               if (parsed && typeof parsed.answer === 'string' && parsed.answer.trim().length > 0) {
+                parsed.source = 'gemini';
+                parsed.model = modelName;
                 if ((parsed.isFoodInquiry || parsed.food) && !parsed.oilImpact) {
                   parsed.oilImpact = {
                     question: "Was it oily?",
@@ -1736,6 +1956,8 @@ Return a valid JSON object matching this exact schema:
             } catch {
               if (rawText) {
                 return res.json({
+                  source: 'gemini',
+                  model: modelName,
                   isFoodInquiry: false,
                   isMealLogReport: false,
                   food: null,

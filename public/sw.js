@@ -196,3 +196,35 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        const res = await fetch('/api/push/vapid-public-key');
+        if (!res.ok) return;
+        const { publicKey } = await res.json();
+        if (!publicKey) return;
+        const padding = '='.repeat((4 - (publicKey.length % 4)) % 4);
+        const base64 = (publicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = atob(base64);
+        const keyBytes = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) keyBytes[i] = rawData.charCodeAt(i);
+
+        const newSub = await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: keyBytes,
+        });
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: newSub.toJSON(),
+            timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+          }),
+        });
+      } catch {}
+    })()
+  );
+});
+

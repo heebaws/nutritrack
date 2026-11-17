@@ -17,6 +17,7 @@ import { CalorieKnowledgeModal } from './CalorieKnowledgeModal';
 import { AppTourGuideModal } from './AppTourGuideModal';
 import { ClinicalFoodGuideModal } from './ClinicalFoodGuideModal';
 import { NotificationsModal } from './NotificationsModal';
+import { ThemeCustomizerModal } from '../common/ThemeCustomizerModal';
 import { MealType } from '../../types';
 import { calculateCalorieBreakdown, calculateStepCalories, determineCalorieQuality } from '../../utils/calorieQuality';
 import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
@@ -25,10 +26,12 @@ import { NutriTrackLogo } from '../common/NutriTrackLogo';
 import {
   getNotificationStatus,
   parseTimeTo24h,
+  requestOSNotificationPermission,
   showOSNotification,
+  subscribeDeviceToWebPush,
+  syncRemindersToPushServer,
   syncReminderScheduleToSW,
   triggerSWDueNotificationCheck,
-  wasNotificationOnceAllowed,
 } from '../../utils/notifications';
 import { 
   getTodayString, 
@@ -90,7 +93,9 @@ import {
   LayoutGrid,
   ClipboardList,
   BellRing,
-  Languages
+  Languages,
+  Palette,
+  ScanSearch
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -176,6 +181,9 @@ export const ClientApp: React.FC = () => {
   };
   const [isTourModalOpen, setIsTourModalOpen] = useState(false);
   const [isClinicalGuideOpen, setIsClinicalGuideOpen] = useState(false);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [pushPermState, setPushPermState] = useState(() => getNotificationStatus());
+  const [pushBannerDismissed, setPushBannerDismissed] = useState(false);
   const [planLoggedNotice, setPlanLoggedNotice] = useState<string | null>(null);
   const [isResettingMeals, setIsResettingMeals] = useState(false);
   const [confirmResetMeals, setConfirmResetMeals] = useState(false);
@@ -352,11 +360,11 @@ export const ClientApp: React.FC = () => {
     return reminders.filter(r => r.clientId === activeClient.id);
   }, [reminders, activeClient.id]);
 
-  // Real-time Phone & Desktop PWA Notification Scheduler via Service Worker (8:00 AM, 1:00 PM, 7:30 PM & coach alerts)
+  // Real-time Phone & Desktop Web Push + Service Worker Notification Scheduler
   useEffect(() => {
-    const permGranted = getNotificationStatus() === 'granted';
-    if (!permGranted && !wasNotificationOnceAllowed()) return;
-    if (!permGranted) return;
+    const currentPerm = getNotificationStatus();
+    setPushPermState(currentPerm);
+    if (currentPerm !== 'granted') return;
 
     const swSchedule = clientReminders
       .map((r) => {
@@ -374,6 +382,7 @@ export const ClientApp: React.FC = () => {
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
     syncReminderScheduleToSW(swSchedule);
+    void syncRemindersToPushServer(activeClient.id, swSchedule);
 
     const checkAndDispatchNotifications = async () => {
       const now = new Date();
@@ -413,6 +422,7 @@ export const ClientApp: React.FC = () => {
 
     const handleWakeCheck = () => {
       if (document.visibilityState === 'visible') {
+        setPushPermState(getNotificationStatus());
         triggerSWDueNotificationCheck();
         checkAndDispatchNotifications();
       }
@@ -427,7 +437,39 @@ export const ClientApp: React.FC = () => {
       window.removeEventListener('focus', handleWakeCheck);
       document.removeEventListener('visibilitychange', handleWakeCheck);
     };
-  }, [clientReminders, clientTips]);
+  }, [activeClient.id, clientReminders, clientTips]);
+
+  const handleEnablePhonePushInline = async () => {
+    const perm = await requestOSNotificationPermission();
+    setPushPermState(perm);
+    if (perm === 'granted') {
+      const schedule = clientReminders
+        .map((r) => {
+          const parsed = parseTimeTo24h(r.time);
+          if (!parsed) return null;
+          return {
+            id: r.id,
+            title: `${r.title} (${r.time})`,
+            message: r.message,
+            hour: parsed.hour,
+            minute: parsed.minute,
+            enabled: r.enabled,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
+
+      await subscribeDeviceToWebPush(activeClient.id, schedule);
+      await showOSNotification(
+        language === 'ml' ? 'ഫോൺ നോട്ടിഫിക്കേഷൻ സജീവമായി' : 'Phone Alerts Enabled',
+        {
+          body: language === 'ml'
+            ? '8:00 AM, 1:00 PM, 7:30 PM ഭക്ഷണ സമയങ്ങളിലും കോച്ച് സന്ദേശങ്ങളിലും ഫോണിൽ അലേർട്ട് ലഭിക്കും.'
+            : 'Meal reminders (8:00 AM, 1:00 PM, 7:30 PM) & coach alerts will now deliver to your phone.',
+          tag: 'nutritrack-welcome-inline',
+        }
+      );
+    }
+  };
 
   // Current time-contextual meal recommendation (Circadian Chrononutrition)
   const currentCircadianMeal = useMemo(() => {
@@ -614,6 +656,9 @@ export const ClientApp: React.FC = () => {
       case 'progress':
         setActiveViewPanel(prev => prev === 'progress' ? null : 'progress');
         break;
+      case 'calorie-detect':
+        openCalorieGuide('how-it-detects');
+        break;
       case 'app-tour':
         setIsTourModalOpen(true);
         break;
@@ -713,6 +758,82 @@ export const ClientApp: React.FC = () => {
         )}
       </div>
 
+      {/* ================= 1.2 DATE SWITCHER BAR (DIRECTLY UNDER NAME CARD) ================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl px-4 py-3 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => changeDateBy(-1)}
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
+            title="Previous Day"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedDate(getTodayString())}
+            className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center gap-1.5"
+          >
+            <Calendar className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+            <span>{formatDateDisplay(selectedDate)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => changeDateBy(1)}
+            disabled={selectedDate >= getTodayString()}
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            title="Next Day"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
+          <span className="hidden sm:inline">
+            {t('Next Window')}: <b className="text-slate-900 dark:text-slate-100">{t(currentCircadianMeal.slot)} ({currentCircadianMeal.targetTime})</b>
+          </span>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-nutribot'))}
+            className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap shrink-0"
+          >
+            <Bot className="w-4 h-4" />
+            <span>{t('Ask NutriAI')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 1-Tap Phone Notification Activation Strip (shown until allowed on this device) */}
+      {pushPermState === 'default' && !pushBannerDismissed && (
+        <div className="bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-emerald-950 dark:text-emerald-100">
+            <BellRing className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+            <span className="font-semibold">
+              {language === 'ml'
+                ? '8:00 AM, 1:00 PM, 7:30 PM ഭക്ഷണ സമയങ്ങളിൽ ഫോൺ നോട്ടിഫിക്കേഷൻ ലഭിക്കാൻ അനുമതി നൽകൂ.'
+                : 'Enable phone notifications to receive meal reminders (8 AM · 1 PM · 7:30 PM) & coach alerts on your phone.'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleEnablePhonePushInline}
+              className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs cursor-pointer transition-colors"
+            >
+              {t('Enable Phone Alerts')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPushBannerDismissed(true)}
+              className="p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer"
+              aria-label={t('Dismiss')}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Feedback Banner */}
       {planLoggedNotice && (
         <div className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm px-4 py-3 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
@@ -722,7 +843,7 @@ export const ClientApp: React.FC = () => {
       )}
 
       {/* ================= 1.5 50/50 SPLIT TOP ANALYTICS: LEFT NUTRIENTS TARGETS + RIGHT 8,000 KCAL TRAJECTORY ================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-stretch min-w-0">
         {/* Left 50%: Strictly-Capped Daily Protein, Carbs, Fats, Iron, Vitamin D, Magnesium & Calcium */}
         <DailyNutrientsCard client={activeClient} logs={clientLogsForDay} />
 
@@ -768,53 +889,9 @@ export const ClientApp: React.FC = () => {
 
       {/* ================= 2. CLEAN SQUARE ICON APP LAUNCHER GRID ================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-5">
-        {/* Subtle Single-Line Toolbar: Date Switcher & Meal Window Status */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => changeDateBy(-1)}
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
-              title="Previous Day"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDate(getTodayString())}
-              className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center gap-1.5"
-            >
-              <Calendar className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
-              <span>{formatDateDisplay(selectedDate)}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => changeDateBy(1)}
-              disabled={selectedDate >= getTodayString()}
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              title="Next Day"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
 
-          <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
-            <span className="hidden sm:inline">
-              {t('Next Window')}: <b className="text-slate-900 dark:text-slate-100">{t(currentCircadianMeal.slot)} ({currentCircadianMeal.targetTime})</b>
-            </span>
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('open-nutribot'))}
-              className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap shrink-0"
-            >
-              <Bot className="w-4 h-4" />
-              <span>{t('Ask NutriAI')}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 14 Crisp Square Icon Tiles with Steps & Sleep in Upper Launcher */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3.5 sm:gap-4 pt-1">
+        {/* 15 Crisp Square Icon Tiles with Calorie Detect, Steps & Sleep in Upper Launcher */}
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-5 gap-3.5 sm:gap-4 pt-1">
           {[
             {
               key: 'log-meal',
@@ -900,6 +977,13 @@ export const ClientApp: React.FC = () => {
               icon: ChartIcon,
               bg: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-600 hover:text-white',
               active: activeViewPanel === 'progress',
+            },
+            {
+              key: 'calorie-detect',
+              label: t('Calorie Detect'),
+              icon: ScanSearch,
+              bg: 'bg-lime-50 dark:bg-lime-950/60 text-lime-800 dark:text-lime-300 border border-lime-300 dark:border-lime-800 hover:bg-lime-600 hover:text-white',
+              active: isCalorieGuideOpen,
             },
             {
               key: 'app-tour',
@@ -1217,6 +1301,17 @@ export const ClientApp: React.FC = () => {
                   <Printer className="w-6 h-6" />
                 </div>
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Print Report')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsThemeModalOpen(true)}
+                className="flex flex-col items-center gap-2 group cursor-pointer"
+              >
+                <div className="w-16 h-16 aspect-square rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center transition-colors">
+                  <Palette className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Customize Theme')}</span>
               </button>
 
               <button
@@ -2319,6 +2414,11 @@ export const ClientApp: React.FC = () => {
         isOpen={isClinicalGuideOpen}
         onClose={() => setIsClinicalGuideOpen(false)}
         clientName={activeClient.name}
+      />
+
+      <ThemeCustomizerModal
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
       />
     </div>
   );

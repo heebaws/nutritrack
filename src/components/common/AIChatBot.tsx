@@ -90,6 +90,8 @@ interface ChatMessage {
   } | null;
   loggedSuccess?: boolean;
   autoSavedToLibrary?: boolean;
+  isError?: boolean;
+  retryQuery?: string;
 }
 
 // Built-in Kerala Snacks & Dishes Clinical Knowledge Base for instant, 100% reliable responses
@@ -295,6 +297,7 @@ export const AIChatBot: React.FC = () => {
     habits,
     viewMode,
     addSuggestedMeal,
+    language,
     t,
     tf,
   } = useApp();
@@ -321,8 +324,18 @@ export const AIChatBot: React.FC = () => {
   // Quick food search input state
   const [foodSearchQuery, setFoodSearchQuery] = useState<string>('');
   
-  // Network connectivity state (online vs offline mode)
+  // Network connectivity & real Gemini AI readiness state
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [aiLiveReady, setAiLiveReady] = useState<boolean>(true);
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && typeof d.aiEnabled === 'boolean') setAiLiveReady(d.aiEnabled);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -477,12 +490,48 @@ export const AIChatBot: React.FC = () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const res = reader.result as string;
-      setSelectedImage({
-        base64: res,
-        mimeType: file.type || 'image/jpeg',
-        preview: res
-      });
+      const rawDataUrl = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1024;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width >= height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          setSelectedImage({
+            base64: compressed,
+            mimeType: 'image/jpeg',
+            preview: compressed,
+          });
+        } else {
+          setSelectedImage({
+            base64: rawDataUrl,
+            mimeType: file.type || 'image/jpeg',
+            preview: rawDataUrl,
+          });
+        }
+      };
+      img.onerror = () => {
+        setSelectedImage({
+          base64: rawDataUrl,
+          mimeType: file.type || 'image/jpeg',
+          preview: rawDataUrl,
+        });
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -623,22 +672,29 @@ export const AIChatBot: React.FC = () => {
       dailyNutrientTargets,
       consumedNutrients,
       stepsToday: todayHabit?.steps ?? 0,
-      sleepHoursToday: todayHabit?.sleepHours ?? 0
+      sleepHoursToday: todayHabit?.sleepHours ?? 0,
+      language,
     };
-  }, [activeClient, dietPlans, mealLogs, foods, habits, selectedDate, viewMode]);
+  }, [activeClient, dietPlans, mealLogs, foods, habits, selectedDate, viewMode, language]);
 
   // Initial welcome message
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       id: 'welcome-1',
       sender: 'bot',
-      text: `👋 Namaskaram! I am **NutriBot**, your Saleem Valanchery Wellness Centre Assistant.
+      text: language === 'ml'
+        ? `👋 നമസ്കാരം! ഞാൻ **NutriAI** — നിങ്ങളുടെ വ്യക്തിഗത AI ന്യൂട്രീഷൻ കോച്ച്.
 
-I am ready to help you with:
-- 🌴 **Kerala Snacks & Calories Referral:** Ask about **Pazham Pori**, **Parippu Vada**, **Ela Ada**, **Banana Chips**, or tap the **Kerala Referral Guide** above!
-- 🫒 **Was it oily? (3 Cooking Options):** I ask on every food and calculate calories for **Steamed (0 extra fat)**, **Medium Sauté (+45 kcal)**, or **Deep Fried (+120 kcal)**!
-- 📚 **Automatic Food Library Sync:** Every food or snack you write is **automatically added to your Centre Food Library** for future 1-click logging!
-- ⏰ **Log What You Ate With Time:** Type *"I ate 2 Pazham Pori at 4:30 pm"* and I will stage it for your **Evening Snack**!`,
+എന്നോട് എന്തും ചോദിക്കാം:
+- 💬 **AI പോഷക ഉപദേശം:** ഭാരം കുറയ്ക്കൽ/കൂട്ടൽ, പ്രോട്ടീൻ, അയൺ, വിറ്റാമിൻ D, ഉറക്കം, സ്റ്റെപ്പുകൾ എന്നിവയെക്കുറിച്ച് ചോദിക്കുക.
+- 📸 **ഭക്ഷണ ഫോട്ടോ സ്കാൻ:** പാത്രത്തിന്റെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്താൽ AI കലോറിയും പോഷകങ്ങളും കണക്കാക്കും.
+- 🥗 **1-ടാപ്പ് ഭക്ഷണ രേഖപ്പെടുത്തൽ:** *"രാവിലെ 8:30-ന് 2 പുട്ടും കടലയും കഴിച്ചു"* എന്ന് ടൈപ്പ് ചെയ്യൂ അല്ലെങ്കിൽ മൈക്കിൽ പറയൂ.`
+        : `👋 Namaskaram! I am **NutriAI**, your live AI Nutrition & Wellness Assistant.
+
+Ask me anything naturally in **English or Malayalam**:
+- 🧠 **Real Personalized Coaching:** Ask *"What should I eat for dinner to hit my protein?"*, *"Why is my weight plateauing?"*, or check your remaining Iron, Vitamin D & Magnesium.
+- 📸 **Photo Calorie Detection:** Snap or upload a meal plate photo and I will detect items, oil prep, calories & macros automatically.
+- ⏰ **Voice & Quick Meal Logging:** Say or type *"I ate 2 boiled eggs and 1 appam at 8:30 am"* and add directly to your diary!`,
       timestamp: 'Just now'
     }
   ]);
@@ -680,18 +736,22 @@ I am ready to help you with:
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Quick preset questions demonstrating mandates
-  const quickPrompts = [
-    { label: '🌾 പുട്ട് (Puttu)', query: 'പുട്ട് (Puttu) calories and portion' },
-    { label: '🍌 Pazham Pori (Calories First)', query: 'Pazham Pori calories and was it oily options' },
-    { label: '🍗 ചിക്കൻ അൽഫഹം (Alfaham)', query: 'ചിക്കൻ അൽഫഹം (Chicken alfaham) calories' },
-    { label: '🍛 തലശ്ശേരി ബിരിയാണി', query: 'തലശ്ശേരി ബിരിയാണി (Thalassery biriyani) calories' },
-    { label: '🐟 മീൻ കറി മുളകിട്ടത്', query: 'മീൻ കറി മുളകിട്ടത് (Meen curry mulakittathu) calories' },
-    { label: '🥟 Parippu Vada calories', query: 'Parippu Vada calories and macros' },
-    { label: '🍃 Ela Ada (Steamed)', query: 'Ela Ada calories and nutrition' },
-    { label: '⏰ Ate 2 eggs & 1 bread at 8:30 am', query: 'I ate 2 boiled eggs and 1 bread at 8:30 am' },
-    { label: '📊 My Remaining Calories', query: 'How many calories do I have remaining today?' }
-  ];
+  // Quick preset questions showcasing real AI nutrition reasoning + calorie detection
+  const quickPrompts = language === 'ml'
+    ? [
+        { label: '📊 ഇന്നത്തെ എന്റെ ബാക്കി കലോറി & പോഷകങ്ങൾ', query: 'ഇന്ന് എനിക്ക് ഇനി എത്ര കലോറിയും പ്രോട്ടീനും അയണും ആവശ്യമുണ്ട്?' },
+        { label: '🍽️ രാത്രി ഭക്ഷണം എന്തൊക്കെ കഴിക്കാം?', query: 'എന്റെ ഇന്നത്തെ ലക്ഷ്യം അനുസരിച്ച് രാത്രി ഭക്ഷണത്തിന് നല്ലത് എന്താണ്?' },
+        { label: '🍌 പഴംപൊരി കലോറി', query: 'Pazham Pori calories and was it oily options' },
+        { label: '🌾 പുട്ട് (Puttu)', query: 'പുട്ട് (Puttu) calories and portion' },
+        { label: '⏰ രാവിലെ 2 മുട്ട കഴിച്ചു', query: 'I ate 2 boiled eggs and 1 bread at 8:30 am' },
+      ]
+    : [
+        { label: '📊 Analyze My Macros Today', query: 'Analyze my calories, protein, iron, vitamin D, and magnesium remaining today' },
+        { label: '🍽️ Best Dinner For My Goal?', query: 'What should I eat for dinner tonight based on my remaining calories and protein?' },
+        { label: '🌾 പുട്ട് (Puttu)', query: 'പുട്ട് (Puttu) calories and portion' },
+        { label: '🍌 Pazham Pori Calories', query: 'Pazham Pori calories and was it oily options' },
+        { label: '⏰ Ate 2 eggs & 1 bread at 8:30 am', query: 'I ate 2 boiled eggs and 1 bread at 8:30 am' },
+      ];
 
   // Helper to ensure food is auto-added to Clinic Food Library
   const autoAddFoodToLibrary = (foodItem: FoodData): boolean => {
@@ -1118,12 +1178,12 @@ What food or snack would you like to check?`
 
     try {
       const controller = new AbortController();
-      // Generous 30-second timeout for multimodal vision & nutrition AI analysis
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      // 60-second timeout for multimodal vision & nutrition AI analysis
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
 
       const conversationHistory = messages
-        .filter(m => m.id !== 'welcome-1' && m.text)
-        .slice(-8)
+        .filter(m => m.id !== 'welcome-1' && !m.isError && m.text)
+        .slice(-10)
         .map(m => ({
           role: m.sender === 'bot' ? ('model' as const) : ('user' as const),
           text: m.text
@@ -1148,6 +1208,7 @@ What food or snack would you like to check?`
       }
 
       const data = await res.json();
+      if (data.source === 'gemini') setAiLiveReady(true);
       const botMsgId = 'bot-' + Date.now();
 
       // AUTOMATIC MANDATE: "each thing a client writes will be added to clinic food library"
@@ -1213,7 +1274,7 @@ What food or snack would you like to check?`
           carbs: data.food.carbs,
           fat: data.food.fat
         });
-        setSavedFoodNotice(`⚡ Bot auto-added ${data.food.name} (${data.food.calories} kcal) directly to your ${initialSlot} column!`);
+        setSavedFoodNotice(`⚡ NutriAI added ${data.food.name} (${data.food.calories} kcal) directly to your ${initialSlot} column!`);
       }
 
       // If meal log reported with time, stage it
@@ -1228,7 +1289,7 @@ What food or snack would you like to check?`
           totalProtein: data.mealLogData.totalProtein,
           totalCarbs: data.mealLogData.totalCarbs,
           totalFat: data.mealLogData.totalFat,
-          note: `Reported via NutriBot Chat at ${data.mealLogData.timeGiven}`
+          note: `Reported via NutriAI Chat at ${data.mealLogData.timeGiven}`
         });
         setSavedFoodNotice(`✨ Suggested for ${data.mealLogData.detectedMealType} & added to Food Library!`);
         setTimeout(() => setSavedFoodNotice(null), 4000);
@@ -1237,79 +1298,19 @@ What food or snack would you like to check?`
       setMessages(prev => [...prev, botMsg]);
 
     } catch (err: any) {
-      console.warn("AI Chatbot falling back to local Kerala database safely:", err);
-      // BULLETPROOF FALLBACK: Guarantees user never experiences "chat bot is not working"
-      const localResult = createLocalFallbackResponse(textToSend);
+      console.warn("NutriAI temporary connection failure:", err);
       const botMsgId = 'bot-' + Date.now();
-
-      let autoAdded = false;
-      if (localResult.food) {
-        autoAdded = autoAddFoodToLibrary(localResult.food);
-      } else if (localResult.mealLogData?.foods) {
-        localResult.mealLogData.foods.forEach((f: any) => {
-          autoAddFoodToLibrary({
-            name: f.name,
-            category: f.category || 'Beverages & Snacks',
-            servingUnit: f.servingUnit || '1 serving',
-            calories: f.calories,
-            protein: f.protein,
-            carbs: f.carbs,
-            fat: f.fat
-          });
-        });
-        autoAdded = true;
-      }
-
-      const botMsg: ChatMessage = {
+      const errMsg: ChatMessage = {
         id: botMsgId,
         sender: 'bot',
-        text: localResult.answer,
-        food: localResult.food,
-        mealLogData: localResult.mealLogData,
+        text: language === 'ml'
+          ? '⚠️ AI സെർവറുമായി ബന്ധപ്പെടുന്നതിൽ ചെറിയ താമസം നേരിട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.'
+          : '⚠️ Live AI request timed out or encountered a temporary network issue. Tap Retry below to ask again.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        autoSavedToLibrary: autoAdded
+        isError: true,
+        retryQuery: textToSend || undefined,
       };
-
-      setSelectedPortions(prev => ({ ...prev, [botMsgId]: 1 }));
-      setSelectedMeasures(prev => ({ ...prev, [botMsgId]: 'serving' }));
-      const fallbackSlot = localResult.mealLogData?.detectedMealType || 'Evening Snack';
-      setSelectedSlots(prev => ({ ...prev, [botMsgId]: fallbackSlot }));
-      setSelectedOilOptions(prev => ({ ...prev, [botMsgId]: 'steamed' }));
-
-      // Auto-add direct to column if granted & enabled
-      if (autoAddToColumnOnSearch && grantBotColumnAccess && activeClient && localResult.food) {
-        addMealLog({
-          clientId: activeClient.id,
-          date: selectedDate,
-          mealType: fallbackSlot,
-          foodId: 'food-ai-' + Date.now(),
-          foodName: `${localResult.food.name} (Steamed / No Oil)`,
-          quantity: 1,
-          servingUnit: localResult.food.servingUnit,
-          calories: localResult.food.calories,
-          protein: localResult.food.protein,
-          carbs: localResult.food.carbs,
-          fat: localResult.food.fat
-        });
-        setSavedFoodNotice(`⚡ Bot auto-added ${localResult.food.name} (${localResult.food.calories} kcal) directly to your ${fallbackSlot} column!`);
-      }
-
-      if (localResult.isMealLogReport && localResult.mealLogData) {
-        addSuggestedMeal({
-          clientId: activeClient?.id || 'cl-1',
-          date: selectedDate,
-          timeGiven: localResult.mealLogData.timeGiven,
-          mealType: localResult.mealLogData.detectedMealType,
-          foods: localResult.mealLogData.foods,
-          totalCalories: localResult.mealLogData.totalCalories,
-          totalProtein: localResult.mealLogData.totalProtein,
-          totalCarbs: localResult.mealLogData.totalCarbs,
-          totalFat: localResult.mealLogData.totalFat,
-          note: `Reported via NutriBot Chat at ${localResult.mealLogData.timeGiven}`
-        });
-      }
-
-      setMessages(prev => [...prev, botMsg]);
+      setMessages(prev => [...prev, errMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -1641,17 +1642,22 @@ What food or snack would you like to check?`
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-white text-sm sm:text-base tracking-tight truncate">
-                    {t('NutriBot')}
+                    {t('NutriAI')}
                   </h3>
-                  {!isOnline && (
+                  {!isOnline ? (
                     <span className="text-[10px] font-semibold text-amber-200 flex items-center gap-1 shrink-0">
                       <WifiOff className="w-3 h-3" />
                       {t('Verified Library Mode')}
                     </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-emerald-200 flex items-center gap-1 shrink-0">
+                      <Sparkles className="w-3 h-3 text-amber-300" />
+                      {aiLiveReady ? 'Live AI' : 'Assistant'}
+                    </span>
                   )}
                 </div>
                 <p className="text-[11px] text-emerald-200 truncate">
-                  {t('Kerala Food AI · Vision & Voice')}
+                  {t('Real AI Assistant (EN / മലയാളം)')}
                 </p>
               </div>
             </div>
@@ -2317,6 +2323,19 @@ What food or snack would you like to check?`
                     <div className="space-y-1.5">
                       {renderFormattedText(msg.text)}
                     </div>
+
+                    {msg.isError && msg.retryQuery && (
+                      <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => handleSendMessage(msg.retryQuery)}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>{language === 'ml' ? 'വീണ്ടും ശ്രമിക്കുക' : 'Retry with AI'}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <span className="text-[10px] text-slate-400 mt-1 px-1">
@@ -2330,7 +2349,7 @@ What food or snack would you like to check?`
               <div className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs max-w-[80%]">
                 <Bot className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-spin" />
                 <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-300 font-medium">
-                  <span>NutriBot is calculating calories &amp; oil preparation...</span>
+                  <span>{t('NutriAI is thinking...')}</span>
                   <span className="flex gap-0.5">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" />
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150" />

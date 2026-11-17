@@ -13,6 +13,7 @@ import { PrintReportModal } from '../common/PrintReportModal';
 import { AppointmentsModal } from '../common/AppointmentsModal';
 import { LoginPortal } from '../common/LoginPortal';
 import { NutriTrackLogo } from '../common/NutriTrackLogo';
+import { ThemeCustomizerModal } from '../common/ThemeCustomizerModal';
 import { ClientProfile, DietPlan, DietitianProfile } from '../../types';
 import { getDaysSinceDate, isClientInactiveThreeDays } from '../../utils/dateUtils';
 import { 
@@ -56,7 +57,8 @@ import {
   LogOut,
   Languages,
   Sun,
-  Moon
+  Moon,
+  Palette
 } from 'lucide-react';
 
 export const TeamPortal: React.FC = () => {
@@ -151,6 +153,7 @@ export const TeamPortal: React.FC = () => {
 
   const [isAppointmentsModalOpen, setIsAppointmentsModalOpen] = useState(false);
   const [selectedClientIdForAppointment, setSelectedClientIdForAppointment] = useState<string | undefined>(undefined);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
   // Dynamically evaluate client inactivity: if no food log for 3+ days, client is inactive (in red)
   const isClientInactive = (client: ClientProfile): boolean => {
@@ -570,6 +573,19 @@ export const TeamPortal: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+            <button
+              type="button"
+              onClick={() => setIsThemeModalOpen(true)}
+              className="flex flex-col items-center gap-2 group cursor-pointer"
+            >
+              <div className="w-16 h-16 aspect-square rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center transition-colors">
+                <Palette className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">
+                {t('Customize Theme')}
+              </span>
+            </button>
+
             <button
               type="button"
               onClick={() => toggleTheme()}
@@ -2407,6 +2423,10 @@ export const TeamPortal: React.FC = () => {
         </div>
       )}
 
+      <ThemeCustomizerModal
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
+      />
     </div>
   );
 };

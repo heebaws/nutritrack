@@ -127,6 +127,7 @@ export interface MealLogItem {
   protein: number;
   carbs: number;
   fat: number;
+  fiber?: number;
   calcium?: number;
   iron?: number;
   magnesium?: number;
@@ -219,6 +220,7 @@ export interface AISuggestedMealFood {
   protein: number;
   carbs: number;
   fat: number;
+  fiber?: number;
   calcium?: number;
   iron?: number;
   magnesium?: number;

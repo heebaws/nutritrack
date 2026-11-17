@@ -27,6 +27,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
     setViewMode,
     activeClient,
     activeTeamUser,
+    language,
     t
   } = useApp();
 
@@ -38,6 +39,25 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  React.useEffect(() => {
+    const handleOpenCoach = () => {
+      setActiveTab('coach');
+      setError(null);
+      setSuccessMessage(null);
+    };
+    const handleOpenClient = () => {
+      setActiveTab('client');
+      setError(null);
+      setSuccessMessage(null);
+    };
+    window.addEventListener('open-coach-login', handleOpenCoach);
+    window.addEventListener('open-client-login', handleOpenClient);
+    return () => {
+      window.removeEventListener('open-coach-login', handleOpenCoach);
+      window.removeEventListener('open-client-login', handleOpenClient);
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +96,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
             d.phone.replace(/\D/g, '') === cleanId.replace(/\D/g, '')
           );
           if (staffCheck) {
-            setError(`"${cleanId}" is a Coach account. Please switch to the "Coach & Admin Login" tab to sign in.`);
+            setError(`"${cleanId}" is a Coach account. Touch the NutriTrack logo above to open Coach Login.`);
           } else {
             setError(res.message || 'Invalid username or password. Please try again.');
           }
@@ -101,7 +121,7 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
             c.phone.replace(/\D/g, '') === cleanId.replace(/\D/g, '')
           );
           if (clientCheck) {
-            setError(`"${cleanId}" is a Client account. Please switch to the "Client Login" tab to sign in.`);
+            setError(`"${cleanId}" is a Client account. Switch back to Client Login to sign in.`);
           } else {
             setError(res.message || 'Invalid coach username or password. Please verify your credentials.');
           }
@@ -112,15 +132,26 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
   };
 
   return (
-    <div className="max-w-2xl mx-auto my-8 sm:my-14 px-4">
+    <div className="max-w-xl mx-auto my-8 sm:my-14 px-4">
       
-      {/* Top Clinic Branding Banner */}
+      {/* Top Clinic Branding Banner — Touch NutriTrack Logo to open Coach & Admin Login */}
       <div className="text-center mb-8 flex flex-col items-center">
-        <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab(prev => (prev === 'client' ? 'coach' : 'client'));
+            setError(null);
+            setSuccessMessage(null);
+          }}
+          className="mb-4 cursor-pointer rounded-3xl p-2 hover:bg-white/60 dark:hover:bg-slate-900/60 transition-all active:scale-95 focus:outline-none"
+          aria-label="NutriTrack Logo"
+        >
           <NutriTrackLogo size="xl" subtitle={t('Clinical Nutrition & Diet Management System')} />
-        </div>
+        </button>
         <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-          {t('Secure Portal Access')}
+          {activeTab === 'coach'
+            ? (language === 'ml' ? 'കോച്ച് & അഡ്മിൻ ലോഗിൻ' : 'Coach & Admin Portal Login')
+            : t('Client Login')}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1 max-w-md mx-auto leading-relaxed">
           Saleem Valanchery Wellness Centre
@@ -145,42 +176,49 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({ defaultTab = 'client' 
         )}
       </div>
 
-      {/* Login Card */}
+      {/* Login Card — Solo Client Login by default; Coach Login appears cleanly when Logo is touched */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 sm:p-9">
-        {/* Role Switcher Tabs */}
-        <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl mb-7 border border-slate-200/80 dark:border-slate-700">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('client');
-              setError(null);
-            }}
-            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === 'client'
-                ? 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-400 shadow-xs border border-slate-200/80 dark:border-slate-700'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>{t('Client Login')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('coach');
-              setError(null);
-            }}
-            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === 'coach'
-                ? 'bg-white dark:bg-slate-900 text-purple-800 dark:text-purple-400 shadow-xs border border-slate-200/80 dark:border-slate-700'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Stethoscope className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            <span>{t('Coach & Admin')}</span>
-          </button>
-        </div>
+        {activeTab === 'coach' ? (
+          <div className="flex items-center justify-between gap-2 pb-4 mb-5 border-b border-purple-100 dark:border-purple-900/60">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 flex items-center justify-center">
+                <Stethoscope className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-sm font-extrabold text-purple-900 dark:text-purple-200">
+                  {t('Coach & Admin')}
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {language === 'ml' ? 'ക്ലിനിക്കൽ ടീം പ്രവേശനം' : 'Clinical staff & admin access'}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('client');
+                setError(null);
+              }}
+              className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors cursor-pointer"
+            >
+              &larr; {t('Client Login')}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 pb-4 mb-5 border-b border-slate-100 dark:border-slate-800">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
+              <User className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-sm font-extrabold text-slate-900 dark:text-white">
+                {t('Client Login')}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {language === 'ml' ? 'നിങ്ങളുടെ യൂസർനെയിം അല്ലെങ്കിൽ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക' : 'Sign in with your username or mobile number'}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Credentials Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

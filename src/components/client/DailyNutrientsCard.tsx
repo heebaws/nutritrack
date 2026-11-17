@@ -9,6 +9,7 @@ import {
   Dumbbell,
   Wheat,
   Droplets,
+  Leaf,
   HeartPulse,
   Sun,
   Zap,
@@ -47,6 +48,7 @@ export const DailyNutrientsCard: React.FC<DailyNutrientsCardProps> = ({ client, 
       {
         key: 'carbs',
         label: t('Carbohydrates'),
+        mobileLabel: t('Carbs'),
         consumed: consumed.carbs,
         target: targets.carbs,
         unit: 'g',
@@ -65,6 +67,17 @@ export const DailyNutrientsCard: React.FC<DailyNutrientsCardProps> = ({ client, 
         barColor: 'bg-amber-500',
         badgeBg: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
         textAccent: 'text-amber-700 dark:text-amber-400',
+      },
+      {
+        key: 'fiber',
+        label: t('Fiber'),
+        consumed: consumed.fiber,
+        target: targets.fiber,
+        unit: 'g',
+        icon: Leaf,
+        barColor: 'bg-lime-500',
+        badgeBg: 'bg-lime-50 dark:bg-lime-950/60 text-lime-700 dark:text-lime-300 border-lime-200 dark:border-lime-800',
+        textAccent: 'text-lime-700 dark:text-lime-400',
       },
       {
         key: 'iron',
@@ -115,30 +128,30 @@ export const DailyNutrientsCard: React.FC<DailyNutrientsCardProps> = ({ client, 
   );
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-200 dark:border-slate-800 flex flex-col justify-between min-w-0 w-full overflow-hidden space-y-3.5">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xs border border-slate-200 dark:border-slate-800 flex flex-col justify-between min-w-0 w-full overflow-hidden space-y-2.5 sm:space-y-3.5">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400 shrink-0">
-            <Sparkles className="w-4 h-4" />
+      <div className="flex flex-wrap items-center sm:items-start justify-between gap-1.5 sm:gap-2 pb-2 sm:pb-2.5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400 shrink-0">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
+            <h2 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
               {t('Daily Nutrient Targets')}
             </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate tabular-nums">
+            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate tabular-nums">
               {client.gender || 'Client'} · {client.age || 30}y · {client.currentWeightKg} kg · {client.heightCm} cm
             </p>
           </div>
         </div>
 
-        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shrink-0 tabular-nums">
+        <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shrink-0 tabular-nums">
           {t('Goal Cap')}: {targets.calories} kcal
         </span>
       </div>
 
-      {/* 7 Strictly-Capped Nutrient Bars */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      {/* 8 Strictly-Capped Nutrient Bars (2x4 Compact Grid on Mobile & Desktop) */}
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-2.5">
         {items.map((item) => {
           const IconComponent = item.icon;
           const pct = item.target > 0 ? Math.min(100, Math.round((item.consumed / item.target) * 100)) : 0;
@@ -147,35 +160,44 @@ export const DailyNutrientsCard: React.FC<DailyNutrientsCardProps> = ({ client, 
           return (
             <div
               key={item.key}
-              className="rounded-2xl p-2.5 bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/80 space-y-1.5 min-w-0"
+              className="rounded-xl sm:rounded-2xl p-2 sm:p-2.5 bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/80 space-y-1 sm:space-y-1.5 min-w-0"
             >
-              <div className="flex items-center justify-between gap-1.5 text-xs min-w-0">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 ${item.badgeBg}`}>
-                    <IconComponent className="w-3.5 h-3.5" />
+              <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs min-w-0">
+                <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg border flex items-center justify-center shrink-0 ${item.badgeBg}`}>
+                    <IconComponent className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   </span>
                   <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                    {item.label}
+                    {item.mobileLabel ? (
+                      <>
+                        <span className="sm:hidden">{item.mobileLabel}</span>
+                        <span className="hidden sm:inline">{item.label}</span>
+                      </>
+                    ) : (
+                      item.label
+                    )}
                   </span>
                 </div>
-                <span className={`text-[10px] font-black tabular-nums shrink-0 ${met ? 'text-emerald-600 dark:text-emerald-400' : item.textAccent}`}>
+                <span className={`text-[9px] sm:text-[10px] font-black tabular-nums shrink-0 ${met ? 'text-emerald-600 dark:text-emerald-400' : item.textAccent}`}>
                   {pct}%
                 </span>
               </div>
 
-              <div className="flex items-baseline justify-between gap-1 text-xs tabular-nums">
-                <span className="font-black text-slate-900 dark:text-white text-sm">
+              <div className="flex items-baseline justify-between gap-1 text-[11px] sm:text-xs tabular-nums min-w-0">
+                <span className="font-black text-slate-900 dark:text-white text-xs sm:text-sm shrink-0">
                   {item.consumed}
-                  <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400 ml-0.5">
+                  <span className="text-[10px] sm:text-[11px] font-normal text-slate-500 dark:text-slate-400 ml-0.5">
                     {item.unit}
                   </span>
                 </span>
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-                  {t('Daily Needed')}: <b className="text-slate-800 dark:text-slate-200">{item.target} {item.unit}</b>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                  <span className="hidden sm:inline">{t('Daily Needed')}: </span>
+                  <span className="sm:hidden">{t('Need')}: </span>
+                  <b className="text-slate-800 dark:text-slate-200">{item.target}{item.unit}</b>
                 </span>
               </div>
 
-              <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+              <div className="w-full h-1 sm:h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${met ? 'bg-emerald-500' : item.barColor}`}
                   style={{ width: `${pct}%` }}
@@ -187,7 +209,7 @@ export const DailyNutrientsCard: React.FC<DailyNutrientsCardProps> = ({ client, 
       </div>
 
       {/* Footer note */}
-      <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-snug">
+      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-snug">
         {isMl
           ? 'ഭാരം, ഉയരം, പ്രായം, ലിംഗഭേദം എന്നിവ അടിസ്ഥാനമാക്കി ആവശ്യമായ പരമാവധി പരിധിക്കുള്ളിൽ കണക്കാക്കിയതാണ്.'
           : 'Calibrated strictly within safe clinical limits from your weight, height, age & gender.'}

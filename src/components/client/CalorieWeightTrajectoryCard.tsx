@@ -179,13 +179,13 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
   }, [habits, activities, client.id, client.currentWeightKg, selectedDate]);
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-200 dark:border-slate-800 space-y-3.5 min-w-0 w-full overflow-hidden flex flex-col justify-between">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xs border border-slate-200 dark:border-slate-800 space-y-2.5 sm:space-y-3.5 min-w-0 w-full overflow-hidden flex flex-col justify-between">
       
       {/* ================= UPPER SECTION: 8,000 CALORIE MAIN POINT ================= */}
       {/* Touchable Main Point Hero Banner */}
       <div 
         onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-        className={`rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer group select-none shadow-xs hover:shadow-md min-w-0 ${
+        className={`rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border transition-all cursor-pointer group select-none shadow-xs hover:shadow-md min-w-0 ${
           isCelebrated
             ? 'bg-linear-to-r from-emerald-50 via-teal-50/80 to-emerald-100/60 dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 hover:border-emerald-400'
             : 'bg-linear-to-r from-rose-50 via-red-50/80 to-orange-50/60 dark:from-rose-950/60 dark:via-red-950/40 dark:to-slate-900 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100 hover:border-rose-400'
@@ -193,21 +193,21 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
         title="Touch / Click to show or hide the detailed previous days breakdown"
       >
         {/* Top Badges & Hide Line Tool */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-black/5 dark:border-white/10 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-white/90 dark:bg-slate-900 shadow-2xs flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold shrink-0">
-              <Scale className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 pb-2 sm:pb-3 border-b border-black/5 dark:border-white/10 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/90 dark:bg-slate-900 shadow-2xs flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold shrink-0">
+              <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
+            <span className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight truncate">
               {t('Calorie Trajectory & Weight Projection')}
             </span>
-            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+            <span className="hidden sm:inline text-[11px] font-bold text-slate-600 dark:text-slate-300 shrink-0">
               · {t('8,000 kcal = 1 kg Rule')}
             </span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg shadow-2xs ${
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <span className={`text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 rounded-lg shadow-2xs ${
               isWeightGainGoal 
                 ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
                 : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
@@ -222,63 +222,68 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
                   e.stopPropagation();
                   onToggleHide();
                 }}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-slate-300 dark:border-slate-700 shadow-2xs"
+                className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl transition-colors cursor-pointer border border-slate-300 dark:border-slate-700 shadow-2xs"
                 title={t('Hide Line')}
               >
-                <EyeOff className="w-3.5 h-3.5" />
-                <span>{t('Hide Line')}</span>
+                <EyeOff className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span className="hidden sm:inline">{t('Hide Line')}</span>
+                <span className="sm:hidden">{t('Hide')}</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Main Point Content: Key Result, Cumulative Balance & Target */}
-        <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
+        {/* Main Point Content: Side-by-Side Key Result & Target even on Mobile */}
+        <div className="pt-2 sm:pt-3 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="space-y-1 sm:space-y-1.5 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               {isCelebrated ? (
-                <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider bg-emerald-600 text-white px-2.5 py-0.5 rounded-lg shadow-xs">
-                  <Award className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center gap-1 text-[9px] sm:text-xs font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 sm:px-2.5 py-0.5 rounded-md sm:rounded-lg shadow-xs">
+                  <Award className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   {t('Celebrated On Track')}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider bg-rose-600 text-white px-2.5 py-0.5 rounded-lg shadow-xs">
-                  <AlertTriangle className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center gap-1 text-[9px] sm:text-xs font-black uppercase tracking-wider bg-rose-600 text-white px-1.5 sm:px-2.5 py-0.5 rounded-md sm:rounded-lg shadow-xs">
+                  <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   {t('Regression Notice')}
                 </span>
               )}
 
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">
-                {trajectoryRows.length} {isMl ? 'ദിവസങ്ങൾ' : 'Days'}
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">
+                {trajectoryRows.length} {isMl ? 'ദിവസം' : 'Days'}
               </span>
             </div>
 
-            <div className="flex items-baseline gap-3 pt-0.5 flex-wrap">
-              <span className={`text-2xl sm:text-3xl lg:text-4xl font-black tabular-nums ${
+            <div className="flex items-baseline gap-2 sm:gap-3 pt-0.5 flex-wrap">
+              <span className={`text-xl sm:text-3xl lg:text-4xl font-black tabular-nums leading-none ${
                 isCelebrated ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
               }`}>
                 {isGained ? `+${roundedKgStr} kg` : `-${roundedKgStr} kg`}
               </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-black/5 dark:border-slate-700 tabular-nums">
+              <span className="text-[10px] sm:text-sm font-bold text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-800/80 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg border border-black/5 dark:border-slate-700 tabular-nums">
                 {cumulativeCalories > 0 ? `+${cumulativeCalories}` : cumulativeCalories} kcal
               </span>
             </div>
           </div>
 
           {/* Right Side Stats & Touch to Expand Button */}
-          <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-2 shrink-0">
-            <div className="text-left sm:text-right">
-              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+          <div className="flex flex-col items-end justify-center gap-1 sm:gap-2 shrink-0 text-right">
+            <div>
+              <div className="text-[9px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide leading-tight">
                 {t('Daily Needed Target')}
               </div>
-              <div className="text-lg sm:text-xl font-black text-slate-800 dark:text-white tabular-nums">
-                {neededCalories} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">kcal/day</span>
+              <div className="text-sm sm:text-xl font-black text-slate-800 dark:text-white tabular-nums leading-tight">
+                {neededCalories}{' '}
+                <span className="text-[10px] sm:text-xs font-normal text-slate-500 dark:text-slate-400">
+                  <span className="sm:hidden">kcal</span>
+                  <span className="hidden sm:inline">kcal/day</span>
+                </span>
               </div>
             </div>
 
             {/* Interactive Touch Indicator Button */}
             <div 
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-extrabold text-xs transition-all shadow-xs border ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl font-extrabold text-[10px] sm:text-xs transition-all shadow-xs border ${
                 isDetailsOpen 
                   ? 'bg-slate-900 dark:bg-emerald-700 text-white border-slate-800 dark:border-emerald-600' 
                   : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-700 group-hover:bg-slate-900 dark:group-hover:bg-emerald-700 group-hover:text-white group-hover:border-slate-800 dark:group-hover:border-emerald-600'
@@ -286,13 +291,15 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
             >
               {isDetailsOpen ? (
                 <>
-                  <span>{t('Hide Details')}</span>
-                  <ChevronUp className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t('Hide Details')}</span>
+                  <span className="sm:hidden">{t('Collapse')}</span>
+                  <ChevronUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </>
               ) : (
                 <>
-                  <span>{t('Touch for Details')}</span>
-                  <ChevronDown className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t('Touch for Details')}</span>
+                  <span className="sm:hidden">{t('Details')}</span>
+                  <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </>
               )}
             </div>
@@ -300,10 +307,11 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
         </div>
 
         {/* Tactile hint bar at the bottom */}
-        <div className="mt-3 pt-2.5 border-t border-black/5 dark:border-white/10 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-          <span className="flex items-center gap-1">
-            <Info className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-            {t('Every 8,000 kcal excess = 1 kg gained • Every 8,000 kcal deficit = 1 kg lost')}
+        <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2.5 border-t border-black/5 dark:border-white/10 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+          <span className="flex items-center gap-1 truncate">
+            <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+            <span className="sm:hidden truncate">{t('8,000 kcal = 1 kg Rule')}</span>
+            <span className="hidden sm:inline">{t('Every 8,000 kcal excess = 1 kg gained • Every 8,000 kcal deficit = 1 kg lost')}</span>
           </span>
           <span className="hidden sm:inline font-bold underline group-hover:text-slate-900 dark:group-hover:text-white shrink-0">
             {isDetailsOpen ? t('Collapse') : t('Touch for Details')}
@@ -312,18 +320,18 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
       </div>
 
       {/* ================= MIDDLE SECTION: WORKOUTS & WALKING STEPS LIVE PANEL ================= */}
-      <div className="space-y-3 pt-1 min-w-0">
+      <div className="space-y-2 sm:space-y-3 pt-0.5 sm:pt-1 min-w-0">
         {/* Clean Header Row */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-xl bg-orange-50 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-800 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
-              <Flame className="w-3.5 h-3.5" />
+        <div className="flex items-center justify-between gap-2 pb-1.5 sm:pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-orange-50 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-800 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
+              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </div>
             <div className="min-w-0">
               <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
                 {t('Workouts & Walking Steps')}
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate tabular-nums">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate tabular-nums">
                 {formatDateDisplay(selectedDate)}
                 {isPedometerLive ? ` · ${osHealthInfo.osLabel} ${t('Live Sync')}` : ''}
               </p>
@@ -331,62 +339,64 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
           </div>
 
           <div className="text-right tabular-nums shrink-0">
-            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block">
+            <span className="text-[9px] sm:text-[10px] font-semibold text-slate-500 dark:text-slate-400 block leading-tight">
               {t('Total Burn Today')}
             </span>
-            <span className="text-sm sm:text-base font-black text-orange-600 dark:text-orange-400">
+            <span className="text-xs sm:text-base font-black text-orange-600 dark:text-orange-400 leading-tight">
               -{selectedDayActivityData.totalBurn} kcal
             </span>
           </div>
         </div>
 
-        {/* 2-Column Clean Activity Blocks: Walking Steps + Workouts & Sports */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {/* 2-Column Compact Activity Blocks (Side-by-Side on Mobile & Desktop) */}
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2.5">
           {/* Walking Steps Block */}
           <button
             type="button"
             onClick={() => onOpenStepsModal?.()}
-            className="text-left rounded-2xl p-3 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-orange-50/60 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-orange-300 dark:hover:border-orange-700 transition-colors space-y-2 cursor-pointer min-w-0"
+            className="text-left rounded-xl sm:rounded-2xl p-2 sm:p-3 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-orange-50/60 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-orange-300 dark:hover:border-orange-700 transition-colors space-y-1 sm:space-y-2 cursor-pointer min-w-0"
           >
-            <div className="flex items-center justify-between gap-1.5 text-xs">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-6 h-6 rounded-lg bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 flex items-center justify-center shrink-0">
-                  <Footprints className="w-3.5 h-3.5" />
+            <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs">
+              <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 flex items-center justify-center shrink-0">
+                  <Footprints className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </span>
                 <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {t('Daily Steps')}
+                  <span className="sm:hidden">{t('Steps')}</span>
+                  <span className="hidden sm:inline">{t('Daily Steps')}</span>
                 </span>
               </div>
-              <span className="text-[11px] font-black text-orange-600 dark:text-orange-400 tabular-nums shrink-0">
+              <span className="text-[10px] sm:text-[11px] font-black text-orange-600 dark:text-orange-400 tabular-nums shrink-0">
                 {selectedDayActivityData.stepPct}%
               </span>
             </div>
 
-            <div className="flex items-baseline justify-between gap-1.5 tabular-nums">
+            <div className="flex items-baseline justify-between gap-1 tabular-nums">
               <div className="truncate">
-                <span className="text-base font-black text-slate-900 dark:text-white">
+                <span className="text-xs sm:text-base font-black text-slate-900 dark:text-white">
                   {selectedDayActivityData.steps.toLocaleString()}
                 </span>
-                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-1">
-                  / {selectedDayActivityData.targetSteps.toLocaleString()}
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-0.5 sm:ml-1">
+                  /{selectedDayActivityData.targetSteps.toLocaleString()}
                 </span>
               </div>
-              <span className="text-xs font-bold text-orange-700 dark:text-orange-300 shrink-0">
-                -{selectedDayActivityData.stepBurn} kcal
+              <span className="text-[10px] sm:text-xs font-bold text-orange-700 dark:text-orange-300 shrink-0">
+                -{selectedDayActivityData.stepBurn}k
+                <span className="hidden sm:inline">cal</span>
               </span>
             </div>
 
-            <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+            <div className="w-full h-1 sm:h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
               <div
                 className="h-full rounded-full bg-orange-500 transition-all duration-300"
                 style={{ width: `${selectedDayActivityData.stepPct}%` }}
               />
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
-              <span>~{selectedDayActivityData.estKm} {t('km walked')}</span>
-              <span className="font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-0.5">
-                {isPedometerLive && <Smartphone className="w-3 h-3" />}
+            <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 tabular-nums gap-1">
+              <span className="truncate">~{selectedDayActivityData.estKm} km</span>
+              <span className="font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-0.5 shrink-0">
+                {isPedometerLive && <Smartphone className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
                 <span>{t('Add Steps')}</span>
               </span>
             </div>
@@ -396,38 +406,40 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
           <button
             type="button"
             onClick={() => onOpenWorkoutModal?.()}
-            className="text-left rounded-2xl p-3 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-rose-50/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-rose-300 dark:hover:border-rose-700 transition-colors space-y-2 cursor-pointer min-w-0 flex flex-col justify-between"
+            className="text-left rounded-xl sm:rounded-2xl p-2 sm:p-3 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-rose-50/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-rose-300 dark:hover:border-rose-700 transition-colors space-y-1 sm:space-y-2 cursor-pointer min-w-0 flex flex-col justify-between"
           >
-            <div className="space-y-2 w-full">
-              <div className="flex items-center justify-between gap-1.5 text-xs">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-6 h-6 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center justify-center shrink-0">
-                    <Dumbbell className="w-3.5 h-3.5" />
+            <div className="space-y-1 sm:space-y-2 w-full">
+              <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs">
+                <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center justify-center shrink-0">
+                    <Dumbbell className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   </span>
                   <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                    {t('Workouts & Sports')}
+                    <span className="sm:hidden">{t('Workouts')}</span>
+                    <span className="hidden sm:inline">{t('Workouts & Sports')}</span>
                   </span>
                 </div>
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums shrink-0">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums shrink-0">
                   {selectedDayActivityData.dayWorkouts.length}
                 </span>
               </div>
 
-              <div className="flex items-baseline justify-between gap-1.5 tabular-nums">
+              <div className="flex items-baseline justify-between gap-1 tabular-nums">
                 <div className="truncate">
-                  <span className="text-base font-black text-slate-900 dark:text-white">
+                  <span className="text-xs sm:text-base font-black text-slate-900 dark:text-white">
                     -{selectedDayActivityData.workoutBurn}
                   </span>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-1">
+                  <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-0.5 sm:ml-1">
                     kcal
                   </span>
                 </div>
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">
-                  {selectedDayActivityData.workoutMins} min
+                <span className="text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">
+                  {selectedDayActivityData.workoutMins}m
+                  <span className="hidden sm:inline">in</span>
                 </span>
               </div>
 
-              <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+              <div className="w-full h-1 sm:h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-rose-500 transition-all duration-300"
                   style={{ width: `${selectedDayActivityData.workoutPct}%` }}
@@ -436,17 +448,17 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
             </div>
 
             {selectedDayActivityData.dayWorkouts.length > 0 ? (
-              <div className="text-[11px] text-slate-600 dark:text-slate-300 truncate tabular-nums pt-0.5">
+              <div className="text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-300 truncate tabular-nums">
                 {selectedDayActivityData.dayWorkouts
                   .slice(0, 2)
                   .map((w) => `${w.activityName} (${w.durationMinutes}m · -${w.caloriesBurned}k)`)
                   .join(' · ')}
               </div>
             ) : (
-              <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-                <span className="truncate">{t('No workouts logged today')}</span>
-                <span className="font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-0.5 shrink-0 ml-1">
-                  <Plus className="w-3 h-3" />
+              <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 gap-1">
+                <span className="truncate hidden sm:inline">{t('No workouts logged today')}</span>
+                <span className="font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-0.5 shrink-0">
+                  <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                   <span>{t('Add Workout')}</span>
                 </span>
               </div>
@@ -455,10 +467,10 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
         </div>
 
         {/* Footer note connecting burn directly to net calorie calculation */}
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-snug tabular-nums">
+        <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-tight tabular-nums">
           {isMl
             ? `ആകെ കത്തിച്ച കലോറി (-${selectedDayActivityData.totalBurn} kcal = ചുവടുകൾ -${selectedDayActivityData.stepBurn} + വ്യായാമം -${selectedDayActivityData.workoutBurn}) മുകളിലെ 8,000 kcal കണക്കിൽ കുറച്ചിട്ടുണ്ട്.`
-            : `Net burn subtracted above: -${selectedDayActivityData.totalBurn} kcal (-${selectedDayActivityData.stepBurn} kcal steps · -${selectedDayActivityData.workoutBurn} kcal workouts).`}
+            : `Net burn subtracted above: -${selectedDayActivityData.totalBurn} kcal (-${selectedDayActivityData.stepBurn} steps · -${selectedDayActivityData.workoutBurn} workouts).`}
         </p>
       </div>
 

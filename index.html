@@ -27,6 +27,8 @@
           } else {
             document.documentElement.classList.remove('dark');
           }
+          var accent = localStorage.getItem('nutritrack_clinic_v1_accentTheme') || 'emerald';
+          document.documentElement.setAttribute('data-accent', accent);
         } catch (e) {}
       })();
     </script>

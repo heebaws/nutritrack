@@ -41,7 +41,8 @@ import {
 } from '../utils/deviceHealthSync';
 import {
   enrichFoodWithMicronutrients,
-  estimateFoodMicronutrients
+  estimateFoodFiber,
+  estimateFoodMicronutrients,
 } from '../utils/micronutrients';
 import {
   testFirestoreConnection,
@@ -53,6 +54,7 @@ import {
 } from '../services/firebase';
 
 export type AppTheme = 'light' | 'dark';
+export type AccentTheme = 'emerald' | 'ocean' | 'violet' | 'amber' | 'rose' | 'teal';
 
 interface AppContextType {
   // Navigation & View Mode
@@ -61,10 +63,12 @@ interface AppContextType {
   phoneFrameEnabled: boolean;
   setPhoneFrameEnabled: (enabled: boolean) => void;
 
-  // Theme Mode (Light / Dark)
+  // Theme Mode (Light / Dark) & Accent Theme Palette
   theme: AppTheme;
   setTheme: (theme: AppTheme) => void;
   toggleTheme: () => void;
+  accentTheme: AccentTheme;
+  setAccentTheme: (accent: AccentTheme) => void;
 
   // Language Translation Switch (EN <-> Malayalam)
   language: AppLanguage;
@@ -212,18 +216,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return 'light';
   });
 
+  const [accentTheme, setAccentThemeState] = useState<AccentTheme>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_PREFIX + 'accentTheme') as AccentTheme | null;
+      if (stored && ['emerald', 'ocean', 'violet', 'amber', 'rose', 'teal'].includes(stored)) {
+        return stored;
+      }
+    } catch {}
+    return 'emerald';
+  });
+
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.classList.toggle('dark', theme === 'dark');
+      document.documentElement.setAttribute('data-accent', accentTheme);
+      const heroHexMap: Record<AccentTheme, string> = {
+        emerald: '#064e3b',
+        ocean: '#1e3a8a',
+        violet: '#4c1d95',
+        amber: '#78350f',
+        rose: '#881337',
+        teal: '#134e4a',
+      };
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) {
-        meta.setAttribute('content', theme === 'dark' ? '#020617' : '#064e3b');
+        meta.setAttribute('content', theme === 'dark' ? '#020617' : heroHexMap[accentTheme]);
       }
     }
     try {
       localStorage.setItem(STORAGE_KEY_PREFIX + 'theme', theme);
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'accentTheme', accentTheme);
     } catch {}
-  }, [theme]);
+  }, [theme, accentTheme]);
 
   const setTheme = useCallback((next: AppTheme) => {
     setThemeState(next);
@@ -231,6 +255,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleTheme = useCallback(() => {
     setThemeState(prev => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
+
+  const setAccentTheme = useCallback((next: AccentTheme) => {
+    setAccentThemeState(next);
   }, []);
 
   // Language Translation Switch (defaults to English, persisted in localStorage)
@@ -954,8 +982,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           fat: meal.fat,
         });
 
+    const estFiber = matchedCatalog
+      ? estimateFoodFiber(matchedCatalog) * qty
+      : estimateFoodFiber({
+          name: meal.foodName,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbs: meal.carbs,
+        });
+
     const newLog: MealLogItem = {
       ...meal,
+      fiber: meal.fiber !== undefined ? meal.fiber : Math.round(estFiber * 10) / 10,
       calcium: meal.calcium !== undefined ? meal.calcium : Math.round(estMicro.calcium),
       iron: meal.iron !== undefined ? meal.iron : Math.round(estMicro.iron * 10) / 10,
       magnesium: meal.magnesium !== undefined ? meal.magnesium : Math.round(estMicro.magnesium),
@@ -1053,6 +1091,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         carbs: f.carbs / qty,
         fat: f.fat / qty,
       });
+      const estFiber =
+        f.fiber !== undefined
+          ? f.fiber
+          : Math.round(
+              estimateFoodFiber({
+                name: f.name,
+                category: f.category,
+                calories: f.calories / qty,
+                protein: f.protein / qty,
+                carbs: f.carbs / qty,
+              }) *
+                qty *
+                10
+            ) / 10;
       const newLog: MealLogItem = {
         id: `ml-sugg-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 5)}`,
         clientId: suggestion.clientId,
@@ -1066,6 +1118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         protein: f.protein,
         carbs: f.carbs,
         fat: f.fat,
+        fiber: estFiber,
         calcium: f.calcium !== undefined ? f.calcium : Math.round(estMicro.calcium * qty),
         iron: f.iron !== undefined ? f.iron : Math.round(estMicro.iron * qty * 10) / 10,
         magnesium: f.magnesium !== undefined ? f.magnesium : Math.round(estMicro.magnesium * qty),
@@ -1672,6 +1725,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setTips(prev => [newTip, ...prev]);
     saveDocumentToFirestore('tips', newTip.id, newTip).catch(() => {});
+
+    // Dispatch live Web Push to phone(s) when a coach sends an alert/reminder
+    if (tipData.type === 'reminder' || tipData.type === 'note') {
+      fetch('/api/push/send-coach-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: tipData.targetAudience === 'all' ? 'all' : tipData.clientId,
+          title: `${tipData.dietitianName}: ${tipData.title}`,
+          body: tipData.message,
+          tag: `coach-tip-${newTip.id}`,
+        }),
+      }).catch(() => {});
+    }
   };
 
   const sendFollowupReminderToInactive = (clientId: string) => {
@@ -1763,6 +1830,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         theme,
         setTheme,
         toggleTheme,
+        accentTheme,
+        setAccentTheme,
         language,
         setLanguage,
         toggleLanguage,

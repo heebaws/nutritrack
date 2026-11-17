@@ -65,7 +65,9 @@ const EN_TO_ML: Record<string, string> = {
   'Weight Gain': 'ഭാരം കൂട്ടൽ',
   'Weight Loss': 'ഭാരം കുറയ്ക്കൽ',
   'Hide Line': 'വരി മറയ്ക്കുക',
+  'Hide': 'മറയ്ക്കുക',
   'Tap to open': 'തുറക്കാൻ തൊടുക',
+  'Details': 'വിവരങ്ങൾ',
   'Celebrated On Track': 'ലക്ഷ്യത്തിൽ മുന്നേറുന്നു',
   'Regression Notice': 'ശ്രദ്ധിക്കേണ്ട മുന്നറിയിപ്പ്',
   'Daily Needed Target': 'പ്രതിദിന ആവശ്യമായ ലക്ഷ്യം',
@@ -371,6 +373,9 @@ const EN_TO_ML: Record<string, string> = {
   'Magnesium': 'മഗ്നീഷ്യം',
   'Calcium': 'കാൽസ്യം',
   'Fats': 'കൊഴുപ്പ് (Fats)',
+  'Fiber': 'ഫൈബർ',
+  'Carbs': 'കാർബ്സ്',
+  'Need': 'വേണ്ടത്',
   'Goal Cap': 'പരമാവധി പരിധി',
   'Daily Needed': 'ആവശ്യമായത്',
   'App Installed': 'ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്തു',
@@ -384,6 +389,8 @@ const EN_TO_ML: Record<string, string> = {
   // Workouts & Walking Steps Panel inside Trajectory Card
   'Workouts & Walking Steps': 'വ്യായാമവും നടപ്പും (Workouts & Steps)',
   'Workouts & Sports': 'വ്യായാമവും കായികവിനോദവും',
+  'Steps': 'ചുവടുകൾ',
+  'Workouts': 'വ്യായാമം',
   'Total Burn Today': 'ഇന്ന് കത്തിച്ച ആകെ കലോറി',
   'No workouts logged today': 'ഇന്ന് വ്യായാമങ്ങൾ രേഖപ്പെടുത്തിയിട്ടില്ല',
   'Tap to log workout': 'വ്യായാമം ചേർക്കാൻ തൊടുക',
@@ -393,6 +400,14 @@ const EN_TO_ML: Record<string, string> = {
   'Live Sync': 'ലൈവ് സിങ്ക്',
   'Add Steps': 'ചുവടുകൾ ചേർക്കുക',
   'Add Workout': 'വ്യായാമം ചേർക്കുക',
+
+  // Solo Login, Custom Themes, Calorie Detect & Live AI
+  'Calorie Detect': 'കലോറി പരിശോധന',
+  'Customize Theme': 'തീം മാറ്റുക',
+  'Back to Client Login': 'ക്ലയന്റ് ലോഗിനിലേക്ക്',
+  'NutriAI': 'ന്യൂട്രിAI',
+  'Real AI Assistant (EN / മലയാളം)': 'റിയൽ AI അസിസ്റ്റന്റ് (EN / മലയാളം)',
+  'NutriAI is thinking...': 'ന്യൂട്രിAI ആലോചിക്കുന്നു...',
 };
 
 const FOOD_KEYWORD_ML: Array<[RegExp, string]> = [

@@ -166,3 +166,131 @@ export async function triggerSWDueNotificationCheck(): Promise<void> {
     target.postMessage({ type: 'CHECK_DUE_NOTIFICATIONS' });
   }
 }
+
+export function isIOSDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const buffer = new ArrayBuffer(rawData.length);
+  const outputArray = new Uint8Array(buffer);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+export async function getExistingPushSubscription(): Promise<PushSubscription | null> {
+  if (typeof window === 'undefined' || !('PushManager' in window)) return null;
+  const reg = await getReadyServiceWorker();
+  if (!reg?.pushManager) return null;
+  try {
+    return await reg.pushManager.getSubscription();
+  } catch {
+    return null;
+  }
+}
+
+export async function subscribeDeviceToWebPush(
+  clientId: string,
+  reminders: SyncedReminderScheduleItem[] = []
+): Promise<{ ok: boolean; endpoint?: string }> {
+  if (typeof window === 'undefined' || !('Notification' in window) || !('PushManager' in window)) {
+    return { ok: false };
+  }
+  if (Notification.permission !== 'granted') {
+    return { ok: false };
+  }
+
+  try {
+    const reg = await getReadyServiceWorker();
+    if (!reg?.pushManager) return { ok: false };
+
+    let subscription = await reg.pushManager.getSubscription();
+    if (!subscription) {
+      const keyRes = await fetch('/api/push/vapid-public-key');
+      if (!keyRes.ok) return { ok: false };
+      const { publicKey } = await keyRes.json();
+      if (!publicKey) return { ok: false };
+
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+
+    const res = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId,
+        subscription: subscription.toJSON(),
+        timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        reminders,
+      }),
+    });
+
+    if (!res.ok) return { ok: false };
+    return { ok: true, endpoint: subscription.endpoint };
+  } catch {
+    return { ok: false };
+  }
+}
+
+export async function syncRemindersToPushServer(
+  clientId: string,
+  reminders: SyncedReminderScheduleItem[]
+): Promise<void> {
+  try {
+    const existingSub = await getExistingPushSubscription();
+    if (!existingSub) {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        await subscribeDeviceToWebPush(clientId, reminders);
+      }
+      return;
+    }
+
+    await fetch('/api/push/sync-reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId,
+        endpoint: existingSub.endpoint,
+        timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        reminders,
+      }),
+    });
+  } catch {
+    // Non-blocking sync
+  }
+}
+
+export async function sendServerTestWebPush(
+  clientId: string,
+  title: string,
+  body: string
+): Promise<boolean> {
+  try {
+    const existingSub = await getExistingPushSubscription();
+    const res = await fetch('/api/push/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId,
+        endpoint: existingSub?.endpoint,
+        title,
+        body,
+      }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return Boolean(data.success);
+  } catch {
+    return false;
+  }
+}
+

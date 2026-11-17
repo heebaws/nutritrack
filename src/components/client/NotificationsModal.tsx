@@ -9,6 +9,11 @@ import {
   showOSNotification,
   isInstalledPWA,
   wasNotificationOnceAllowed,
+  parseTimeTo24h,
+  subscribeDeviceToWebPush,
+  getExistingPushSubscription,
+  sendServerTestWebPush,
+  isIOSDevice,
 } from '../../utils/notifications';
 import {
   Bell,
@@ -57,30 +62,69 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   const { t, language, markTipAsRead, markAllTipsAsRead, isTipRead } = useApp();
   const isMl = language === 'ml';
   const [notifPermission, setNotifPermission] = useState<'default' | 'granted' | 'denied' | 'unsupported'>(() => getNotificationStatus());
+  const [pushSubscribed, setPushSubscribed] = useState(false);
   const [testSentBanner, setTestSentBanner] = useState(false);
   const installedPWA = isInstalledPWA();
   const onceAllowed = wasNotificationOnceAllowed();
+  const iosNeedsHomeScreen = isIOSDevice() && !installedPWA;
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    setNotifPermission(getNotificationStatus());
+    getExistingPushSubscription().then((sub) => setPushSubscribed(Boolean(sub)));
+  }, [isOpen]);
+
+  const buildPushSchedule = () =>
+    reminders
+      .map((r) => {
+        const parsed = parseTimeTo24h(r.time);
+        if (!parsed) return null;
+        return {
+          id: r.id,
+          title: `${r.title} (${r.time})`,
+          message: r.message,
+          hour: parsed.hour,
+          minute: parsed.minute,
+          enabled: r.enabled,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
 
   const requestPhonePermission = async () => {
     const perm = await requestOSNotificationPermission();
     setNotifPermission(perm);
     if (perm === 'granted') {
+      const subRes = await subscribeDeviceToWebPush(client.id, buildPushSchedule());
+      setPushSubscribed(subRes.ok);
       void showOSNotification(isMl ? 'ന്യൂട്രിട്രാക്ക് പ്രോ അലേർട്ടുകൾ സജീവമായി' : 'NutriTrack Pro Alerts Enabled', {
         body: isMl
-          ? `ഹായ് ${client.name}, 8:00 AM, 1:00 PM, 7:30 PM എന്നീ ഭക്ഷണ സമയങ്ങളിലും കോച്ച് നിർദ്ദേശങ്ങളിലും അലേർട്ട് ലഭിക്കും.`
-          : `Hi ${client.name}, you will receive on-time reminders at 8:00 AM (Breakfast), 1:00 PM (Lunch), and 7:30 PM (Dinner), plus coach alerts.`,
+          ? `ഹായ് ${client.name}, 8:00 AM, 1:00 PM, 7:30 PM എന്നീ ഭക്ഷണ സമയങ്ങളിലും കോച്ച് നിർദ്ദേശങ്ങളിലും ഫോണിൽ അലേർട്ട് ലഭിക്കും.`
+          : `Hi ${client.name}, you will receive on-time phone notifications at 8:00 AM (Breakfast), 1:00 PM (Lunch), and 7:30 PM (Dinner), plus coach alerts.`,
         tag: 'nutritrack-welcome-notif',
       });
     }
   };
 
-  const sendTestPhoneAlert = () => {
-    void showOSNotification(isMl ? 'കോച്ച് സലീം · ഭക്ഷണ ഓർമ്മപ്പെടുത്തൽ' : 'Coach Saleem · Meal Reminder', {
-      body: isMl
-        ? `ന്യൂട്രിട്രാക്ക് പ്രോയിൽ ഇന്നത്തെ ഭക്ഷണം രേഖപ്പെടുത്താൻ സമയമായി!`
-        : `Time to log your nutrition in NutriTrack Pro! Stay consistent with your ${client.goal} goal.`,
-      tag: `nutritrack-test-${Date.now()}`,
-    });
+  const sendTestPhoneAlert = async () => {
+    const title = isMl ? 'കോച്ച് സലീം · ഭക്ഷണ ഓർമ്മപ്പെടുത്തൽ' : 'Coach Saleem · Meal Reminder';
+    const body = isMl
+      ? 'ന്യൂട്രിട്രാക്ക് പ്രോയിൽ ഇന്നത്തെ ഭക്ഷണം രേഖപ്പെടുത്താൻ സമയമായി!'
+      : `Time to log your nutrition in NutriTrack Pro! Stay consistent with your ${client.goal} goal.`;
+
+    let pushed = await sendServerTestWebPush(client.id, title, body);
+    if (!pushed) {
+      const subRes = await subscribeDeviceToWebPush(client.id, buildPushSchedule());
+      if (subRes.ok) {
+        setPushSubscribed(true);
+        pushed = await sendServerTestWebPush(client.id, title, body);
+      }
+    }
+    if (!pushed) {
+      await showOSNotification(title, {
+        body,
+        tag: `nutritrack-test-${Date.now()}`,
+      });
+    }
     setTestSentBanner(true);
     setTimeout(() => setTestSentBanner(false), 3500);
   };
@@ -178,9 +222,20 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                     : t('Allow notifications so meal check-ins and coach alerts arrive on your phone on time — without cluttering the app.')}
                 </p>
                 <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 font-medium">
-                  {isMl
-                    ? `സെർവീസ് വർക്കർ (PWA) വഴി ${installedPWA ? 'ഇൻസ്റ്റാൾ ചെയ്ത ആപ്പിലും' : 'മൊബൈലിലും'} ഡെസ്ക്ടോപ്പിലും ഒരിക്കൽ അനുവദിച്ചാൽ അലേർട്ടുകൾ ലഭിക്കും.`
-                    : `Delivered via Service Worker (${installedPWA ? 'Installed App' : 'Mobile & Desktop PWA'}) — allow once for reliable alerts.`}
+                  {pushSubscribed
+                    ? (isMl
+                        ? 'വെബ് പുഷ് സജീവം: ആപ്പ് അടച്ചാലും ഫോണിൽ അലേർട്ടുകൾ ലഭിക്കും.'
+                        : 'Web Push Subscribed: Phone alerts deliver reliably even when the browser is backgrounded.')
+                    : (isMl
+                        ? `സെർവീസ് വർക്കർ (PWA) വഴി ${installedPWA ? 'ഇൻസ്റ്റാൾ ചെയ്ത ആപ്പിലും' : 'മൊബൈലിലും'} ഡെസ്ക്ടോപ്പിലും ഒരിക്കൽ അനുവദിച്ചാൽ അലേർട്ടുകൾ ലഭിക്കും.`
+                        : `Delivered via Web Push & Service Worker (${installedPWA ? 'Installed App' : 'Mobile & Desktop PWA'}) — allow once for reliable phone alerts.`)}
+                  {iosNeedsHomeScreen && (
+                    <span className="block text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+                      {isMl
+                        ? 'iPhone Safari-ൽ ഷെയർ (Share) → "Add to Home Screen" വഴി ആപ്പ് ചേർത്താൽ മാത്രമേ ഫോൺ പുഷ് നോട്ടിഫിക്കേഷൻ ലഭിക്കൂ.'
+                        : 'On iPhone/iPad: tap Safari Share → "Add to Home Screen", open the installed icon, then tap Enable Phone Alerts.'}
+                    </span>
+                  )}
                   {onceAllowed && notifPermission !== 'granted' && (
                     <span className="block text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
                       {isMl
