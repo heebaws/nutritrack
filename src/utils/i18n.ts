@@ -408,6 +408,18 @@ const EN_TO_ML: Record<string, string> = {
   'NutriAI': 'ന്യൂട്രിAI',
   'Real AI Assistant (EN / മലയാളം)': 'റിയൽ AI അസിസ്റ്റന്റ് (EN / മലയാളം)',
   'NutriAI is thinking...': 'ന്യൂട്രിAI ആലോചിക്കുന്നു...',
+  'AI Reply': 'AI ഭാഷ',
+  'Auto': 'ഓട്ടോ',
+  'Both (EN+ML)': 'രണ്ടും (EN+ML)',
+  'left': 'ബാക്കി',
+  'Listen': 'കേൾക്കുക',
+  'Stop': 'നിർത്തുക',
+  'Added to Daily Meal Diary!': 'ദിവസേന ഭക്ഷണ ഡയറിയിൽ ചേർത്തു!',
+  'Add to': 'ചേർക്കുക:',
+  'Calories First Check': 'ആദ്യം കലോറി പരിശോധന',
+  'Was it oily? (3 Cooking Options):': 'എണ്ണ ഉപയോഗിച്ചോ? (3 പാചക രീതികൾ):',
+  'Ask anything in English or Malayalam, speak, or snap photo...':
+    'മലയാളത്തിലോ ഇംഗ്ലീഷിലോ എന്തും ചോദിക്കുക, സംസാരിക്കുക, അല്ലെങ്കിൽ ഫോട്ടോ എടുക്കുക...',
 };
 
 const FOOD_KEYWORD_ML: Array<[RegExp, string]> = [

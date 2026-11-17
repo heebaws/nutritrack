@@ -49,6 +49,8 @@ import {
   Mic,
   MicOff,
   Volume2,
+  Square,
+  Languages,
   Wifi,
   WifiOff,
   AlertTriangle
@@ -321,6 +323,57 @@ export const AIChatBot: React.FC = () => {
   const [grantBotColumnAccess, setGrantBotColumnAccess] = useState<boolean>(true);
   // Optional auto-add to column on search
   const [autoAddToColumnOnSearch, setAutoAddToColumnOnSearch] = useState<boolean>(false);
+  // AI reply language mode: 'auto' (follows user input/app language), 'en', 'ml', or 'both' (EN + ML side-by-side)
+  const [responseLang, setResponseLang] = useState<'auto' | 'en' | 'ml' | 'both'>('auto');
+  const isMlUi = responseLang === 'ml' || (responseLang === 'auto' && language === 'ml');
+
+  // Read-aloud speech synthesis state
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+
+  const stopSpeech = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingMsgId(null);
+  };
+
+  const toggleSpeakMessage = (msgId: string, text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (speakingMsgId === msgId) {
+      stopSpeech();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const plain = text
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/[#*_>`]/g, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!plain) return;
+
+    const utterance = new SpeechSynthesisUtterance(plain.slice(0, 1200));
+    const hasMlScript = /[\u0D00-\u0D7F]/.test(plain);
+    utterance.lang = hasMlScript ? 'ml-IN' : 'en-IN';
+    utterance.rate = 1.0;
+    utterance.onend = () => setSpeakingMsgId(null);
+    utterance.onerror = () => setSpeakingMsgId(null);
+    setSpeakingMsgId(msgId);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  useEffect(() => {
+    if (!isOpen) stopSpeech();
+  }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
   // Quick food search input state
   const [foodSearchQuery, setFoodSearchQuery] = useState<string>('');
   
@@ -366,7 +419,7 @@ export const AIChatBot: React.FC = () => {
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
-        recognition.lang = 'en-IN';
+        recognition.lang = isMlUi ? 'ml-IN' : 'en-IN';
 
         recognition.onresult = (event: any) => {
           let currentTranscript = '';
@@ -677,27 +730,48 @@ export const AIChatBot: React.FC = () => {
     };
   }, [activeClient, dietPlans, mealLogs, foods, habits, selectedDate, viewMode, language]);
 
+  const getWelcomeMessageText = (mlMode: boolean, bothMode: boolean) => {
+    if (bothMode) {
+      return `👋 നമസ്കാരം! ഞാൻ **NutriAI** — നിങ്ങളുടെ സമ്പൂർണ്ണ **ബഹുഭാഷാ AI അസിസ്റ്റന്റ് (English + മലയാളം)**.
+
+**English:** Ask me **anything** on any topic — general knowledge, science, math, coding, translations, recipes, workouts, or your personal diet, micronutrients & calories. Every reply will appear in **both English and Malayalam**.
+
+**മലയാളം:** ശാസ്ത്രം, കണക്ക്, കോഡിംഗ്, പൊതുവിജ്ഞാനം, വിവർത്തനം, പാചകം, ആരോഗ്യം, ഭക്ഷണ കലോറി എന്നിവയെക്കുറിച്ച് **എന്തും ചോദിക്കാം** — എല്ലാ ഉത്തരങ്ങളും **ഇംഗ്ലീഷിലും മലയാളത്തിലും** ലഭിക്കും!`;
+    }
+    if (mlMode) {
+      return `👋 നമസ്കാരം! ഞാൻ **NutriAI** — നിങ്ങളുടെ സമ്പൂർണ്ണ **AI അസിസ്റ്റന്റ് & വെൽനെസ് കോച്ച്**.
+
+നിങ്ങൾക്ക് **എന്തും** ചോദിക്കാം (മലയാളത്തിലോ ഇംഗ്ലീഷിലോ):
+- 🌍 **എല്ലാ ചോദ്യങ്ങൾക്കും ഉത്തരം:** പൊതുവിജ്ഞാനം, ശാസ്ത്രം, കണക്ക്, കോഡിംഗ്, വിവർത്തനം, പാചകക്കുറിപ്പുകൾ, ദൈനംദിന സംശയങ്ങൾ.
+- 💬 **വ്യക്തിഗത പോഷക ഉപദേശം:** ഭാരം, പ്രോട്ടീൻ, ഫൈബർ, അയൺ, വിറ്റാമിൻ D, ഉറക്കം, നടപ്പ് എന്നിവയെക്കുറിച്ച് ചോദിക്കുക.
+- 📸 **ഫോട്ടോ & ശബ്ദ സഹായി:** പാത്രത്തിന്റെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യാം അല്ലെങ്കിൽ മൈക്കിൽ സംസാരിച്ച് കലോറി രേഖപ്പെടുത്താം.`;
+    }
+    return `👋 Namaskaram! I am **NutriAI**, your full-capability **AI Assistant** (English & മലയാളം).
+
+Ask me **anything** — on any topic, in **English, Malayalam, or Both**:
+- 🌍 **Answer Anything:** General knowledge, science, math, coding, translations, writing, recipes, and daily questions.
+- 🧠 **Personal Health & Nutrition Coaching:** Analyze your calories, protein, fiber, iron, vitamin D, magnesium, steps & sleep.
+- 📸 **Photo & Voice Meal Logging:** Snap a plate photo or tap the mic in English/Malayalam to log meals in 1 tap.`;
+  };
+
   // Initial welcome message
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       id: 'welcome-1',
       sender: 'bot',
-      text: language === 'ml'
-        ? `👋 നമസ്കാരം! ഞാൻ **NutriAI** — നിങ്ങളുടെ വ്യക്തിഗത AI ന്യൂട്രീഷൻ കോച്ച്.
-
-എന്നോട് എന്തും ചോദിക്കാം:
-- 💬 **AI പോഷക ഉപദേശം:** ഭാരം കുറയ്ക്കൽ/കൂട്ടൽ, പ്രോട്ടീൻ, അയൺ, വിറ്റാമിൻ D, ഉറക്കം, സ്റ്റെപ്പുകൾ എന്നിവയെക്കുറിച്ച് ചോദിക്കുക.
-- 📸 **ഭക്ഷണ ഫോട്ടോ സ്കാൻ:** പാത്രത്തിന്റെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്താൽ AI കലോറിയും പോഷകങ്ങളും കണക്കാക്കും.
-- 🥗 **1-ടാപ്പ് ഭക്ഷണ രേഖപ്പെടുത്തൽ:** *"രാവിലെ 8:30-ന് 2 പുട്ടും കടലയും കഴിച്ചു"* എന്ന് ടൈപ്പ് ചെയ്യൂ അല്ലെങ്കിൽ മൈക്കിൽ പറയൂ.`
-        : `👋 Namaskaram! I am **NutriAI**, your live AI Nutrition & Wellness Assistant.
-
-Ask me anything naturally in **English or Malayalam**:
-- 🧠 **Real Personalized Coaching:** Ask *"What should I eat for dinner to hit my protein?"*, *"Why is my weight plateauing?"*, or check your remaining Iron, Vitamin D & Magnesium.
-- 📸 **Photo Calorie Detection:** Snap or upload a meal plate photo and I will detect items, oil prep, calories & macros automatically.
-- ⏰ **Voice & Quick Meal Logging:** Say or type *"I ate 2 boiled eggs and 1 appam at 8:30 am"* and add directly to your diary!`,
+      text: getWelcomeMessageText(language === 'ml', false),
       timestamp: 'Just now'
     }
   ]);
+
+  useEffect(() => {
+    setMessages(prev => {
+      if (prev.length === 1 && prev[0].id === 'welcome-1') {
+        return [{ ...prev[0], text: getWelcomeMessageText(isMlUi, responseLang === 'both') }];
+      }
+      return prev;
+    });
+  }, [isMlUi, responseLang]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -736,22 +810,30 @@ Ask me anything naturally in **English or Malayalam**:
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Quick preset questions showcasing real AI nutrition reasoning + calorie detection
-  const quickPrompts = language === 'ml'
+  // Quick preset questions showcasing general bilingual AI reasoning + personal nutrition + calorie detection
+  const quickPrompts = responseLang === 'both'
     ? [
-        { label: '📊 ഇന്നത്തെ എന്റെ ബാക്കി കലോറി & പോഷകങ്ങൾ', query: 'ഇന്ന് എനിക്ക് ഇനി എത്ര കലോറിയും പ്രോട്ടീനും അയണും ആവശ്യമുണ്ട്?' },
-        { label: '🍽️ രാത്രി ഭക്ഷണം എന്തൊക്കെ കഴിക്കാം?', query: 'എന്റെ ഇന്നത്തെ ലക്ഷ്യം അനുസരിച്ച് രാത്രി ഭക്ഷണത്തിന് നല്ലത് എന്താണ്?' },
-        { label: '🍌 പഴംപൊരി കലോറി', query: 'Pazham Pori calories and was it oily options' },
-        { label: '🌾 പുട്ട് (Puttu)', query: 'പുട്ട് (Puttu) calories and portion' },
-        { label: '⏰ രാവിലെ 2 മുട്ട കഴിച്ചു', query: 'I ate 2 boiled eggs and 1 bread at 8:30 am' },
+        { label: '🌍 Answer Anything (EN+ML)', query: 'Explain why sleep and hydration improve metabolism in both English and Malayalam' },
+        { label: '📊 Macro & Nutrient Check', query: 'Analyze my remaining calories, protein, fiber, iron, vitamin D and magnesium today in both English and Malayalam' },
+        { label: '🔬 Explain Science (EN+ML)', query: 'How do black holes form? Explain simply in both English and Malayalam' },
+        { label: '🌾 പുട്ട് (Puttu)', query: 'പുട്ട് (Puttu) calories, fiber and portion in both English and Malayalam' },
+        { label: '⏰ Log Breakfast', query: 'I ate 2 boiled eggs and 1 bread at 8:30 am' },
       ]
-    : [
-        { label: '📊 Analyze My Macros Today', query: 'Analyze my calories, protein, iron, vitamin D, and magnesium remaining today' },
-        { label: '🍽️ Best Dinner For My Goal?', query: 'What should I eat for dinner tonight based on my remaining calories and protein?' },
-        { label: '🌾 പുട്ട് (Puttu)', query: 'പുട്ട് (Puttu) calories and portion' },
-        { label: '🍌 Pazham Pori Calories', query: 'Pazham Pori calories and was it oily options' },
-        { label: '⏰ Ate 2 eggs & 1 bread at 8:30 am', query: 'I ate 2 boiled eggs and 1 bread at 8:30 am' },
-      ];
+    : isMlUi
+      ? [
+          { label: '🌍 എന്തും ചോദിക്കാം (AI)', query: 'കൃത്രിമബുദ്ധി (AI) എങ്ങനെയാണ് പ്രവർത്തിക്കുന്നത് എന്ന് ലളിതമായി മലയാളത്തിൽ വിശദീകരിക്കാമോ?' },
+          { label: '📊 എന്റെ ഇന്നത്തെ പോഷകങ്ങൾ', query: 'ഇന്ന് എനിക്ക് ഇനി എത്ര കലോറിയും പ്രോട്ടീനും ഫൈബറും അയണും ആവശ്യമുണ്ട്?' },
+          { label: '🍽️ രാത്രി ഭക്ഷണ നിർദ്ദേശം', query: 'എന്റെ ഇന്നത്തെ ലക്ഷ്യം അനുസരിച്ച് രാത്രി ഭക്ഷണത്തിന് നല്ലത് എന്താണ്?' },
+          { label: '🌾 പുട്ട് (Puttu) കലോറി', query: 'പുട്ട് (Puttu) calories, fiber and portion' },
+          { label: '⏰ രാവിലെ 2 മുട്ട കഴിച്ചു', query: 'I ate 2 boiled eggs and 1 bread at 8:30 am' },
+        ]
+      : [
+          { label: '🌍 Ask Anything (EN+ML)', query: 'Explain intermittent fasting and sleep recovery in both English and Malayalam' },
+          { label: '📊 Analyze My Macros & Fiber', query: 'Analyze my calories, protein, fiber, iron, vitamin D, and magnesium remaining today' },
+          { label: '🍽️ Best Dinner For My Goal?', query: 'What should I eat for dinner tonight based on my remaining calories and protein?' },
+          { label: '🌾 പുട്ട് (Puttu)', query: 'പുട്ട് (Puttu) calories, fiber and portion' },
+          { label: '⏰ Ate 2 eggs & 1 bread', query: 'I ate 2 boiled eggs and 1 bread at 8:30 am' },
+        ];
 
   // Helper to ensure food is auto-added to Clinic Food Library
   const autoAddFoodToLibrary = (foodItem: FoodData): boolean => {
@@ -1197,6 +1279,7 @@ What food or snack would you like to check?`
           message: textToSend || "Analyze this meal photo, state each food calories first in bold, calculate 3 oil options, and stage for meal logging.",
           imageBase64: currentImg?.base64,
           mimeType: currentImg?.mimeType,
+          preferredLanguage: responseLang,
           clientContext,
           conversationHistory
         })
@@ -1204,7 +1287,11 @@ What food or snack would you like to check?`
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        throw new Error(`Server returned ${res.status}`);
+        const errData = await res.json().catch(() => ({}));
+        const err: any = new Error(errData?.error || `Server returned ${res.status}`);
+        err.code = errData?.code;
+        err.status = res.status;
+        throw err;
       }
 
       const data = await res.json();
@@ -1224,6 +1311,7 @@ What food or snack would you like to check?`
             protein: f.protein,
             carbs: f.carbs,
             fat: f.fat,
+            fiber: f.fiber,
           });
           autoAddFoodToLibrary({
             name: f.name,
@@ -1233,6 +1321,7 @@ What food or snack would you like to check?`
             protein: f.protein,
             carbs: f.carbs,
             fat: f.fat,
+            fiber: f.fiber,
             calcium: f.calcium ?? micro.calcium,
             iron: f.iron ?? micro.iron,
             magnesium: f.magnesium ?? micro.magnesium,
@@ -1245,7 +1334,7 @@ What food or snack would you like to check?`
       const botMsg: ChatMessage = {
         id: botMsgId,
         sender: 'bot',
-        text: data.answer || "Here is your nutrition breakdown with calories stated first.",
+        text: data.answer || "Here is your response from NutriAI.",
         food: data.food || null,
         mealLogData: data.mealLogData || null,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -1272,7 +1361,8 @@ What food or snack would you like to check?`
           calories: data.food.calories,
           protein: data.food.protein,
           carbs: data.food.carbs,
-          fat: data.food.fat
+          fat: data.food.fat,
+          fiber: data.food.fiber
         });
         setSavedFoodNotice(`⚡ NutriAI added ${data.food.name} (${data.food.calories} kcal) directly to your ${initialSlot} column!`);
       }
@@ -1298,14 +1388,22 @@ What food or snack would you like to check?`
       setMessages(prev => [...prev, botMsg]);
 
     } catch (err: any) {
-      console.warn("NutriAI temporary connection failure:", err);
+      console.warn("NutriAI request failed:", err);
       const botMsgId = 'bot-' + Date.now();
+      const isKeyMissingOrDenied = err?.code === 'AI_NOT_CONFIGURED' || err?.code === 'PERMISSION_DENIED';
+      const detail = err?.message ? ` (${err.message})` : '';
+      const errText = isKeyMissingOrDenied
+        ? (isMlUi
+            ? '⚠️ ലൈവ് Gemini AI പ്രവർത്തിപ്പിക്കാൻ Settings > Secrets-ൽ സാധുവായ GEMINI_API_KEY ചേർക്കേണ്ടതുണ്ട്.'
+            : '⚠️ Live Gemini AI requires a valid GEMINI_API_KEY configured in Settings > Secrets.')
+        : (isMlUi
+            ? `⚠️ AI സെർവറുമായി ബന്ധപ്പെടുന്നതിൽ തടസ്സം നേരിട്ടു${detail}. താഴെയുള്ള ബട്ടൺ അമർത്തി വീണ്ടും ശ്രമിക്കുക.`
+            : `⚠️ Live AI request could not be completed${detail}. Tap Retry below to ask again.`);
+
       const errMsg: ChatMessage = {
         id: botMsgId,
         sender: 'bot',
-        text: language === 'ml'
-          ? '⚠️ AI സെർവറുമായി ബന്ധപ്പെടുന്നതിൽ ചെറിയ താമസം നേരിട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.'
-          : '⚠️ Live AI request timed out or encountered a temporary network issue. Tap Retry below to ask again.',
+        text: errText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isError: true,
         retryQuery: textToSend || undefined,
@@ -1365,7 +1463,7 @@ What food or snack would you like to check?`
       return;
     }
 
-    const { oilOption, adjustedCalories, adjustedProtein, adjustedCarbs, adjustedFat, portion, measureLabel } =
+    const { oilOption, adjustedCalories, adjustedProtein, adjustedCarbs, adjustedFat, adjustedFiber, portion, measureLabel } =
       getAdjustedNutrition(msgId, food);
     const slot = targetSlot || selectedSlots[msgId] || 'Evening Snack';
 
@@ -1401,6 +1499,7 @@ What food or snack would you like to check?`
       protein: adjustedProtein,
       carbs: adjustedCarbs,
       fat: adjustedFat,
+      fiber: adjustedFiber,
       calcium: Math.round((food.calcium ?? baseMicro.calcium) * portion),
       iron: Math.round((food.iron ?? baseMicro.iron) * portion * 10) / 10,
       magnesium: Math.round((food.magnesium ?? baseMicro.magnesium) * portion),
@@ -1438,6 +1537,7 @@ What food or snack would you like to check?`
         protein: f.protein / qty,
         carbs: f.carbs / qty,
         fat: f.fat / qty,
+        fiber: f.fiber !== undefined ? f.fiber / qty : undefined,
       });
       addMealLog({
         clientId: activeClient.id,
@@ -1451,6 +1551,7 @@ What food or snack would you like to check?`
         protein: f.protein,
         carbs: f.carbs,
         fat: Number((f.fat + oilFat).toFixed(1)),
+        fiber: f.fiber !== undefined ? Number(f.fiber.toFixed(1)) : undefined,
         calcium: Math.round((f.calcium ?? baseMicro.calcium) * qty),
         iron: Math.round((f.iron ?? baseMicro.iron) * qty * 10) / 10,
         magnesium: Math.round((f.magnesium ?? baseMicro.magnesium) * qty),
@@ -1723,10 +1824,42 @@ What food or snack would you like to check?`
                 <span className="text-slate-600 dark:text-slate-300 truncate text-[11px]">{activeClient.goal}</span>
               </div>
               <div className="font-mono font-bold text-[11px] text-emerald-800 dark:text-emerald-300 shrink-0 tabular-nums">
-                {clientContext.remainingCalories} kcal left
+                {clientContext.remainingCalories} kcal {t('left')}
               </div>
             </div>
           )}
+
+          {/* AI Response Language Selector Bar */}
+          <div className="px-3 py-1.5 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 shrink-0">
+              <Languages className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="hidden sm:inline">{t('AI Reply')}:</span>
+            </span>
+            <div className="grid grid-cols-4 gap-1 flex-1 sm:flex-initial">
+              {[
+                { id: 'auto', label: t('Auto') },
+                { id: 'en', label: 'English' },
+                { id: 'ml', label: 'മലയാളം' },
+                { id: 'both', label: t('Both (EN+ML)') },
+              ].map((opt) => {
+                const active = responseLang === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setResponseLang(opt.id as any)}
+                    className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold border transition-colors cursor-pointer whitespace-nowrap text-center ${
+                      active
+                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Saved Notification / Warning Banner */}
           {savedFoodNotice && (
@@ -1934,12 +2067,12 @@ What food or snack would you like to check?`
                             {msg.loggedSuccess ? (
                               <>
                                 <Check className="w-4 h-4 text-emerald-800 dark:text-emerald-300" />
-                                <span>Added to Daily Meal Diary!</span>
+                                <span>{t('Added to Daily Meal Diary!')}</span>
                               </>
                             ) : (
                               <>
                                 <Plus className="w-4 h-4" />
-                                <span>Add to {msg.mealLogData.detectedMealType} Diary</span>
+                                <span>{t('Add to')} {t(msg.mealLogData.detectedMealType)}</span>
                               </>
                             )}
                           </button>
@@ -1987,10 +2120,10 @@ What food or snack would you like to check?`
                             <Flame className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
                             <div>
                               <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
-                                Calories First Check
+                                {t('Calories First Check')}
                               </span>
                               <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-                                {adjusted.portion}x portion ({adjusted.oilOption === 'fried' ? 'Deep Fried' : adjusted.oilOption === 'medium' ? 'Medium Sauté' : 'Steamed / No Oil'})
+                                {adjusted.portion}x ({adjusted.oilOption === 'fried' ? t('Deep Fried') : adjusted.oilOption === 'medium' ? t('Medium Sauté') : t('Steamed / No Oil')})
                               </span>
                             </div>
                           </div>
@@ -2004,7 +2137,7 @@ What food or snack would you like to check?`
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
                               <Droplets className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                              Was it oily? (3 Cooking Options):
+                              {t('Was it oily? (3 Cooking Options):')}
                             </span>
                             <span className="text-[10px] font-bold text-slate-400">
                               Live Calorie Recalculation
@@ -2332,15 +2465,38 @@ What food or snack would you like to check?`
                           className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
-                          <span>{language === 'ml' ? 'വീണ്ടും ശ്രമിക്കുക' : 'Retry with AI'}</span>
+                          <span>{isMlUi ? 'വീണ്ടും ശ്രമിക്കുക' : 'Retry with AI'}</span>
                         </button>
                       </div>
                     )}
                   </div>
 
-                  <span className="text-[10px] text-slate-400 mt-1 px-1">
-                    {msg.timestamp}
-                  </span>
+                  <div className="flex items-center gap-2 mt-1 px-1">
+                    <span className="text-[10px] text-slate-400">
+                      {msg.timestamp}
+                    </span>
+                    {msg.sender === 'bot' && !msg.isError && (
+                      <button
+                        type="button"
+                        onClick={() => toggleSpeakMessage(msg.id, msg.text)}
+                        title={speakingMsgId === msg.id ? t('Stop') : t('Listen')}
+                        aria-label={speakingMsgId === msg.id ? t('Stop') : t('Listen')}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                      >
+                        {speakingMsgId === msg.id ? (
+                          <>
+                            <Square className="w-2.5 h-2.5 fill-current text-rose-500" />
+                            <span className="text-rose-500">{t('Stop')}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="w-3 h-3" />
+                            <span>{t('Listen')}</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -2486,10 +2642,10 @@ What food or snack would you like to check?`
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder={
                 selectedImage 
-                  ? "Add note about this meal photo..." 
+                  ? (isMlUi ? 'ഈ ഭക്ഷണ ഫോട്ടോയെക്കുറിച്ച് കുറിപ്പ് ചേർക്കുക...' : 'Add note about this meal photo...')
                   : isRecordingVoice 
-                    ? "Listening to voice note..." 
-                    : t('Ask in English or Malayalam, speak with mic, or snap plate photo...')
+                    ? (isMlUi ? 'ശബ്ദം ശ്രദ്ധിക്കുന്നു...' : 'Listening to voice note...')
+                    : t('Ask anything in English or Malayalam, speak, or snap photo...')
               }
               disabled={isLoading || isRecordingVoice}
               className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
