@@ -77,9 +77,9 @@ export const Header: React.FC = () => {
               type="button"
               onClick={handleLogoTap}
               className="text-left cursor-pointer hover:opacity-95 transition-opacity min-w-0 flex-1 md:flex-initial overflow-hidden"
-              title="NutriTrack"
+              title="NutriTrack — Touch for Coach Login"
             >
-              <NutriTrackLogo size="md" subtitle={t('Connected Nutrition & Lifestyle Portal')} />
+              <NutriTrackLogo size="md" subtitle="Eat smart. Live strong." />
             </button>
 
             {/* Mobile View: Notifications (beside Themes) + Customize Theme + Dark/Light + Translate + Client Login */}
@@ -174,7 +174,12 @@ export const Header: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between md:justify-end gap-1.5 sm:gap-2 border-t md:border-t-0 pt-2 md:pt-0 border-slate-100 dark:border-slate-800 min-w-0 w-full md:w-auto">
             {viewMode === 'client' && activeClient ? (
               <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                <div className="flex items-center gap-2 bg-emerald-50/80 dark:bg-emerald-950/60 px-2 sm:px-2.5 py-1 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs min-w-0">
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-profile-editor'))}
+                  title="Edit Profile & Photo"
+                  className="flex items-center gap-2 bg-emerald-50/80 dark:bg-emerald-950/60 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60 px-2 sm:px-2.5 py-1 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs min-w-0 cursor-pointer transition-colors"
+                >
                   <img
                     src={activeClient.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
                     alt={activeClient.name}
@@ -184,7 +189,7 @@ export const Header: React.FC = () => {
                     <span className="font-bold text-slate-900 dark:text-white block truncate max-w-[130px]">{activeClient.name}</span>
                     <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-mono font-medium">@{activeClient.username || 'client'}</span>
                   </div>
-                </div>
+                </button>
 
                 <button
                   type="button"

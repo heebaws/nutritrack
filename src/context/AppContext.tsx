@@ -13,6 +13,7 @@ import {
   ActivityLog,
   DailyHabits,
   ClinicAppointment,
+  AccountabilityChallenge,
   ViewMode
 } from '../types';
 import {
@@ -43,7 +44,13 @@ import {
   enrichFoodWithMicronutrients,
   estimateFoodFiber,
   estimateFoodMicronutrients,
+  estimateFoodSugar,
 } from '../utils/micronutrients';
+import {
+  buildNextDayAccountabilityChallenge,
+  evaluateExperienceLevel,
+  getCalendarMonthCheatSummary,
+} from '../utils/cheatAndAdaptiveEngine';
 import {
   testFirestoreConnection,
   subscribeToCollection,
@@ -54,7 +61,7 @@ import {
 } from '../services/firebase';
 
 export type AppTheme = 'light' | 'dark';
-export type AccentTheme = 'emerald' | 'ocean' | 'violet' | 'amber' | 'rose' | 'teal';
+export type AccentTheme = 'emerald' | 'coral' | 'amber' | 'ocean' | 'violet' | 'rose' | 'teal';
 
 interface AppContextType {
   // Navigation & View Mode
@@ -122,9 +129,10 @@ interface AppContextType {
   activities: ActivityLog[];
   habits: DailyHabits[];
   appointments: ClinicAppointment[];
+  challenges: AccountabilityChallenge[];
 
   // Client Operations
-  addMealLog: (meal: Omit<MealLogItem, 'id' | 'timeLogged'>) => void;
+  addMealLog: (meal: Omit<MealLogItem, 'id' | 'timeLogged'>) => { triggeredChallenge?: AccountabilityChallenge };
   deleteMealLog: (id: string) => void;
   resetClientDayMealsToDayBefore: (clientId: string, targetDate: string) => Promise<{ count: number; dayBefore: string }>;
   addSuggestedMeal: (suggestion: Omit<AISuggestedMeal, 'id' | 'createdAt' | 'status'>) => void;
@@ -133,6 +141,9 @@ interface AppContextType {
   clearSuggestedMeals: () => void;
   addMeasurement: (data: Omit<BodyMeasurement, 'id'>) => void;
   toggleReminder: (id: string) => void;
+  updateClientSelf: (partial: Partial<ClientProfile>) => void;
+  toggleChallengeComplete: (challengeId: string, completed?: boolean) => void;
+  updateChallengeMode: (challengeId: string, mode: AccountabilityChallenge['mode'], setsCompleted?: number) => void;
 
   // Hydration Operations
   addWaterLog: (amountMl: number, date?: string) => void;
@@ -219,7 +230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [accentTheme, setAccentThemeState] = useState<AccentTheme>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_PREFIX + 'accentTheme') as AccentTheme | null;
-      if (stored && ['emerald', 'ocean', 'violet', 'amber', 'rose', 'teal'].includes(stored)) {
+      if (stored && ['emerald', 'coral', 'amber', 'ocean', 'violet', 'rose', 'teal'].includes(stored)) {
         return stored;
       }
     } catch {}
@@ -232,15 +243,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       document.documentElement.setAttribute('data-accent', accentTheme);
       const heroHexMap: Record<AccentTheme, string> = {
         emerald: '#064e3b',
+        coral: '#7c2d12',
+        amber: '#78350f',
         ocean: '#1e3a8a',
         violet: '#4c1d95',
-        amber: '#78350f',
         rose: '#881337',
         teal: '#134e4a',
       };
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) {
-        meta.setAttribute('content', theme === 'dark' ? '#020617' : heroHexMap[accentTheme]);
+        meta.setAttribute('content', theme === 'dark' ? '#0b1410' : heroHexMap[accentTheme]);
       }
     }
     try {
@@ -401,6 +413,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activities, setActivities] = useState<ActivityLog[]>(() => loadStored('activities', INITIAL_ACTIVITIES));
   const [habits, setHabits] = useState<DailyHabits[]>(() => loadStored('habits', INITIAL_HABITS));
   const [appointments, setAppointments] = useState<ClinicAppointment[]>(() => loadStored('appointments', INITIAL_APPOINTMENTS));
+  const [challenges, setChallenges] = useState<AccountabilityChallenge[]>(() => loadStored('challenges', []));
 
   // Current client ID (null if not logged in with username and password)
   const [activeClientId, setActiveClientId] = useState<string | null>(() => {
@@ -651,6 +664,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         });
 
+        const unsubChallenges = subscribeToCollection<AccountabilityChallenge>('challenges', (items) => {
+          if (items && items.length > 0) {
+            setChallenges(prev => {
+              const map = new Map<string, AccountabilityChallenge>();
+              prev.forEach(ch => { if (ch?.id) map.set(ch.id, ch); });
+              items.forEach(ch => { if (ch?.id) map.set(ch.id, { ...map.get(ch.id), ...ch }); });
+              return Array.from(map.values());
+            });
+          }
+        });
+
         unsubs = [
           unsubClients,
           unsubDietitians,
@@ -664,6 +688,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           unsubAppointments,
           unsubTips,
           unsubReminders,
+          unsubChallenges,
         ];
 
         setCloudSyncStatus('connected');
@@ -710,6 +735,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(STORAGE_KEY_PREFIX + 'activities', JSON.stringify(activities));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'habits', JSON.stringify(habits));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'appointments', JSON.stringify(appointments));
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'challenges', JSON.stringify(challenges));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'activeClientId', JSON.stringify(activeClientId));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'activeTeamUserId', JSON.stringify(activeTeamUserId));
     } catch {
@@ -736,13 +762,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             waterLogs,
             activities,
             habits,
-            appointments
+            appointments,
+            challenges
           },
           timestamp: Date.now()
         })
       }).catch(() => {});
     }, 1000);
-  }, [clients, dietitians, foods, dietPlans, mealLogs, suggestedMeals, measurements, tips, reminders, waterLogs, activities, habits, appointments, activeClientId, activeTeamUserId]);
+  }, [clients, dietitians, foods, dietPlans, mealLogs, suggestedMeals, measurements, tips, reminders, waterLogs, activities, habits, appointments, challenges, activeClientId, activeTeamUserId]);
 
   // Derived current client (ONLY returns client if authenticated with username and password)
   const activeClient = (clients && activeClientId) 
@@ -959,8 +986,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Add meal log (real-time synced to Firestore so coach sees it immediately)
-  const addMealLog = (meal: Omit<MealLogItem, 'id' | 'timeLogged'>) => {
+  // Add meal log (real-time synced to Firestore + sugar tracking + monthly cheat meal accountability)
+  const addMealLog = (meal: Omit<MealLogItem, 'id' | 'timeLogged'>): { triggeredChallenge?: AccountabilityChallenge } => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const qty = Math.max(0.1, Number(meal.quantity) || 1);
@@ -991,9 +1018,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           carbs: meal.carbs,
         });
 
+    const estSugar = matchedCatalog
+      ? estimateFoodSugar(matchedCatalog) * qty
+      : estimateFoodSugar({
+          name: meal.foodName,
+          calories: meal.calories,
+          carbs: meal.carbs,
+        });
+
     const newLog: MealLogItem = {
       ...meal,
       fiber: meal.fiber !== undefined ? meal.fiber : Math.round(estFiber * 10) / 10,
+      sugar: meal.sugar !== undefined ? meal.sugar : Math.round(estSugar * 10) / 10,
       calcium: meal.calcium !== undefined ? meal.calcium : Math.round(estMicro.calcium),
       iron: meal.iron !== undefined ? meal.iron : Math.round(estMicro.iron * 10) / 10,
       magnesium: meal.magnesium !== undefined ? meal.magnesium : Math.round(estMicro.magnesium),
@@ -1002,23 +1038,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timeLogged: timeStr,
     };
 
-    setMealLogs(prev => [newLog, ...prev]);
+    let triggeredChallenge: AccountabilityChallenge | undefined;
+    if (meal.isCheatMeal && meal.clientId) {
+      const monthCheat = getCalendarMonthCheatSummary(mealLogs, meal.clientId, meal.date);
+      if (monthCheat.usedCount >= 1) {
+        const draft = buildNextDayAccountabilityChallenge({
+          clientId: meal.clientId,
+          triggerDate: meal.date,
+          triggerMealName: meal.foodName,
+          cheatCountThisMonth: monthCheat.usedCount + 1,
+        });
+        const newChallenge: AccountabilityChallenge = {
+          ...draft,
+          id: `chg-${Date.now()}`,
+        };
+        triggeredChallenge = newChallenge;
+        setChallenges(prev => [newChallenge, ...prev]);
+        saveDocumentToFirestore('challenges', newChallenge.id, newChallenge).catch(() => {});
 
-    // Save to Firestore
+        const challengeTip: DietitianTip = {
+          id: `tip-chg-${Date.now()}`,
+          dietitianId: 'admin-1',
+          dietitianName: 'NutriTrack Coach',
+          clientId: meal.clientId,
+          targetAudience: 'specific',
+          type: 'challenge',
+          title: 'Accountability Challenge Unlocked',
+          message: `Extra cheat meal logged (${meal.foodName}). Tomorrow's challenge (${newChallenge.targetDate}): 50 push-ups + 50 squats. Split into sets or pick the joint-friendly option — you've got this!`,
+          createdAt: `${meal.date} ${timeStr}`,
+        };
+        setTips(prev => [challengeTip, ...prev]);
+        saveDocumentToFirestore('tips', challengeTip.id, challengeTip).catch(() => {});
+
+        fetch('/api/push/send-coach-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: meal.clientId,
+            title: 'Accountability Challenge',
+            body: "Extra cheat meal logged. Tomorrow's challenge: 50 push-ups + 50 squats. You've got this!",
+            tag: `challenge-${newChallenge.id}`,
+          }),
+        }).catch(() => {});
+      }
+    }
+
+    setMealLogs(prev => [newLog, ...prev]);
     saveDocumentToFirestore('mealLogs', newLog.id, newLog).catch(() => {});
 
-    // Update client's last active date
+    // Update client's last active date & run weekly experience level evaluation
     if (meal.clientId) {
       setClients(prev => {
         const target = prev.find(c => c.id === meal.clientId);
         if (target) {
-          const updated = { ...target, lastActiveDate: meal.date, status: 'active' as const };
+          const daysSinceEval = target.lastLevelEvaluatedAt
+            ? getDaysSinceDate(target.lastLevelEvaluatedAt)
+            : 99;
+          let nextLevel = target.experienceLevel;
+          let nextEvalAt = target.lastLevelEvaluatedAt;
+          if (daysSinceEval >= 7) {
+            const evalRes = evaluateExperienceLevel(target, [newLog, ...mealLogs], activities, meal.date);
+            nextLevel = evalRes.level;
+            nextEvalAt = meal.date;
+          }
+          const updated: ClientProfile = {
+            ...target,
+            lastActiveDate: meal.date,
+            status: 'active' as const,
+            experienceLevel: nextLevel,
+            lastLevelEvaluatedAt: nextEvalAt,
+          };
           saveDocumentToFirestore('clients', meal.clientId, updated).catch(() => {});
           return prev.map(c => c.id === meal.clientId ? updated : c);
         }
         return prev;
       });
     }
+
+    return { triggeredChallenge };
   };
 
   const deleteMealLog = (id: string) => {
@@ -1595,6 +1692,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveDocumentToFirestore('clients', updated.id, updated).catch(() => {});
   };
 
+  const updateClientSelf = useCallback((partial: Partial<ClientProfile>) => {
+    if (!activeClientId) return;
+    setClients(prev => prev.map(c => {
+      if (c.id !== activeClientId) return c;
+      const updated = { ...c, ...partial };
+      saveDocumentToFirestore('clients', updated.id, updated).catch(() => {});
+      return updated;
+    }));
+  }, [activeClientId]);
+
+  const toggleChallengeComplete = useCallback((challengeId: string, completed?: boolean) => {
+    setChallenges(prev => prev.map(ch => {
+      if (ch.id !== challengeId) return ch;
+      const nextDone = completed !== undefined ? completed : !ch.completed;
+      const updated: AccountabilityChallenge = {
+        ...ch,
+        completed: nextDone,
+        completedAt: nextDone ? new Date().toISOString() : undefined,
+        setsCompleted: nextDone ? (ch.totalSets || 5) : ch.setsCompleted,
+      };
+      saveDocumentToFirestore('challenges', updated.id, updated).catch(() => {});
+      return updated;
+    }));
+  }, []);
+
+  const updateChallengeMode = useCallback((
+    challengeId: string,
+    mode: AccountabilityChallenge['mode'],
+    setsCompleted?: number
+  ) => {
+    setChallenges(prev => prev.map(ch => {
+      if (ch.id !== challengeId) return ch;
+      const updated: AccountabilityChallenge = {
+        ...ch,
+        mode,
+        setsCompleted: setsCompleted !== undefined ? setsCompleted : ch.setsCompleted,
+      };
+      saveDocumentToFirestore('challenges', updated.id, updated).catch(() => {});
+      return updated;
+    }));
+  }, []);
+
   const assignDietitian = (clientId: string, dietitianId: string) => {
     setClients(prev => {
       const target = prev.find(c => c.id === clientId);
@@ -1870,6 +2009,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activities,
         habits,
         appointments,
+        challenges,
         addMealLog,
         deleteMealLog,
         resetClientDayMealsToDayBefore,
@@ -1879,6 +2019,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearSuggestedMeals,
         addMeasurement,
         toggleReminder,
+        updateClientSelf,
+        toggleChallengeComplete,
+        updateChallengeMode,
         addWaterLog,
         deleteWaterLog,
         resetWaterLogForDate,

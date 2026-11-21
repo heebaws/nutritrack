@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
-import { ClientProfile, MealLogItem } from '../../types';
+import { AvatarTraitOverrides, ClientProfile, MealLogItem } from '../../types';
 import { useApp } from '../../context/AppContext';
 import {
   calculateDailyNutrientTargets,
   aggregateConsumedNutrients,
+  getFoodNutrientBreakdownForDay,
+  NutrientKey,
 } from '../../utils/micronutrients';
+import { analyzeFaceWithMediaPipe, mergeAvatarOverrides } from '../../utils/faceLandmarker';
 import {
   X,
   Dumbbell,
@@ -22,6 +25,10 @@ import {
   Sparkles,
   RefreshCw,
   Maximize2,
+  ChevronRight,
+  Calculator,
+  SlidersHorizontal,
+  Candy,
 } from 'lucide-react';
 
 export interface FaceAvatarTraits {
@@ -66,10 +73,12 @@ export interface BodyAvatarMetrics {
   carbs: { consumed: number; target: number; pct: number };
   fat: { consumed: number; target: number; pct: number };
   fiber: { consumed: number; target: number; pct: number };
+  sugar: { consumed: number; target: number; pct: number };
   iron: { consumed: number; target: number; pct: number };
   vitaminD: { consumed: number; target: number; pct: number };
   magnesium: { consumed: number; target: number; pct: number };
   calcium: { consumed: number; target: number; pct: number };
+  weeklyAvgDeltaKcal?: number;
   statusKey: 'losing' | 'balanced' | 'gaining';
 }
 
@@ -134,19 +143,19 @@ export function useAnalyzedFaceTraits(client: ClientProfile | null) {
           }),
     [client]
   );
-  const [traits, setTraits] = useState<FaceAvatarTraits>(baseline);
+  const [detectedTraits, setDetectedTraits] = useState<FaceAvatarTraits>(baseline);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const cacheKey = useMemo(() => {
     const imgHash = hashKey(client?.avatarUrl || 'no-photo');
-    return `nutritrack_face_traits_v2_${client?.id || 'anon'}_${imgHash}`;
+    return `nutritrack_mp_face_v3_${client?.id || 'anon'}_${imgHash}`;
   }, [client?.id, client?.avatarUrl]);
 
   const runAnalysis = useCallback(
     async (forceRefresh = false) => {
       if (!client?.avatarUrl) {
-        setTraits(baseline);
+        setDetectedTraits(baseline);
         setAnalysisError(null);
         return;
       }
@@ -157,7 +166,7 @@ export function useAnalyzedFaceTraits(client: ClientProfile | null) {
           if (cached) {
             const parsed = JSON.parse(cached) as FaceAvatarTraits;
             if (parsed && parsed.skinToneHex) {
-              setTraits({ ...baseline, ...parsed, analyzedFromPhoto: true });
+              setDetectedTraits({ ...baseline, ...parsed, analyzedFromPhoto: true });
               setAnalysisError(null);
               return;
             }
@@ -170,38 +179,29 @@ export function useAnalyzedFaceTraits(client: ClientProfile | null) {
       setIsAnalyzing(true);
       setAnalysisError(null);
       try {
-        const res = await fetch('/api/ai/analyze-face-avatar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageUrl: client.avatarUrl,
-            clientName: client.name,
-            gender: client.gender,
-          }),
+        const analyzed = await analyzeFaceWithMediaPipe(client.avatarUrl, {
+          name: client.name,
+          gender: client.gender,
         });
-        const data = await res.json();
-        if (!res.ok || !data?.traits) {
-          throw new Error(data?.error || 'Could not analyze face photo');
-        }
         const merged: FaceAvatarTraits = {
           ...baseline,
-          ...data.traits,
-          skinToneHex: safeHex(data.traits.skinToneHex, baseline.skinToneHex),
-          skinShadowHex: safeHex(data.traits.skinShadowHex, baseline.skinShadowHex),
-          skinHighlightHex: safeHex(data.traits.skinHighlightHex, baseline.skinHighlightHex),
-          hairColorHex: safeHex(data.traits.hairColorHex, baseline.hairColorHex),
-          eyeColorHex: safeHex(data.traits.eyeColorHex, baseline.eyeColorHex),
-          lipToneHex: safeHex(data.traits.lipToneHex, baseline.lipToneHex),
+          ...analyzed,
+          skinToneHex: safeHex(analyzed.skinToneHex, baseline.skinToneHex),
+          skinShadowHex: safeHex(analyzed.skinShadowHex, baseline.skinShadowHex),
+          skinHighlightHex: safeHex(analyzed.skinHighlightHex, baseline.skinHighlightHex),
+          hairColorHex: safeHex(analyzed.hairColorHex, baseline.hairColorHex),
+          eyeColorHex: safeHex(analyzed.eyeColorHex, baseline.eyeColorHex),
+          lipToneHex: safeHex(analyzed.lipToneHex, baseline.lipToneHex),
           analyzedFromPhoto: true,
         };
-        setTraits(merged);
+        setDetectedTraits(merged);
         try {
           localStorage.setItem(cacheKey, JSON.stringify(merged));
         } catch {
           // Ignore quota errors
         }
       } catch (err: any) {
-        setAnalysisError(err?.message || 'Face scan unavailable right now');
+        setAnalysisError(err?.message || 'On-device face scan unavailable right now');
       } finally {
         setIsAnalyzing(false);
       }
@@ -210,9 +210,18 @@ export function useAnalyzedFaceTraits(client: ClientProfile | null) {
   );
 
   useEffect(() => {
-    setTraits(baseline);
+    setDetectedTraits(baseline);
     runAnalysis(false);
   }, [baseline, runAnalysis]);
+
+  const traits = useMemo(
+    () =>
+      mergeAvatarOverrides(
+        { ...detectedTraits, analyzedFromPhoto: Boolean(detectedTraits.analyzedFromPhoto), confidenceSource: 'mediapipe' },
+        client?.avatarTraits
+      ),
+    [detectedTraits, client?.avatarTraits]
+  );
 
   return {
     traits,
@@ -227,7 +236,8 @@ export function computeBodyAvatarMetrics(
   logsForDay: MealLogItem[],
   foods: any[],
   burnedCalories: number,
-  simulatedExtraCalories: number = 0
+  simulatedExtraCalories: number = 0,
+  weeklyAvgDeltaKcal?: number
 ): BodyAvatarMetrics {
   const targets = calculateDailyNutrientTargets(client);
   const consumed = aggregateConsumedNutrients(logsForDay, foods);
@@ -247,21 +257,31 @@ export function computeBodyAvatarMetrics(
   const simCarbs = Math.max(0, Number((consumed.carbs + Math.max(0, extraRatio) * 75).toFixed(1)));
   const simFat = Math.max(0, Number((consumed.fat + Math.max(0, extraRatio) * 32).toFixed(1)));
   const simFiber = Math.max(0, Number((consumed.fiber + Math.max(0, extraRatio) * 3).toFixed(1)));
+  const simSugar = Math.max(0, Number((consumed.sugar + Math.max(0, extraRatio) * 12).toFixed(1)));
 
   const heightM = Math.max(1.2, (client.heightCm || 168) / 100);
   const bmi = (client.currentWeightKg || 65) / (heightM * heightM);
   const bmiOffset = Math.max(-0.35, Math.min(0.45, (bmi - 22) * 0.055));
 
   const intakeOffset =
-    calorieRatio >= 1 ? (calorieRatio - 1) * 2.1 : (calorieRatio - 1) * 1.15;
+    calorieRatio >= 1 ? (calorieRatio - 1) * 2.0 : (calorieRatio - 1) * 1.1;
+  const weeklyTrendOffset =
+    weeklyAvgDeltaKcal !== undefined
+      ? Math.max(-0.35, Math.min(0.45, (weeklyAvgDeltaKcal / neededCalories) * 0.8))
+      : 0;
 
-  const fatFactor = Math.max(-0.95, Math.min(1.5, intakeOffset + bmiOffset * 0.45));
+  const fatFactor = Math.max(-0.95, Math.min(1.5, intakeOffset + weeklyTrendOffset + bmiOffset * 0.4));
 
   const pctOf = (val: number, target: number) =>
     target > 0 ? Math.min(140, Math.round((val / target) * 100)) : 0;
 
+  const blendedDelta =
+    weeklyAvgDeltaKcal !== undefined && simulatedExtraCalories === 0
+      ? Math.round(calorieDiff * 0.7 + weeklyAvgDeltaKcal * 0.3)
+      : calorieDiff;
+
   const statusKey: 'losing' | 'balanced' | 'gaining' =
-    calorieDiff > 120 ? 'gaining' : calorieDiff < -120 ? 'losing' : 'balanced';
+    blendedDelta > 120 ? 'gaining' : blendedDelta < -120 ? 'losing' : 'balanced';
 
   return {
     calorieRatio,
@@ -272,10 +292,12 @@ export function computeBodyAvatarMetrics(
     neededCalories,
     goalCapCalories: targets.calories,
     calorieDiff,
+    weeklyAvgDeltaKcal,
     protein: { consumed: simProtein, target: targets.protein, pct: pctOf(simProtein, targets.protein) },
     carbs: { consumed: simCarbs, target: targets.carbs, pct: pctOf(simCarbs, targets.carbs) },
     fat: { consumed: simFat, target: targets.fat, pct: pctOf(simFat, targets.fat) },
     fiber: { consumed: simFiber, target: targets.fiber, pct: pctOf(simFiber, targets.fiber) },
+    sugar: { consumed: simSugar, target: targets.sugar, pct: pctOf(simSugar, targets.sugar) },
     iron: { consumed: consumed.iron, target: targets.iron, pct: pctOf(consumed.iron, targets.iron) },
     vitaminD: { consumed: consumed.vitaminD, target: targets.vitaminD, pct: pctOf(consumed.vitaminD, targets.vitaminD) },
     magnesium: { consumed: consumed.magnesium, target: targets.magnesium, pct: pctOf(consumed.magnesium, targets.magnesium) },
@@ -747,14 +769,26 @@ export const BodyNutritionAvatarSVG: React.FC<BodyNutritionAvatarSVGProps> = ({
   );
 };
 
-interface NutrientGridProps {
-  metrics: BodyAvatarMetrics;
+interface NutrientDisplayMeta {
+  key: NutrientKey;
+  label: string;
+  mobileLabel?: string;
+  consumed: number;
+  target: number;
+  unit: string;
+  pct: number;
+  icon: React.ComponentType<{ className?: string }>;
+  barColor: string;
+  badgeBg: string;
+  textAccent: string;
+  activeTabClass: string;
 }
 
-const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
-  const { t } = useApp();
-
-  const items = [
+function getNutrientDisplayItems(
+  metrics: BodyAvatarMetrics,
+  t: (k: string) => string
+): NutrientDisplayMeta[] {
+  return [
     {
       key: 'protein',
       label: t('Protein'),
@@ -766,6 +800,7 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
       barColor: 'bg-emerald-500',
       badgeBg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
       textAccent: 'text-emerald-700 dark:text-emerald-400',
+      activeTabClass: 'bg-emerald-600 text-white border-emerald-600',
     },
     {
       key: 'carbs',
@@ -779,6 +814,7 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
       barColor: 'bg-blue-500',
       badgeBg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
       textAccent: 'text-blue-700 dark:text-blue-400',
+      activeTabClass: 'bg-blue-600 text-white border-blue-600',
     },
     {
       key: 'fat',
@@ -791,6 +827,7 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
       barColor: metrics.calorieDiff > 350 ? 'bg-rose-500' : 'bg-amber-500',
       badgeBg: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
       textAccent: 'text-amber-700 dark:text-amber-400',
+      activeTabClass: 'bg-amber-600 text-white border-amber-600',
     },
     {
       key: 'fiber',
@@ -803,6 +840,20 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
       barColor: 'bg-lime-500',
       badgeBg: 'bg-lime-50 dark:bg-lime-950/60 text-lime-700 dark:text-lime-300 border-lime-200 dark:border-lime-800',
       textAccent: 'text-lime-700 dark:text-lime-400',
+      activeTabClass: 'bg-lime-600 text-white border-lime-600',
+    },
+    {
+      key: 'sugar',
+      label: t('Sugar'),
+      consumed: metrics.sugar.consumed,
+      target: metrics.sugar.target,
+      unit: 'g',
+      pct: metrics.sugar.pct,
+      icon: Candy,
+      barColor: metrics.sugar.consumed > metrics.sugar.target ? 'bg-rose-500' : 'bg-pink-500',
+      badgeBg: 'bg-pink-50 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800',
+      textAccent: metrics.sugar.consumed > metrics.sugar.target ? 'text-rose-600 dark:text-rose-400' : 'text-pink-700 dark:text-pink-400',
+      activeTabClass: 'bg-pink-600 text-white border-pink-600',
     },
     {
       key: 'iron',
@@ -815,6 +866,7 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
       barColor: 'bg-rose-500',
       badgeBg: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800',
       textAccent: 'text-rose-700 dark:text-rose-400',
+      activeTabClass: 'bg-rose-600 text-white border-rose-600',
     },
     {
       key: 'vitaminD',
@@ -827,6 +879,7 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
       barColor: 'bg-indigo-500',
       badgeBg: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
       textAccent: 'text-indigo-700 dark:text-indigo-400',
+      activeTabClass: 'bg-indigo-600 text-white border-indigo-600',
     },
     {
       key: 'magnesium',
@@ -839,6 +892,7 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
       barColor: 'bg-teal-500',
       badgeBg: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800',
       textAccent: 'text-teal-700 dark:text-teal-400',
+      activeTabClass: 'bg-teal-600 text-white border-teal-600',
     },
     {
       key: 'calcium',
@@ -851,8 +905,20 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
       barColor: 'bg-sky-500',
       badgeBg: 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800',
       textAccent: 'text-sky-700 dark:text-sky-400',
+      activeTabClass: 'bg-sky-600 text-white border-sky-600',
     },
   ];
+}
+
+interface NutrientGridProps {
+  metrics: BodyAvatarMetrics;
+  onSelectNutrient?: (nutrientKey: NutrientKey) => void;
+}
+
+const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics, onSelectNutrient }) => {
+  const { language, t } = useApp();
+  const isMl = language === 'ml';
+  const items = getNutrientDisplayItems(metrics, t);
 
   return (
     <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
@@ -862,9 +928,16 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
         const met = item.consumed >= item.target;
 
         return (
-          <div
+          <button
             key={item.key}
-            className="rounded-xl sm:rounded-2xl p-2 sm:p-2.5 bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/80 space-y-1 sm:space-y-1.5 min-w-0"
+            type="button"
+            onClick={() => onSelectNutrient?.(item.key)}
+            title={
+              isMl
+                ? `${item.label} ഏതൊക്കെ ഭക്ഷണങ്ങളിൽ നിന്ന് ലഭിച്ചുവെന്ന് കാണാൻ ടാപ്പ് ചെയ്യുക`
+                : `Tap to see which foods gave your ${item.label}`
+            }
+            className="w-full text-left rounded-xl sm:rounded-2xl p-2 sm:p-2.5 bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/80 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-white dark:hover:bg-slate-800/95 hover:shadow-xs transition-all cursor-pointer group space-y-1 sm:space-y-1.5 min-w-0"
           >
             <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs min-w-0">
               <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
@@ -882,9 +955,12 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
                   )}
                 </span>
               </div>
-              <span className={`text-[9px] sm:text-[10px] font-black tabular-nums shrink-0 ${met ? 'text-emerald-600 dark:text-emerald-400' : item.textAccent}`}>
-                {item.pct}%
-              </span>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <span className={`text-[9px] sm:text-[10px] font-black tabular-nums ${met ? 'text-emerald-600 dark:text-emerald-400' : item.textAccent}`}>
+                  {item.pct}%
+                </span>
+                <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+              </div>
             </div>
 
             <div className="flex items-baseline justify-between gap-1 text-[11px] sm:text-xs tabular-nums min-w-0">
@@ -907,9 +983,306 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
                 style={{ width: `${barWidthPct}%` }}
               />
             </div>
-          </div>
+          </button>
         );
       })}
+    </div>
+  );
+};
+
+interface NutrientSourceBreakdownModalProps {
+  selectedKey: NutrientKey | null;
+  onSelectKey: (key: NutrientKey) => void;
+  onClose: () => void;
+  metrics: BodyAvatarMetrics;
+  logsForDay: MealLogItem[];
+  simDeltaKcal?: number;
+  onOpenLogMeal?: () => void;
+}
+
+export const NutrientSourceBreakdownModal: React.FC<NutrientSourceBreakdownModalProps> = ({
+  selectedKey,
+  onSelectKey,
+  onClose,
+  metrics,
+  logsForDay,
+  simDeltaKcal = 0,
+  onOpenLogMeal,
+}) => {
+  const { foods, language, t } = useApp();
+  const isMl = language === 'ml';
+
+  const allItems = useMemo(() => getNutrientDisplayItems(metrics, t), [metrics, t]);
+  const activeItem = useMemo(
+    () => allItems.find((i) => i.key === selectedKey) || null,
+    [allItems, selectedKey]
+  );
+
+  const breakdown = useMemo(() => {
+    if (!selectedKey) return { sources: [], totalFromFoods: 0, zeroCount: 0 };
+    return getFoodNutrientBreakdownForDay(logsForDay, foods, selectedKey);
+  }, [selectedKey, logsForDay, foods]);
+
+  if (!selectedKey || !activeItem) return null;
+
+  const ActiveIcon = activeItem.icon;
+  const previewAddedRaw = Math.max(0, Number((activeItem.consumed - breakdown.totalFromFoods).toFixed(1)));
+  const hasPreviewDelta = simDeltaKcal > 0 && previewAddedRaw > 0.05;
+  const remainingNeeded = Math.max(
+    0,
+    Number((activeItem.target - activeItem.consumed).toFixed(activeItem.unit === 'g' || activeItem.key === 'iron' ? 1 : 0))
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/70 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-emerald-950 text-white px-4 sm:px-5 py-3.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${activeItem.badgeBg}`}>
+              <ActiveIcon className="w-5 h-5" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-extrabold text-white truncate">
+                {activeItem.label} · {isMl ? 'ഇന്നത്തെ ഭക്ഷണ സ്രോതസ്സുകൾ' : "Today's Food Breakdown"}
+              </h3>
+              <p className="text-[11px] text-emerald-200 tabular-nums truncate">
+                {isMl ? 'ആകെ ലഭിച്ചത്' : 'Total Added'}:{' '}
+                <b className="text-white">
+                  {activeItem.consumed} {activeItem.unit}
+                </b>{' '}
+                / {t('Daily Needed')}: {activeItem.target} {activeItem.unit} ({activeItem.pct}%)
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-white/85 hover:text-white px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold shrink-0"
+          >
+            <X className="w-4 h-4" />
+            <span>{t('Close')}</span>
+          </button>
+        </div>
+
+        {/* Nutrient Switcher Bar (Jump between all 8 nutrients smoothly) */}
+        <div className="px-4 sm:px-5 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {allItems.map((tab) => {
+            const TabIcon = tab.icon;
+            const isSelected = tab.key === activeItem.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => onSelectKey(tab.key)}
+                className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+                  isSelected
+                    ? tab.activeTabClass
+                    : 'bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <TabIcon className="w-3.5 h-3.5" />
+                <span>{tab.mobileLabel || tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Body Content */}
+        <div className="p-4 sm:p-5 space-y-4 max-h-[72vh] overflow-y-auto">
+          {/* How It Added Up Summary Box */}
+          <div className="rounded-2xl p-3.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <Calculator className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>
+                  {isMl
+                    ? `നിങ്ങൾക്ക് ${activeItem.label} എവിടെ നിന്ന് ലഭിച്ചു:`
+                    : `How your ${activeItem.label} added up today:`}
+                </span>
+              </span>
+              <span className={`text-xs font-black tabular-nums ${activeItem.consumed >= activeItem.target ? 'text-emerald-600 dark:text-emerald-400' : activeItem.textAccent}`}>
+                {activeItem.consumed} / {activeItem.target} {activeItem.unit} ({activeItem.pct}%)
+              </span>
+            </div>
+
+            <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${activeItem.consumed >= activeItem.target ? 'bg-emerald-500' : activeItem.barColor}`}
+                style={{ width: `${Math.min(100, activeItem.pct)}%` }}
+              />
+            </div>
+
+            {breakdown.sources.length > 0 ? (
+              <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed tabular-nums">
+                {breakdown.sources.slice(0, 5).map((src, idx) => (
+                  <React.Fragment key={src.logId}>
+                    {idx > 0 && <span className="mx-1 font-bold text-slate-400">+</span>}
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold">
+                      <span className="truncate max-w-[140px]">{src.foodName}</span>
+                      <b className="text-emerald-700 dark:text-emerald-400">
+                        {src.amount}{activeItem.unit}
+                      </b>
+                    </span>
+                  </React.Fragment>
+                ))}
+                {breakdown.sources.length > 5 && (
+                  <span className="mx-1 text-slate-500 font-semibold">
+                    + {breakdown.sources.length - 5} {isMl ? 'കൂടുതൽ' : 'more'}
+                  </span>
+                )}
+                {hasPreviewDelta && (
+                  <>
+                    <span className="mx-1 font-bold text-slate-400">+</span>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 font-semibold">
+                      <span>{isMl ? 'പ്രിവ്യൂ സ്ലൈഡർ' : 'Preview Slider'}</span>
+                      <b>+{previewAddedRaw}{activeItem.unit}</b>
+                    </span>
+                  </>
+                )}
+                <span className="mx-1.5 font-black text-slate-500">=</span>
+                <b className="text-slate-900 dark:text-white">
+                  {activeItem.consumed} {activeItem.unit}
+                </b>
+                {remainingNeeded > 0 ? (
+                  <span className="text-slate-500 dark:text-slate-400 ml-1.5">
+                    · {isMl ? `ലക്ഷ്യത്തിലെത്താൻ ${remainingNeeded} ${activeItem.unit} കൂടി ആവശ്യം` : `${remainingNeeded} ${activeItem.unit} remaining to hit goal`}
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold ml-1.5">
+                    · {isMl ? 'ഇന്നത്തെ ലക്ഷ്യം പൂർത്തിയായി ✓' : 'Daily target reached ✓'}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {logsForDay.length === 0
+                  ? isMl
+                    ? `ഇന്ന് ഇതുവരെ ഭക്ഷണമൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.`
+                    : `No meals have been logged for this day yet.`
+                  : isMl
+                    ? `ഇന്ന് കഴിച്ച ${logsForDay.length} ഭക്ഷണങ്ങളിൽ ${activeItem.label} അടങ്ങിയിട്ടില്ല.`
+                    : `None of the ${logsForDay.length} logged food(s) on this day contain measurable ${activeItem.label}.`}
+              </p>
+            )}
+          </div>
+
+          {/* Per-Food Detailed List */}
+          {breakdown.sources.length > 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide px-1">
+                <span>
+                  {isMl
+                    ? `${activeItem.label} അടങ്ങിയ ഭക്ഷണങ്ങൾ (${breakdown.sources.length})`
+                    : `Foods containing ${activeItem.label} (${breakdown.sources.length})`}
+                </span>
+                <span>{isMl ? 'ലഭിച്ച അളവ് & വിഹിതം' : 'Amount & Share'}</span>
+              </div>
+
+              {breakdown.sources.map((src, idx) => (
+                <div
+                  key={src.logId}
+                  className="rounded-2xl p-3 bg-white dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-black flex items-center justify-center shrink-0 mt-0.5 tabular-nums">
+                        #{idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug break-words">
+                          {src.foodName}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                          <span className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
+                            {t(src.mealType)}
+                          </span>
+                          <span className="tabular-nums">
+                            {src.quantity} {src.servingUnit}
+                          </span>
+                          <span>·</span>
+                          <span className="tabular-nums">{src.calories} kcal</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0 tabular-nums">
+                      <div className={`text-sm sm:text-base font-black ${activeItem.textAccent}`}>
+                        +{src.amount}{' '}
+                        <span className="text-[11px] font-semibold">{activeItem.unit}</span>
+                      </div>
+                      <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        {src.sharePct}% {isMl ? 'പങ്ക്' : 'of today'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${activeItem.barColor}`}
+                      style={{ width: `${Math.min(100, src.sharePct)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {hasPreviewDelta && (
+                <div className="rounded-2xl p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-dashed border-amber-300 dark:border-amber-700 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                      {isMl ? 'താൽക്കാലിക കലോറി പ്രിവ്യൂ സ്ലൈഡർ' : 'Temporary Calorie Preview Slider'}
+                    </p>
+                    <p className="text-[10px] text-amber-700 dark:text-amber-300">
+                      {isMl
+                        ? 'ഇത് സേവ് ചെയ്യില്ല — മോഡൽ അടയ്ക്കുമ്പോൾ അപ്രത്യക്ഷമാകും.'
+                        : 'Temporary simulation only — resets when you close the Body Twin modal.'}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 tabular-nums text-sm font-black text-amber-700 dark:text-amber-300">
+                    +{previewAddedRaw} {activeItem.unit}
+                  </div>
+                </div>
+              )}
+
+              {breakdown.zeroCount > 0 && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1 pt-1">
+                  {isMl
+                    ? `കുറിപ്പ്: ഇന്ന് കഴിച്ച മറ്റ് ${breakdown.zeroCount} ഭക്ഷണങ്ങളിൽ ${activeItem.label} ഇല്ലായിരുന്നു.`
+                    : `Note: ${breakdown.zeroCount} other logged food item${breakdown.zeroCount > 1 ? 's' : ''} today contained 0 ${activeItem.unit} of ${activeItem.label}.`}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-2xl p-6 text-center bg-slate-50 dark:bg-slate-950/50 border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+              <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">
+                {isMl
+                  ? `ഇന്ന് ${activeItem.label} ലഭിക്കുന്ന ഭക്ഷണങ്ങളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.`
+                  : `No foods containing ${activeItem.label} have been logged on this day yet.`}
+              </p>
+              {onOpenLogMeal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenLogMeal();
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer transition-colors"
+                >
+                  <Utensils className="w-3.5 h-3.5" />
+                  <span>{t('Log Meal')}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
@@ -917,20 +1290,25 @@ const NutrientTargetsGrid: React.FC<NutrientGridProps> = ({ metrics }) => {
 interface FirstScreenBodyAvatarCardProps {
   client: ClientProfile;
   metrics: BodyAvatarMetrics;
+  logsForDay: MealLogItem[];
   traits: FaceAvatarTraits;
   isAnalyzing: boolean;
   onClick: () => void;
+  onOpenLogMeal?: () => void;
 }
 
 export const FirstScreenBodyAvatarCard: React.FC<FirstScreenBodyAvatarCardProps> = ({
   client,
   metrics,
+  logsForDay,
   traits,
   isAnalyzing,
   onClick,
+  onOpenLogMeal,
 }) => {
   const { language, t } = useApp();
   const isMl = language === 'ml';
+  const [selectedNutrientKey, setSelectedNutrientKey] = useState<NutrientKey | null>(null);
 
   const statusLabel =
     metrics.statusKey === 'gaining'
@@ -997,12 +1375,10 @@ export const FirstScreenBodyAvatarCard: React.FC<FirstScreenBodyAvatarCardProps>
           </div>
 
           <div className="flex items-center justify-between gap-2 text-[10px] sm:text-[11px] pt-0.5">
-            <span className="text-slate-500 dark:text-slate-400 truncate">
-              {metrics.fatFactor > 0.2
-                ? isMl ? `+${metrics.calorieDiff} kcal അധികം` : `+${metrics.calorieDiff} kcal surplus`
-                : metrics.fatFactor < -0.2
-                  ? isMl ? `${metrics.calorieDiff} kcal കുറവ്` : `${metrics.calorieDiff} kcal deficit`
-                  : isMl ? 'കൃത്യമായ കലോറി നില' : 'Matching daily need'}
+            <span className="text-slate-600 dark:text-slate-300 truncate tabular-nums font-medium">
+              {isMl
+                ? `ഇന്നത്തെ ഭക്ഷണം: ${metrics.eatenCalories} kcal → ${metrics.statusKey === 'gaining' ? 'ഭാരം കൂടുന്ന പ്രവണത' : metrics.statusKey === 'losing' ? 'മെലിയുന്ന പ്രവണത' : 'സമതുലിത നില'}`
+                : `Today's intake: ${metrics.eatenCalories} kcal → body trend: ${metrics.statusKey === 'gaining' ? 'surplus' : metrics.statusKey === 'losing' ? 'lean deficit' : 'balanced'}`}
             </span>
             <span className="font-bold text-emerald-700 dark:text-emerald-400 group-hover:underline flex items-center gap-1 shrink-0">
               <Maximize2 className="w-3 h-3" />
@@ -1012,15 +1388,32 @@ export const FirstScreenBodyAvatarCard: React.FC<FirstScreenBodyAvatarCardProps>
         </div>
       </button>
 
-      {/* Unified All-8 Daily Nutrient Targets Grid */}
-      <NutrientTargetsGrid metrics={metrics} />
+      {/* Unified All-8 Daily Nutrient Targets Grid (Tap any nutrient to inspect food sources) */}
+      <NutrientTargetsGrid
+        metrics={metrics}
+        onSelectNutrient={(key) => setSelectedNutrientKey(key)}
+      />
 
       {/* Calibrated Clinical Footer */}
-      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-snug">
-        {isMl
-          ? 'ഭാരം, ഉയരം, പ്രായം, ലിംഗഭേദം എന്നിവ അടിസ്ഥാനമാക്കി ആവശ്യമായ പരമാവധി പരിധിക്കുള്ളിൽ കണക്കാക്കിയതാണ്.'
-          : 'Calibrated strictly within safe clinical limits from your weight, height, age & gender.'}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+        <span>
+          {isMl
+            ? 'ഭാരം, ഉയരം, പ്രായം, ലിംഗഭേദം എന്നിവ അടിസ്ഥാനമാക്കി ആവശ്യമായ പരമാവധി പരിധിക്കുള്ളിൽ കണക്കാക്കിയതാണ്.'
+            : 'Calibrated strictly within safe clinical limits from your weight, height, age & gender.'}
+        </span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+          {isMl ? 'ഭക്ഷണ വിവരങ്ങൾക്ക് കാർഡിൽ ടാപ്പ് ചെയ്യുക' : 'Tap any nutrient for food sources'}
+        </span>
+      </div>
+
+      <NutrientSourceBreakdownModal
+        selectedKey={selectedNutrientKey}
+        onSelectKey={setSelectedNutrientKey}
+        onClose={() => setSelectedNutrientKey(null)}
+        metrics={metrics}
+        logsForDay={logsForDay}
+        onOpenLogMeal={onOpenLogMeal}
+      />
     </div>
   );
 };
@@ -1052,19 +1445,33 @@ export const BodyAvatarModal: React.FC<BodyAvatarModalProps> = ({
   onOpenLogMeal,
   onOpenWorkout,
 }) => {
-  const { foods, language, t } = useApp();
+  const { foods, language, t, updateClientSelf } = useApp();
   const isMl = language === 'ml';
   const [simDeltaKcal, setSimDeltaKcal] = useState(0);
+  const [selectedNutrientKey, setSelectedNutrientKey] = useState<NutrientKey | null>(null);
+  const [showFineTune, setShowFineTune] = useState(false);
 
   // Always default back to live logged meals whenever modal opens or closes (never persist simulation edits)
   useEffect(() => {
     setSimDeltaKcal(0);
+    setSelectedNutrientKey(null);
   }, [isOpen, client.id]);
 
   const handleClose = useCallback(() => {
     setSimDeltaKcal(0);
+    setSelectedNutrientKey(null);
+    setShowFineTune(false);
     onClose();
   }, [onClose]);
+
+  const updateOverride = (partial: Partial<AvatarTraitOverrides>) => {
+    updateClientSelf({
+      avatarTraits: {
+        ...(client.avatarTraits || {}),
+        ...partial,
+      },
+    });
+  };
 
   const traits = useMemo(
     () => externalTraits || deriveBaselineHumanTraits(client),
@@ -1151,8 +1558,13 @@ export const BodyAvatarModal: React.FC<BodyAvatarModalProps> = ({
               />
             </div>
 
-            {/* Face Analysis Metadata & Re-scan */}
-            <div className="w-full text-center space-y-1.5">
+            {/* Face Analysis Metadata, Body Trend Caption, Fine-Tune & Re-scan */}
+            <div className="w-full text-center space-y-2">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+                {isMl
+                  ? `ഇന്നത്തെ ഭക്ഷണം: ${metrics.eatenCalories} kcal → ശരീര പ്രവണത: ${metrics.statusKey === 'gaining' ? 'അധികം' : metrics.statusKey === 'losing' ? 'മെലിയുന്നു' : 'സമതുലിതം'}`
+                  : `Today's intake: ${metrics.eatenCalories} kcal → body trend: ${metrics.statusKey === 'gaining' ? 'surplus' : metrics.statusKey === 'losing' ? 'lean deficit' : 'balanced'}`}
+              </p>
               <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
                 {traits.portraitSummary}
               </p>
@@ -1161,16 +1573,127 @@ export const BodyAvatarModal: React.FC<BodyAvatarModalProps> = ({
                   {analysisError}
                 </p>
               )}
-              {onReanalyze && client.avatarUrl && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {onReanalyze && client.avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={onReanalyze}
+                    disabled={isAnalyzing}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200/80 dark:hover:bg-emerald-900/60 text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                    <span>{isAnalyzing ? (isMl ? 'സ്കാൻ ചെയ്യുന്നു...' : 'Scanning landmarks...') : t('Re-analyze Photo')}</span>
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={onReanalyze}
-                  disabled={isAnalyzing}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200/80 dark:hover:bg-emerald-900/60 text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-50"
+                  onClick={() => setShowFineTune((v) => !v)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-emerald-500 text-[10px] font-bold transition-colors cursor-pointer"
                 >
-                  <RefreshCw className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                  <span>{isAnalyzing ? (isMl ? 'സ്കാൻ ചെയ്യുന്നു...' : 'Analyzing face...') : t('Re-analyze Photo')}</span>
+                  <SlidersHorizontal className="w-3 h-3" />
+                  <span>{showFineTune ? 'Hide Fine-tune' : 'Fine-tune Face'}</span>
                 </button>
+              </div>
+
+              {showFineTune && (
+                <div className="mt-2 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-left space-y-2.5 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-slate-800 dark:text-white">Fine-tune Face Features</span>
+                    <button
+                      type="button"
+                      onClick={() => updateClientSelf({ avatarTraits: undefined })}
+                      className="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Face Shape</label>
+                      <select
+                        value={client.avatarTraits?.faceShape || traits.faceShape}
+                        onChange={(e) => updateOverride({ faceShape: e.target.value as any })}
+                        className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
+                        <option value="oval">Oval</option>
+                        <option value="round">Round</option>
+                        <option value="square">Square</option>
+                        <option value="heart">Heart</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Hair Style</label>
+                      <select
+                        value={client.avatarTraits?.hairStyle || 'parted'}
+                        onChange={(e) => updateOverride({ hairStyle: e.target.value as any })}
+                        className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
+                        <option value="parted">Side Part</option>
+                        <option value="short">Short Straight</option>
+                        <option value="curly">Curly</option>
+                        <option value="wavy">Long Wavy</option>
+                        <option value="bun">Ponytail / Bun</option>
+                        <option value="buzz">Buzz / Bald</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Facial Hair</label>
+                      <select
+                        value={client.avatarTraits?.facialHair || 'none'}
+                        onChange={(e) => updateOverride({ facialHair: e.target.value as any })}
+                        className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
+                        <option value="none">Clean / None</option>
+                        <option value="stubble">Light Stubble</option>
+                        <option value="mustache">Mustache</option>
+                        <option value="beard">Trimmed Beard</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Glasses</label>
+                      <select
+                        value={client.avatarTraits?.glasses || traits.glasses}
+                        onChange={(e) => updateOverride({ glasses: e.target.value as any })}
+                        className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
+                        <option value="none">None</option>
+                        <option value="rectangular">Rectangular</option>
+                        <option value="round">Round</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                      <span>Skin:</span>
+                      <input
+                        type="color"
+                        value={traits.skinToneHex}
+                        onChange={(e) => updateOverride({ skinToneHex: e.target.value })}
+                        className="w-6 h-5 rounded cursor-pointer border-0"
+                      />
+                    </label>
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                      <span>Hair:</span>
+                      <input
+                        type="color"
+                        value={traits.hairColorHex}
+                        onChange={(e) => updateOverride({ hairColorHex: e.target.value })}
+                        className="w-6 h-5 rounded cursor-pointer border-0"
+                      />
+                    </label>
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                      <span>Eyes:</span>
+                      <input
+                        type="color"
+                        value={traits.eyeColorHex}
+                        onChange={(e) => updateOverride({ eyeColorHex: e.target.value })}
+                        className="w-6 h-5 rounded cursor-pointer border-0"
+                      />
+                    </label>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -1261,12 +1784,15 @@ export const BodyAvatarModal: React.FC<BodyAvatarModalProps> = ({
               </span>
             </div>
 
-            <NutrientTargetsGrid metrics={metrics} />
+            <NutrientTargetsGrid
+              metrics={metrics}
+              onSelectNutrient={(key) => setSelectedNutrientKey(key)}
+            />
 
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
               {isMl
-                ? 'ഭാരം, ഉയരം, പ്രായം, ലിംഗഭേദം എന്നിവ അടിസ്ഥാനമാക്കി ആവശ്യമായ പരമാവധി പരിധിക്കുള്ളിൽ കണക്കാക്കിയതാണ്.'
-                : 'Calibrated strictly within safe clinical limits from your weight, height, age & gender.'}
+                ? 'ഭാരം, ഉയരം, പ്രായം, ലിംഗഭേദം എന്നിവ അടിസ്ഥാനമാക്കി ആവശ്യമായ പരമാവധി പരിധിക്കുള്ളിൽ കണക്കാക്കിയതാണ്. ഏതൊരു പോഷകത്തിലും ടാപ്പ് ചെയ്താൽ അത് ലഭിച്ച ഭക്ഷണങ്ങൾ കാണാം.'
+                : 'Calibrated strictly within safe clinical limits. Tap any nutrient card above to see every food consumed today that contributed to it.'}
             </p>
 
             {/* Action Buttons */}
@@ -1297,6 +1823,19 @@ export const BodyAvatarModal: React.FC<BodyAvatarModalProps> = ({
           </div>
         </div>
       </div>
+
+      <NutrientSourceBreakdownModal
+        selectedKey={selectedNutrientKey}
+        onSelectKey={setSelectedNutrientKey}
+        onClose={() => setSelectedNutrientKey(null)}
+        metrics={metrics}
+        logsForDay={logsForDay}
+        simDeltaKcal={simDeltaKcal}
+        onOpenLogMeal={() => {
+          handleClose();
+          onOpenLogMeal();
+        }}
+      />
     </div>
   );
 };

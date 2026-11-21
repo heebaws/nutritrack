@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { formatDateDisplay } from '../../utils/dateUtils';
 import { 
   X, 
   Flame, 
@@ -8,7 +9,8 @@ import {
   Activity, 
   Clock, 
   CheckCircle2,
-  Trash2
+  Trash2,
+  Award
 } from 'lucide-react';
 
 interface ActivityLogModalProps {
@@ -28,13 +30,18 @@ const PRESET_ACTIVITIES = [
 ];
 
 export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onClose }) => {
-  const { activeClient, selectedDate, activities, addActivity, deleteActivity, language, t } = useApp();
+  const { activeClient, selectedDate, activities, addActivity, deleteActivity, challenges, toggleChallengeComplete, language, t } = useApp();
   const isMl = language === 'ml';
 
   const [activityName, setActivityName] = useState<string>(PRESET_ACTIVITIES[0].name);
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [intensity, setIntensity] = useState<'light' | 'moderate' | 'vigorous'>('moderate');
   const [customCalories, setCustomCalories] = useState<string>('');
+
+  const activeChallengesForDate = useMemo(() => {
+    if (!activeClient) return [];
+    return challenges.filter((c) => c.clientId === activeClient.id && c.targetDate === selectedDate);
+  }, [challenges, activeClient, selectedDate]);
 
   if (!isOpen || !activeClient) return null;
 
@@ -82,7 +89,7 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
             <div>
               <h2 className="text-base font-extrabold tracking-tight">{t('Log Physical Activity & Burn')}</h2>
               <p className="text-xs text-orange-100 font-medium tabular-nums">
-                {selectedDate}
+                Logging for {formatDateDisplay(selectedDate)}
               </p>
             </div>
           </div>
@@ -97,6 +104,38 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onCl
 
         {/* Content */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
+          {/* Pending Accountability Challenge Banner for Selected Date */}
+          {activeChallengesForDate.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 space-y-2">
+              {activeChallengesForDate.map((ch) => (
+                <div key={ch.id} className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-amber-950 dark:text-amber-200">
+                      <Award className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span className="truncate">{ch.title}</span>
+                    </div>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-snug mt-0.5">
+                      {ch.mode === 'joint_friendly'
+                        ? 'Joint-friendly option: Wall push-ups + supported chair squats'
+                        : 'Split into 5×10 sets or go at your own pace'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleChallengeComplete(ch.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer transition-colors ${
+                      ch.completed
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-amber-600 hover:bg-amber-700 text-white'
+                    }`}
+                  >
+                    {ch.completed ? '✓ Completed' : 'Mark Done'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           
           {/* Preset Activity Selector */}
           <div>

@@ -2,10 +2,12 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { FoodCategory, FoodItem, MealType } from '../../types';
 import { estimateNutrition } from '../../utils/nutritionEstimator';
-import { estimateFoodMicronutrients } from '../../utils/micronutrients';
+import { estimateFoodMicronutrients, estimateFoodSugar } from '../../utils/micronutrients';
 import { determineCalorieQuality, CalorieQuality } from '../../utils/calorieQuality';
 import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
 import { getFoodImageUrl, FOOD_FALLBACK_SVG } from '../../utils/foodImages';
+import { formatDateDisplay } from '../../utils/dateUtils';
+import { getCalendarMonthCheatSummary } from '../../utils/cheatAndAdaptiveEngine';
 import {
   X,
   Search,
@@ -101,6 +103,33 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
   // USER MANDATE: Good Calories vs Bad Calories toggle (flexible per meal log, not fixed permanently to food)
   const [mealCalorieQuality, setMealCalorieQuality] = useState<CalorieQuality>('good');
   const [customQuality, setCustomQuality] = useState<CalorieQuality>('good');
+  const [isCheatMeal, setIsCheatMeal] = useState(false);
+
+  const monthCheatSummary = useMemo(() => {
+    if (!activeClientId) return null;
+    return getCalendarMonthCheatSummary(mealLogs, activeClientId, selectedDate);
+  }, [mealLogs, activeClientId, selectedDate]);
+
+  const recentFavorites = useMemo(() => {
+    if (!activeClientId) return [];
+    const seen = new Set<string>();
+    const results: FoodItem[] = [];
+    const clientHistory = mealLogs
+      .filter((m) => m.clientId === activeClientId)
+      .slice()
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    for (const log of clientHistory) {
+      const matched = foods.find(
+        (f) => f.id === log.foodId || f.name.toLowerCase() === (log.foodName || '').replace(/\s*\([^)]*\)\s*$/, '').toLowerCase()
+      );
+      if (matched && !seen.has(matched.id)) {
+        seen.add(matched.id);
+        results.push(matched);
+      }
+      if (results.length >= 6) break;
+    }
+    return results;
+  }, [mealLogs, activeClientId, foods]);
 
   // NutriBot Live Search Extension states
   const [searchExtensionOil, setSearchExtensionOil] = useState<'steamed' | 'medium' | 'fried'>('steamed');
@@ -178,8 +207,8 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       calorieQuality: quality
     });
 
-    // 2. Add to client's daily meal log with per-meal flexible calorie quality
-    addMealLog({
+    // 2. Add to client's daily meal log with per-meal flexible calorie quality & cheat status
+    const res = addMealLog({
       clientId: activeClientId,
       date: selectedDate,
       mealType,
@@ -191,20 +220,26 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       protein: totalProt,
       carbs: totalCarb,
       fat: totalFat,
+      sugar: Math.round(estimateFoodSugar({ name: searchExtensionFood.name, calories: totalCal, carbs: totalCarb }) * 10) / 10,
       calcium: Math.round((searchExtensionFood.calcium ?? 0) * qty),
       iron: Math.round((searchExtensionFood.iron ?? 0) * qty * 10) / 10,
       magnesium: Math.round((searchExtensionFood.magnesium ?? 0) * qty),
       vitaminD: Math.round((searchExtensionFood.vitaminD ?? 0) * qty),
-      calorieQuality: searchExtensionQuality
+      calorieQuality: isCheatMeal ? 'bad' : searchExtensionQuality,
+      isCheatMeal,
     });
 
-    setExtensionAddedNotice(`✓ Logged ${qty}x ${searchExtensionFood.name} (${totalCal} kcal) to ${mealType}!`);
+    setExtensionAddedNotice(
+      res.triggeredChallenge
+        ? `✓ Logged ${searchExtensionFood.name} — Bonus Cheat Meal unlocked tomorrow's 50 push-ups + 50 squats challenge!`
+        : `✓ Logged ${qty}x ${searchExtensionFood.name} (${totalCal} kcal) to ${mealType}!`
+    );
     setJustAdded(true);
     setTimeout(() => {
       setJustAdded(false);
       setExtensionAddedNotice(null);
       onClose();
-    }, 700);
+    }, res.triggeredChallenge ? 1600 : 700);
   };
 
   const handleAiEstimate = async () => {
@@ -322,6 +357,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       setCustomServing('1 serving');
       setSaveToLibrary(true);
       setOilOption('steamed');
+      setIsCheatMeal(false);
     }
   }, [isOpen, defaultMealType]);
 
@@ -493,11 +529,13 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         protein: calculatedNutrition.protein,
         carbs: calculatedNutrition.carbs,
         fat: calculatedNutrition.fat,
+        sugar: Math.round(estimateFoodSugar({ ...selectedFood, carbs: calculatedNutrition.carbs, calories: calculatedNutrition.calories }) * 10) / 10,
         calcium: calculatedNutrition.calcium,
         iron: calculatedNutrition.iron,
         magnesium: calculatedNutrition.magnesium,
         vitaminD: calculatedNutrition.vitaminD,
-        calorieQuality: mealCalorieQuality
+        calorieQuality: isCheatMeal ? 'bad' : mealCalorieQuality,
+        isCheatMeal,
       });
     } else {
       // Custom food entry
@@ -540,7 +578,7 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
           allergenInfo: 'None',
           clinicVerified: true,
           dietaryTags: ['Custom'],
-          calorieQuality: customQuality
+          calorieQuality: isCheatMeal ? 'bad' : customQuality
         });
         foodId = newFood.id;
       }
@@ -557,11 +595,13 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         protein: customCalculatedNutrition.protein,
         carbs: customCalculatedNutrition.carbs,
         fat: customCalculatedNutrition.fat,
+        sugar: Math.round(estimateFoodSugar({ name: customName.trim(), calories: customCalculatedNutrition.calories, carbs: customCalculatedNutrition.carbs }) * 10) / 10,
         calcium: customCalculatedNutrition.calcium,
         iron: customCalculatedNutrition.iron,
         magnesium: customCalculatedNutrition.magnesium,
         vitaminD: customCalculatedNutrition.vitaminD,
-        calorieQuality: customQuality
+        calorieQuality: isCheatMeal ? 'bad' : customQuality,
+        isCheatMeal,
       });
     }
 
@@ -588,10 +628,15 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         {/* Warm Editorial Header */}
         <div className="px-5 py-4 bg-[#F5F1E8] dark:bg-slate-800/90 border-b border-[#E7E0D3] dark:border-slate-700 flex items-center justify-between gap-2 shrink-0">
           <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
-              {t("Add Day's Calories & Meals")}
-            </h2>
-            <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+                {t("Add Day's Calories & Meals")}
+              </h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-700 text-white text-[10px] font-bold whitespace-nowrap">
+                Logging for {formatDateDisplay(selectedDate)}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 truncate mt-0.5">
               {t('Pick from food database or add a new food with calories')}
             </p>
           </div>
@@ -676,6 +721,54 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
               })}
             </div>
           </div>
+
+          {/* Monthly Cheat Meal Toggle */}
+          {monthCheatSummary && (
+            <label
+              className={`flex items-start justify-between gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                isCheatMeal
+                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700'
+                  : 'bg-white dark:bg-slate-800 border-[#E7E0D3] dark:border-slate-700 hover:border-amber-300'
+              }`}
+            >
+              <div className="min-w-0 space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                    🍕 {t('Mark as Monthly Cheat Meal / Treat')}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      monthCheatSummary.isAvailable
+                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                        : 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
+                    }`}
+                  >
+                    {monthCheatSummary.isAvailable
+                      ? '1 monthly cheat meal available'
+                      : `Cheat meal used (${monthCheatSummary.firstUsedDate})`}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                  {monthCheatSummary.isAvailable
+                    ? 'You have 1 planned cheat meal included each calendar month.'
+                    : 'Extra treats are totally okay — logging an extra unlocks a fun 50 push-ups + 50 squats challenge for tomorrow.'}
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={isCheatMeal}
+                onChange={(e) => {
+                  setIsCheatMeal(e.target.checked);
+                  if (e.target.checked) {
+                    setMealCalorieQuality('bad');
+                    setCustomQuality('bad');
+                    setSearchExtensionQuality('bad');
+                  }
+                }}
+                className="mt-1 w-4 h-4 rounded accent-amber-600 cursor-pointer shrink-0"
+              />
+            </label>
+          )}
 
           {/* Pending AI Chat Suggestions for this Slot */}
           {relevantSuggestions.length > 0 && (
@@ -997,6 +1090,25 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                       ))}
                     </select>
                   </div>
+
+                  {/* Quick Recent / Favorites Strip */}
+                  {recentFavorites.length > 0 && !searchQuery.trim() && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 pr-1">
+                        Recent:
+                      </span>
+                      {recentFavorites.map((fav) => (
+                        <button
+                          key={fav.id}
+                          type="button"
+                          onClick={() => handleSelectFood(fav)}
+                          className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-[#DFD8C8] dark:border-slate-700 hover:border-emerald-500 text-[11px] font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap shrink-0 cursor-pointer transition-colors"
+                        >
+                          {tf(fav.name)} · {fav.calories}k
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Feedback notice when logged via NutriBot Extension */}
                   {extensionAddedNotice && (

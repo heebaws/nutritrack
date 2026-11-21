@@ -3,57 +3,62 @@ import React from 'react';
 export interface NutriTrackLogoProps {
   /** Size variant */
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  /** Color theme variant */
-  variant?: 'light' | 'dark' | 'auto';
-  /** Whether to render only the N-leaf icon mark or with text */
+  /** Color theme variant (includes monochrome option) */
+  variant?: 'light' | 'dark' | 'auto' | 'mono';
+  /** Whether to render icon mark only or with text */
   showText?: boolean;
-  /** Badge text next to brand name (default: "PRO") */
+  /** Optional pill badge next to brand name */
   badge?: string;
-  /** Optional secondary subtitle / badge */
+  /** Optional subtitle (defaults to brand tagline "Eat smart. Live strong.") */
   subtitle?: string;
   /** Optional extra CSS classes */
   className?: string;
 }
 
 /**
- * NutriTrack Modern Branding Logo
- * Distinctive letter "N" combined with a stylized organic nutrition leaf.
- * Brand Colors: Dark forest green (#064e3b), fresh lime green (#84cc16 / #22c55e / #10b981), crisp white.
+ * NutriTrack Brand Mark v2
+ * Botanical leaf intertwined with a circular progress ring and heartbeat pulse wave.
+ * Includes full-color Emerald/Coral emblem and monochrome variant (`variant="mono"`).
  */
 export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
   size = 'md',
   variant = 'auto',
   showText = true,
-  badge = 'PRO',
-  subtitle,
+  badge,
+  subtitle = 'Eat smart. Live strong.',
   className = '',
 }) => {
-  // Dimension mappings
   const dimensions = {
-    xs: { icon: 24, fontSize: 'text-sm', subSize: 'text-[9px]' },
-    sm: { icon: 32, fontSize: 'text-base', subSize: 'text-[10px]' },
-    md: { icon: 40, fontSize: 'text-lg', subSize: 'text-xs' },
-    lg: { icon: 48, fontSize: 'text-2xl', subSize: 'text-xs' },
+    xs: { icon: 26, fontSize: 'text-sm', subSize: 'text-[10px]' },
+    sm: { icon: 34, fontSize: 'text-base', subSize: 'text-[10px]' },
+    md: { icon: 42, fontSize: 'text-lg', subSize: 'text-[11px]' },
+    lg: { icon: 50, fontSize: 'text-2xl', subSize: 'text-xs' },
     xl: { icon: 64, fontSize: 'text-3xl', subSize: 'text-sm' },
   }[size];
 
   const isDarkSurface = variant === 'dark';
-  const titleColorClass = isDarkSurface
+  const isMono = variant === 'mono';
+  const titleColorClass = isMono
+    ? 'text-current'
+    : isDarkSurface
     ? 'text-white'
     : variant === 'light'
-    ? 'text-slate-900'
-    : 'text-slate-900 dark:text-white';
-  const subColorClass = isDarkSurface
-    ? 'text-emerald-200/80'
+    ? 'text-[#122119]'
+    : 'text-[#122119] dark:text-white';
+  const subColorClass = isMono
+    ? 'text-current opacity-75'
+    : isDarkSurface
+    ? 'text-emerald-200/85'
     : variant === 'light'
-    ? 'text-slate-500'
-    : 'text-slate-500 dark:text-emerald-200/80';
+    ? 'text-[#52675B]'
+    : 'text-[#52675B] dark:text-emerald-200/80';
+
+  const uid = `${size}-${variant}`;
 
   return (
-    <div className={`inline-flex items-center gap-2 sm:gap-3 select-none max-w-full min-w-0 ${className}`}>
-      {/* Icon Mark: Standalone SVG */}
-      <div 
-        className="relative shrink-0 flex items-center justify-center transition-transform hover:scale-105"
+    <div className={`inline-flex items-center gap-2.5 sm:gap-3 select-none max-w-full min-w-0 ${className}`}>
+      <div
+        className="relative shrink-0 flex items-center justify-center transition-transform duration-200 hover:scale-105"
         style={{ width: dimensions.icon, height: dimensions.icon }}
       >
         <svg
@@ -63,96 +68,120 @@ export const NutriTrackLogo: React.FC<NutriTrackLogoProps> = ({
           className="w-full h-full drop-shadow-xs"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
         >
-          <defs>
-            <linearGradient id={`nt-bg-${size}-${variant}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={isDarkSurface ? "#064e3b" : "#043d2e"} />
-              <stop offset="60%" stopColor={isDarkSurface ? "#065f46" : "#064e3b"} />
-              <stop offset="100%" stopColor={isDarkSurface ? "#047857" : "#065f46"} />
-            </linearGradient>
+          {!isMono && (
+            <defs>
+              <linearGradient id={`nt-v2-bg-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={isDarkSurface ? '#09442A' : '#063723'} />
+                <stop offset="100%" stopColor={isDarkSurface ? '#156A43' : '#0F5132'} />
+              </linearGradient>
+              <linearGradient id={`nt-v2-ring-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#6EE7B7" />
+                <stop offset="60%" stopColor="#10B981" />
+                <stop offset="100%" stopColor="#E06D53" />
+              </linearGradient>
+              <linearGradient id={`nt-v2-leaf-${uid}`} x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#10B981" />
+                <stop offset="100%" stopColor="#A7F3D0" />
+              </linearGradient>
+            </defs>
+          )}
 
-            <linearGradient id={`nt-leaf-${size}-${variant}`} x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#10b981" />
-              <stop offset="50%" stopColor="#22c55e" />
-              <stop offset="100%" stopColor="#84cc16" />
-            </linearGradient>
-          </defs>
-
-          {/* Squircle rounded background shield */}
+          {/* Rounded squircle emblem container */}
           <rect
-            x="20"
-            y="20"
-            width="472"
-            height="472"
-            rx="116"
-            fill={`url(#nt-bg-${size}-${variant})`}
+            x="18"
+            y="18"
+            width="476"
+            height="476"
+            rx="124"
+            fill={isMono ? 'currentColor' : `url(#nt-v2-bg-${uid})`}
+            fillOpacity={isMono ? 0.1 : 1}
           />
-
-          {/* Inner subtle glow rim */}
           <rect
-            x="24"
-            y="24"
-            width="464"
-            height="464"
-            rx="112"
-            stroke="rgba(255, 255, 255, 0.2)"
+            x="22"
+            y="22"
+            width="468"
+            height="468"
+            rx="120"
+            stroke={isMono ? 'currentColor' : 'rgba(255,255,255,0.22)'}
+            strokeOpacity={isMono ? 0.45 : 1}
             strokeWidth="8"
           />
 
-          {/* Left upright stem of "N" */}
-          <rect x="136" y="108" width="68" height="296" rx="34" fill="#ffffff" />
-
-          {/* Right upright stem of "N" */}
-          <rect x="306" y="108" width="68" height="296" rx="34" fill="#ffffff" />
-
-          {/* Diagonal Spanning Nutrition Leaf */}
-          <path
-            d="M 172 344 
-               C 172 344, 238 250, 318 174 
-               C 356 138, 394 112, 416 78 
-               C 420 72, 422 80, 408 122 
-               C 388 166, 344 216, 290 274 
-               C 246 322, 204 376, 182 390 
-               C 172 396, 166 386, 166 370 
-               Z"
-            fill={`url(#nt-leaf-${size}-${variant})`}
+          {/* Progress ring track */}
+          <circle
+            cx="256"
+            cy="256"
+            r="164"
+            stroke={isMono ? 'currentColor' : 'rgba(255,255,255,0.16)'}
+            strokeOpacity={isMono ? 0.25 : 1}
+            strokeWidth="22"
           />
-
-          {/* Clean Botanical Leaf Spine */}
-          <path
-            d="M 204 314 
-               C 252 250, 318 178, 406 82"
-            stroke="#ffffff"
-            strokeWidth="12"
+          {/* Progress arc */}
+          <circle
+            cx="256"
+            cy="256"
+            r="164"
+            stroke={isMono ? 'currentColor' : `url(#nt-v2-ring-${uid})`}
+            strokeWidth="22"
             strokeLinecap="round"
-            strokeOpacity="0.95"
+            strokeDasharray="815 1030"
+            transform="rotate(-118 256 256)"
           />
 
-          {/* Sprouting vitality bud */}
-          <circle cx="368" cy="114" r="18" fill="#84cc16" />
+          {/* Botanical leaf */}
+          <path
+            d="M178 320 C174 234, 224 166, 330 144 C336 228, 286 312, 178 320 Z"
+            fill={isMono ? 'currentColor' : `url(#nt-v2-leaf-${uid})`}
+            fillOpacity={isMono ? 0.35 : 0.92}
+          />
+
+          {/* Heartbeat vitality pulse line */}
+          {!isMono && (
+            <path
+              d="M148 264 L206 264 L230 220 L256 302 L284 244 L306 264 L364 264"
+              stroke="#063723"
+              strokeWidth="26"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+          <path
+            d="M148 264 L206 264 L230 220 L256 302 L284 244 L306 264 L364 264"
+            stroke={isMono ? 'currentColor' : '#FFFFFF'}
+            strokeWidth="15"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Vitality coral sprout dot */}
+          <circle
+            cx="332"
+            cy="144"
+            r="16"
+            fill={isMono ? 'currentColor' : '#E06D53'}
+            stroke={isMono ? 'none' : '#FFFFFF'}
+            strokeWidth="5"
+          />
         </svg>
       </div>
 
-      {/* Typography Section */}
       {showText && (
         <div className="flex flex-col leading-tight min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className={`font-black tracking-tight truncate ${dimensions.fontSize} ${titleColorClass}`}>
-              Nutri<span className="text-emerald-500 font-extrabold">Track</span>
+            <span className={`font-editorial font-bold tracking-tight truncate ${dimensions.fontSize} ${titleColorClass}`}>
+              Nutri<span className={isMono ? '' : 'text-emerald-600 dark:text-emerald-400'}>Track</span>
             </span>
             {badge && (
-              <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 uppercase tracking-wider shrink-0">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 uppercase tracking-wider shrink-0">
                 {badge}
               </span>
             )}
           </div>
-          {subtitle !== undefined ? (
+          {subtitle && (
             <p className={`font-medium tracking-normal truncate ${dimensions.subSize} ${subColorClass}`}>
               {subtitle}
-            </p>
-          ) : (
-            <p className={`font-medium tracking-normal truncate ${dimensions.subSize} ${subColorClass}`}>
-              Diet &amp; Nutrition Management
             </p>
           )}
         </div>

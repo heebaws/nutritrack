@@ -1,30 +1,100 @@
-import React, { useMemo } from 'react';
-import { ClientProfile, MealLogItem } from '../../types';
+import React, { useMemo, useState } from 'react';
+import { ClientProfile, MealLogItem, MealType, WaterLog } from '../../types';
 import { useApp } from '../../context/AppContext';
 import {
   calculateDailyNutrientTargets,
   aggregateConsumedNutrients,
+  NutrientKey,
 } from '../../utils/micronutrients';
+import { formatDateDisplay } from '../../utils/dateUtils';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import {
   Dumbbell,
   Wheat,
   Droplets,
   Leaf,
-  HeartPulse,
-  Sun,
-  Zap,
-  ShieldCheck,
+  Candy,
+  GlassWater,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Plus,
 } from 'lucide-react';
 
 interface DailyNutrientsCardProps {
   client: ClientProfile;
   logs: MealLogItem[];
+  waterLogs?: WaterLog[];
+  selectedDate: string;
+  onAddWaterGlass?: () => void;
+  onOpenHydrationModal?: () => void;
+  onInspectNutrient?: (key: NutrientKey) => void;
 }
 
-export const DailyNutrientsCard: React.FC<DailyNutrientsCardProps> = ({ client, logs }) => {
+const MACRO_COLORS = ['#059669', '#2563eb', '#d97706'];
+
+const ProgressRing: React.FC<{
+  pct: number;
+  strokeHex: string;
+  size?: number;
+}> = ({ pct, strokeHex, size = 44 }) => {
+  const r = (size - 6) / 2;
+  const circ = 2 * Math.PI * r;
+  const clamped = Math.max(0, Math.min(100, pct));
+  const offset = circ - (clamped / 100) * circ;
+
+  return (
+    <svg width={size} height={size} className="shrink-0 -rotate-90" aria-hidden="true">
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={4.5}
+        className="text-slate-200 dark:text-slate-700"
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={strokeHex}
+        strokeWidth={4.5}
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        className="transition-all duration-300"
+      />
+    </svg>
+  );
+};
+
+function getStatusLabel(consumed: number, target: number, isCeiling: boolean) {
+  if (target <= 0) return { label: 'On Track', textClass: 'text-emerald-700 dark:text-emerald-400' };
+  const ratio = consumed / target;
+  if (isCeiling) {
+    if (ratio > 1.05) return { label: 'Exceeded', textClass: 'text-rose-600 dark:text-rose-400' };
+    if (ratio >= 0.85) return { label: 'Near Limit', textClass: 'text-amber-700 dark:text-amber-400' };
+    return { label: 'Within Limit', textClass: 'text-emerald-700 dark:text-emerald-400' };
+  }
+  if (ratio > 1.2) return { label: 'Exceeded', textClass: 'text-amber-700 dark:text-amber-400' };
+  if (ratio >= 0.75) return { label: 'On Track', textClass: 'text-emerald-700 dark:text-emerald-400' };
+  return { label: 'Building', textClass: 'text-slate-500 dark:text-slate-400' };
+}
+
+export const DailyNutrientsCard: React.FC<DailyNutrientsCardProps> = ({
+  client,
+  logs,
+  waterLogs = [],
+  selectedDate,
+  onAddWaterGlass,
+  onOpenHydrationModal,
+  onInspectNutrient,
+}) => {
   const { foods, t, language } = useApp();
   const isMl = language === 'ml';
+  const [showMealSummary, setShowMealSummary] = useState(false);
 
   const targets = useMemo(() => calculateDailyNutrientTargets(client), [client]);
   const consumed = useMemo(
@@ -32,188 +102,261 @@ export const DailyNutrientsCard: React.FC<DailyNutrientsCardProps> = ({ client, 
     [logs, foods]
   );
 
-  const items = useMemo(
-    () => [
-      {
-        key: 'protein',
-        label: t('Protein'),
-        consumed: consumed.protein,
-        target: targets.protein,
-        unit: 'g',
-        icon: Dumbbell,
-        barColor: 'bg-emerald-500',
-        badgeBg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-        textAccent: 'text-emerald-700 dark:text-emerald-400',
-      },
-      {
-        key: 'carbs',
-        label: t('Carbohydrates'),
-        mobileLabel: t('Carbs'),
-        consumed: consumed.carbs,
-        target: targets.carbs,
-        unit: 'g',
-        icon: Wheat,
-        barColor: 'bg-blue-500',
-        badgeBg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-        textAccent: 'text-blue-700 dark:text-blue-400',
-      },
-      {
-        key: 'fat',
-        label: t('Fats'),
-        consumed: consumed.fat,
-        target: targets.fat,
-        unit: 'g',
-        icon: Droplets,
-        barColor: 'bg-amber-500',
-        badgeBg: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-        textAccent: 'text-amber-700 dark:text-amber-400',
-      },
-      {
-        key: 'fiber',
-        label: t('Fiber'),
-        consumed: consumed.fiber,
-        target: targets.fiber,
-        unit: 'g',
-        icon: Leaf,
-        barColor: 'bg-lime-500',
-        badgeBg: 'bg-lime-50 dark:bg-lime-950/60 text-lime-700 dark:text-lime-300 border-lime-200 dark:border-lime-800',
-        textAccent: 'text-lime-700 dark:text-lime-400',
-      },
-      {
-        key: 'iron',
-        label: t('Iron'),
-        consumed: consumed.iron,
-        target: targets.iron,
-        unit: 'mg',
-        icon: HeartPulse,
-        barColor: 'bg-rose-500',
-        badgeBg: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800',
-        textAccent: 'text-rose-700 dark:text-rose-400',
-      },
-      {
-        key: 'vitaminD',
-        label: t('Vitamin D'),
-        consumed: consumed.vitaminD,
-        target: targets.vitaminD,
-        unit: 'IU',
-        icon: Sun,
-        barColor: 'bg-indigo-500',
-        badgeBg: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
-        textAccent: 'text-indigo-700 dark:text-indigo-400',
-      },
-      {
-        key: 'magnesium',
-        label: t('Magnesium'),
-        consumed: consumed.magnesium,
-        target: targets.magnesium,
-        unit: 'mg',
-        icon: Zap,
-        barColor: 'bg-teal-500',
-        badgeBg: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800',
-        textAccent: 'text-teal-700 dark:text-teal-400',
-      },
-      {
-        key: 'calcium',
-        label: t('Calcium'),
-        consumed: consumed.calcium,
-        target: targets.calcium,
-        unit: 'mg',
-        icon: ShieldCheck,
-        barColor: 'bg-sky-500',
-        badgeBg: 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800',
-        textAccent: 'text-sky-700 dark:text-sky-400',
-      },
-    ],
-    [consumed, targets, t]
+  const waterTotalMl = useMemo(
+    () =>
+      waterLogs
+        .filter((w) => w.clientId === client.id && w.date === selectedDate)
+        .reduce((sum, w) => sum + (Number(w.amountMl) || 0), 0),
+    [waterLogs, client.id, selectedDate]
   );
+  const waterTargetMl = Math.round((client.dailyWaterTargetLiters || 2.5) * 1000);
+
+  const macroPieData = useMemo(() => {
+    const pKcal = consumed.protein * 4;
+    const cKcal = consumed.carbs * 4;
+    const fKcal = consumed.fat * 9;
+    const total = pKcal + cKcal + fKcal;
+    if (total <= 0) {
+      return [
+        { name: 'Protein', value: 30 },
+        { name: 'Carbs', value: 45 },
+        { name: 'Fat', value: 25 },
+      ];
+    }
+    return [
+      { name: 'Protein', value: Math.round(pKcal) },
+      { name: 'Carbs', value: Math.round(cKcal) },
+      { name: 'Fat', value: Math.round(fKcal) },
+    ];
+  }, [consumed]);
+
+  const mealSlotSummary = useMemo(() => {
+    const slots: MealType[] = ['Breakfast', 'Morning Snack', 'Lunch', 'Evening Snack', 'Dinner'];
+    return slots.map((slot) => {
+      const slotLogs = logs.filter((l) => l.mealType === slot);
+      const totals = aggregateConsumedNutrients(slotLogs, foods);
+      return {
+        slot,
+        count: slotLogs.length,
+        ...totals,
+      };
+    });
+  }, [logs, foods]);
+
+  const nutrientRings: Array<{
+    key: NutrientKey | 'water';
+    label: string;
+    consumed: number;
+    target: number;
+    unit: string;
+    strokeHex: string;
+    isCeiling?: boolean;
+    icon: React.ComponentType<{ className?: string }>;
+  }> = [
+    {
+      key: 'protein',
+      label: t('Protein'),
+      consumed: consumed.protein,
+      target: targets.protein,
+      unit: 'g',
+      strokeHex: '#059669',
+      icon: Dumbbell,
+    },
+    {
+      key: 'carbs',
+      label: t('Carbs'),
+      consumed: consumed.carbs,
+      target: targets.carbs,
+      unit: 'g',
+      strokeHex: '#2563eb',
+      icon: Wheat,
+    },
+    {
+      key: 'fat',
+      label: t('Fats'),
+      consumed: consumed.fat,
+      target: targets.fat,
+      unit: 'g',
+      strokeHex: '#d97706',
+      icon: Droplets,
+    },
+    {
+      key: 'fiber',
+      label: t('Fiber'),
+      consumed: consumed.fiber,
+      target: targets.fiber,
+      unit: 'g',
+      strokeHex: '#65a30d',
+      icon: Leaf,
+    },
+    {
+      key: 'sugar',
+      label: t('Sugar'),
+      consumed: consumed.sugar,
+      target: targets.sugar,
+      unit: 'g',
+      strokeHex: consumed.sugar > targets.sugar ? '#e11d48' : '#db2777',
+      isCeiling: true,
+      icon: Candy,
+    },
+    {
+      key: 'water',
+      label: t('Water'),
+      consumed: Math.round((waterTotalMl / 1000) * 10) / 10,
+      target: Math.round((waterTargetMl / 1000) * 10) / 10,
+      unit: 'L',
+      strokeHex: '#0891b2',
+      icon: GlassWater,
+    },
+  ];
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xs border border-slate-200 dark:border-slate-800 flex flex-col justify-between min-w-0 w-full overflow-hidden space-y-2.5 sm:space-y-3.5">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4 min-w-0">
       {/* Header */}
-      <div className="flex flex-wrap items-center sm:items-start justify-between gap-1.5 sm:gap-2 pb-2 sm:pb-2.5 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400 shrink-0">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400 shrink-0">
+            <Sparkles className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
-              {t('Daily Nutrient Targets')}
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
+              {isMl ? 'പോഷക റിംഗുകളും ജലാംശവും' : 'Nutrient Rings, Sugar & Hydration'}
             </h2>
-            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate tabular-nums">
-              {client.gender || 'Client'} · {client.age || 30}y · {client.currentWeightKg} kg · {client.heightCm} cm
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate tabular-nums">
+              {formatDateDisplay(selectedDate)} · {consumed.calories} / {targets.calories} kcal
             </p>
           </div>
         </div>
 
-        <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shrink-0 tabular-nums">
-          {t('Goal Cap')}: {targets.calories} kcal
-        </span>
+        <button
+          type="button"
+          onClick={() => (onAddWaterGlass ? onAddWaterGlass() : onOpenHydrationModal?.())}
+          className="px-3 py-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 border border-cyan-200 dark:border-cyan-800 text-cyan-800 dark:text-cyan-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>+250 ml Water</span>
+        </button>
       </div>
 
-      {/* 8 Strictly-Capped Nutrient Bars (2x4 Compact Grid on Mobile & Desktop) */}
-      <div className="grid grid-cols-2 gap-1.5 sm:gap-2.5">
-        {items.map((item) => {
-          const IconComponent = item.icon;
-          const pct = item.target > 0 ? Math.min(100, Math.round((item.consumed / item.target) * 100)) : 0;
-          const met = item.consumed >= item.target;
-
-          return (
-            <div
-              key={item.key}
-              className="rounded-xl sm:rounded-2xl p-2 sm:p-2.5 bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/80 space-y-1 sm:space-y-1.5 min-w-0"
-            >
-              <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs min-w-0">
-                <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-                  <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg border flex items-center justify-center shrink-0 ${item.badgeBg}`}>
-                    <IconComponent className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                  </span>
-                  <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                    {item.mobileLabel ? (
-                      <>
-                        <span className="sm:hidden">{item.mobileLabel}</span>
-                        <span className="hidden sm:inline">{item.label}</span>
-                      </>
-                    ) : (
-                      item.label
-                    )}
-                  </span>
+      {/* 6 Progress Rings Grid + Macro Split Donut */}
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+        <div className="sm:col-span-8 grid grid-cols-2 gap-2">
+          {nutrientRings.map((ring) => {
+            const pct = ring.target > 0 ? Math.round((ring.consumed / ring.target) * 100) : 0;
+            const status = getStatusLabel(ring.consumed, ring.target, Boolean(ring.isCeiling));
+            const IconComp = ring.icon;
+            return (
+              <button
+                key={ring.key}
+                type="button"
+                onClick={() => {
+                  if (ring.key === 'water') {
+                    onOpenHydrationModal?.();
+                  } else {
+                    onInspectNutrient?.(ring.key);
+                  }
+                }}
+                className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/80 hover:border-emerald-400 transition-colors text-left cursor-pointer min-w-0"
+              >
+                <div className="relative flex items-center justify-center shrink-0">
+                  <ProgressRing pct={pct} strokeHex={ring.strokeHex} size={42} />
+                  <IconComp className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200 absolute" />
                 </div>
-                <span className={`text-[9px] sm:text-[10px] font-black tabular-nums shrink-0 ${met ? 'text-emerald-600 dark:text-emerald-400' : item.textAccent}`}>
-                  {pct}%
-                </span>
-              </div>
+                <div className="min-w-0 flex-1 tabular-nums">
+                  <div className="flex items-center justify-between gap-1 text-[11px]">
+                    <span className="font-bold text-slate-900 dark:text-white truncate">{ring.label}</span>
+                    <span className={`text-[10px] font-bold shrink-0 ${status.textClass}`}>
+                      {status.label}
+                    </span>
+                  </div>
+                  <div className="text-xs font-black text-slate-900 dark:text-white">
+                    {ring.consumed}
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                      /{ring.target}{ring.unit}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
 
-              <div className="flex items-baseline justify-between gap-1 text-[11px] sm:text-xs tabular-nums min-w-0">
-                <span className="font-black text-slate-900 dark:text-white text-xs sm:text-sm shrink-0">
-                  {item.consumed}
-                  <span className="text-[10px] sm:text-[11px] font-normal text-slate-500 dark:text-slate-400 ml-0.5">
-                    {item.unit}
-                  </span>
-                </span>
-                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-                  <span className="hidden sm:inline">{t('Daily Needed')}: </span>
-                  <span className="sm:hidden">{t('Need')}: </span>
-                  <b className="text-slate-800 dark:text-slate-200">{item.target}{item.unit}</b>
-                </span>
-              </div>
-
-              <div className="w-full h-1 sm:h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${met ? 'bg-emerald-500' : item.barColor}`}
-                  style={{ width: `${pct}%` }}
+        {/* Recharts Macro Split Donut */}
+        <div className="sm:col-span-4 flex flex-col items-center justify-center rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/80 p-3">
+          <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 mb-1">
+            Macro Energy Split
+          </span>
+          <div className="w-28 h-28">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={macroPieData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={28}
+                  outerRadius={46}
+                  paddingAngle={2}
+                >
+                  {macroPieData.map((_, idx) => (
+                    <Cell key={idx} fill={MACRO_COLORS[idx % MACRO_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(v: any, name: any) => [`${v} kcal`, name]}
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    color: '#f8fafc',
+                    borderRadius: '10px',
+                    border: 'none',
+                    fontSize: '11px',
+                  }}
                 />
-              </div>
-            </div>
-          );
-        })}
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-semibold text-slate-600 dark:text-slate-300 tabular-nums">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-600" /> P {consumed.protein}g
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-blue-600" /> C {consumed.carbs}g
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-600" /> F {consumed.fat}g
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Footer note */}
-      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-snug">
-        {isMl
-          ? 'ഭാരം, ഉയരം, പ്രായം, ലിംഗഭേദം എന്നിവ അടിസ്ഥാനമാക്കി ആവശ്യമായ പരമാവധി പരിധിക്കുള്ളിൽ കണക്കാക്കിയതാണ്.'
-          : 'Calibrated strictly within safe clinical limits from your weight, height, age & gender.'}
-      </p>
+      {/* Collapsible Meal-by-Meal Nutrient Summary */}
+      <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+        <button
+          type="button"
+          onClick={() => setShowMealSummary((v) => !v)}
+          className="w-full flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 py-1 cursor-pointer"
+        >
+          <span>Meal-by-Meal Nutrient Breakdown ({logs.length} items)</span>
+          {showMealSummary ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
+        {showMealSummary && (
+          <div className="mt-2 divide-y divide-slate-100 dark:divide-slate-800 text-xs tabular-nums">
+            {mealSlotSummary.map((row) => (
+              <div key={row.slot} className="py-2 flex flex-wrap items-center justify-between gap-2">
+                <span className="font-bold text-slate-800 dark:text-slate-100">{t(row.slot)}</span>
+                <div className="text-[11px] text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-2">
+                  <b>{row.calories} kcal</b>
+                  <span>· P {row.protein}g</span>
+                  <span>· C {row.carbs}g</span>
+                  <span>· F {row.fat}g</span>
+                  <span>· Fib {row.fiber}g</span>
+                  <span>· Sug {row.sugar}g</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

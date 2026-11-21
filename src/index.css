@@ -1,10 +1,54 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+  --nt-font-serif: 'Playfair Display', Georgia, Cambria, serif;
+  --nt-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Light Wellness Surface Tokens */
+  --nt-bg: #FAF8F3;
+  --nt-bg-sage: #EDF3EE;
+  --nt-surface: #FFFFFF;
+  --nt-surface-soft: #F3F7F4;
+  --nt-border: #DCE6DE;
+  --nt-ink: #122119;
+  --nt-muted: #52675B;
+  --nt-accent-coral: #E06D53;
+  --nt-accent-gold: #D97706;
+}
+
+html.dark {
+  --nt-bg: #0B1410;
+  --nt-bg-sage: #101C16;
+  --nt-surface: #122019;
+  --nt-surface-soft: #172820;
+  --nt-border: #24392E;
+  --nt-ink: #F2F7F3;
+  --nt-muted: #A1B5A9;
+  --nt-accent-coral: #F08A72;
+  --nt-accent-gold: #F59E0B;
+}
+
 :root,
 html[data-accent="emerald"] {
-  --accent-swatch: #059669;
-  --accent-hero: #022c22;
+  --accent-swatch: #0F5132;
+  --accent-hero: #063723;
+}
+
+html[data-accent="coral"] {
+  --color-emerald-50: #FFF5F2;
+  --color-emerald-100: #FFE4DC;
+  --color-emerald-200: #FFC5B5;
+  --color-emerald-300: #FA9E87;
+  --color-emerald-400: #F07B5F;
+  --color-emerald-500: #E06D53;
+  --color-emerald-600: #C85239;
+  --color-emerald-700: #A63E28;
+  --color-emerald-800: #853220;
+  --color-emerald-900: #6B281A;
+  --color-emerald-950: #3D140B;
+  --accent-swatch: #E06D53;
+  --accent-hero: #3D140B;
 }
 
 html[data-accent="ocean"] {
@@ -93,6 +137,12 @@ html[data-accent="teal"] {
   #root {
     max-width: 100%;
     overflow-x: clip;
+    font-family: var(--nt-font-sans);
+  }
+
+  body {
+    background-color: var(--nt-bg);
+    color: var(--nt-ink);
   }
 
   html.dark {
@@ -106,5 +156,27 @@ html[data-accent="teal"] {
       background-color: #ffffff !important;
       color: #0f172a !important;
     }
+  }
+}
+
+@layer utilities {
+  .font-editorial {
+    font-family: var(--nt-font-serif);
+    letter-spacing: -0.015em;
+  }
+
+  .nt-wellness-canvas {
+    background-color: var(--nt-bg);
+    background-image:
+      radial-gradient(at 8% 4%, rgba(16, 185, 129, 0.08) 0px, transparent 52%),
+      radial-gradient(at 92% 14%, rgba(224, 109, 83, 0.065) 0px, transparent 48%),
+      radial-gradient(at 50% 90%, rgba(132, 204, 22, 0.055) 0px, transparent 55%);
+  }
+
+  html.dark .nt-wellness-canvas {
+    background-color: var(--nt-bg);
+    background-image:
+      radial-gradient(at 8% 4%, rgba(16, 185, 129, 0.09) 0px, transparent 52%),
+      radial-gradient(at 92% 14%, rgba(224, 109, 83, 0.05) 0px, transparent 48%);
   }
 }

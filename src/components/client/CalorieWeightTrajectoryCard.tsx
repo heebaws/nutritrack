@@ -1,7 +1,29 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ClientProfile, MealLogItem } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { calculateCalorieBreakdown, calculateStepCalories } from '../../utils/calorieQuality';
+import {
+  assessBMI,
+  calculateMifflinTDEE,
+  cmToFtIn,
+  ftInToCm,
+  kgToLbs,
+  lbsToKg,
+  computeProjectedGoalDate,
+  CLINICAL_DISCLAIMER,
+} from '../../utils/clinicalSafety';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ReferenceLine,
+} from 'recharts';
 import { 
   Flame, 
   TrendingUp, 
@@ -19,7 +41,10 @@ import {
   Footprints,
   Dumbbell,
   Smartphone,
-  Plus
+  Plus,
+  BarChart3,
+  Activity,
+  RotateCcw,
 } from 'lucide-react';
 import { 
   getTodayString, 
@@ -49,10 +74,35 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
   onOpenStepsModal,
   onOpenWorkoutModal,
 }) => {
-  const { activities, habits, isPedometerLive, osHealthInfo, t, language } = useApp();
+  const { activities, habits, measurements, isPedometerLive, osHealthInfo, t, language } = useApp();
   const isMl = language === 'ml';
   // Option to show/hide the detailed breakdown and previous days table when touching the main point
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [analyticsTab, setAnalyticsTab] = useState<'calories' | 'weight' | 'bmi'>('calories');
+
+  // Interactive BMI Calculator State (synced with profile initially, toggleable Metric vs Imperial)
+  const [bmiUnit, setBmiUnit] = useState<'metric' | 'imperial'>(client.preferredUnitSystem || 'metric');
+  const [calcWeightKg, setCalcWeightKg] = useState<number>(client.currentWeightKg || 65);
+  const [calcHeightCm, setCalcHeightCm] = useState<number>(client.heightCm || 168);
+  const [calcFeet, setCalcFeet] = useState<number>(() => cmToFtIn(client.heightCm || 168).feet);
+  const [calcInches, setCalcInches] = useState<number>(() => cmToFtIn(client.heightCm || 168).inches);
+
+  useEffect(() => {
+    setCalcWeightKg(client.currentWeightKg || 65);
+    const hCm = client.heightCm || 168;
+    setCalcHeightCm(hCm);
+    const fi = cmToFtIn(hCm);
+    setCalcFeet(fi.feet);
+    setCalcInches(fi.inches);
+    if (client.preferredUnitSystem) setBmiUnit(client.preferredUnitSystem);
+  }, [client.id, client.currentWeightKg, client.heightCm, client.preferredUnitSystem]);
+
+  const effectiveBmiHeightCm = bmiUnit === 'imperial' ? ftInToCm(calcFeet, calcInches) : calcHeightCm;
+  const bmiInfo = useMemo(
+    () => assessBMI(calcWeightKg, effectiveBmiHeightCm),
+    [calcWeightKg, effectiveBmiHeightCm]
+  );
+
   // 1. Determine client needed calories & goal direction
   const neededCalories = client.neededCalories || client.targetBmr || 1600;
   
@@ -131,6 +181,99 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
 
     return rows;
   }, [clientLogs, activities, habits, client.id, client.currentWeightKg, neededCalories, isWeightGainGoal]);
+
+  // Last 7 days chart data for Daily Calories vs Target
+  const last7CaloriesSeries = useMemo(() => {
+    const out: Array<{ label: string; net: number; eaten: number; target: number }> = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = getDaysAgoString(i);
+      const match = trajectoryRows.find((r) => r.date === d);
+      out.push({
+        label: d.slice(5),
+        net: match ? match.netCalories : 0,
+        eaten: match ? match.consumed : 0,
+        target: neededCalories,
+      });
+    }
+    return out;
+  }, [trajectoryRows, neededCalories]);
+
+  // Weight Trend & Projected Goal Date
+  const { tdee } = useMemo(
+    () =>
+      calculateMifflinTDEE({
+        weightKg: client.currentWeightKg || 65,
+        heightCm: client.heightCm || 168,
+        age: client.age || 30,
+        gender: client.gender || 'Male',
+        activityLevel: client.activityLevel || 'moderate',
+      }),
+    [client]
+  );
+
+  const recent7AvgDelta = useMemo(() => {
+    const logged = trajectoryRows.slice(-7).filter((r) => r.logsCount > 0);
+    if (logged.length === 0) return undefined;
+    return Math.round(logged.reduce((s, r) => s + r.dayDifference, 0) / logged.length);
+  }, [trajectoryRows]);
+
+  const goalProjection = useMemo(
+    () =>
+      computeProjectedGoalDate({
+        currentWeightKg: client.currentWeightKg || 65,
+        targetWeightKg: client.targetWeightKg || 62,
+        goalType: client.goalType || (isWeightGainGoal ? 'gain' : 'loss'),
+        dailyTargetCalories: neededCalories,
+        estimatedTdee: tdee,
+        recent7DayAvgNetDelta: recent7AvgDelta,
+      }),
+    [client.currentWeightKg, client.targetWeightKg, client.goalType, isWeightGainGoal, neededCalories, tdee, recent7AvgDelta]
+  );
+
+  const weightCurveSeries = useMemo(() => {
+    const clientMeas = measurements
+      .filter((m) => m.clientId === client.id)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-6)
+      .map((m) => ({
+        label: m.date.slice(5),
+        actualKg: Number(m.weightKg.toFixed(1)),
+        projectedKg: Number(m.weightKg.toFixed(1)),
+      }));
+
+    if (clientMeas.length === 0) {
+      clientMeas.push({
+        label: 'Now',
+        actualKg: client.currentWeightKg,
+        projectedKg: client.currentWeightKg,
+      });
+    }
+
+    const baseW = client.currentWeightKg;
+    const weeklyDelta = goalProjection.projectedWeeklyKg || (isWeightGainGoal ? 0.25 : -0.45);
+    const futurePoints = [1, 2, 4].map((wks) => {
+      const d = new Date();
+      d.setDate(d.getDate() + wks * 7);
+      const nextW = Math.round((baseW + weeklyDelta * wks) * 10) / 10;
+      const clampedW = isWeightGainGoal
+        ? Math.min(client.targetWeightKg + 1, nextW)
+        : Math.max(client.targetWeightKg - 0.5, nextW);
+      return {
+        label: `+${wks}w`,
+        actualKg: undefined as number | undefined,
+        projectedKg: clampedW,
+      };
+    });
+
+    return [
+      ...clientMeas.map((m) => ({
+        label: m.label,
+        actualKg: m.actualKg as number | undefined,
+        projectedKg: m.projectedKg,
+      })),
+      ...futurePoints,
+    ];
+  }, [measurements, client.id, client.currentWeightKg, client.targetWeightKg, goalProjection.projectedWeeklyKg, isWeightGainGoal]);
 
   // Current overall cumulative status (as of the latest row / today)
   const latestRow = trajectoryRows[trajectoryRows.length - 1] || {
@@ -317,6 +460,264 @@ export const CalorieWeightTrajectoryCard: React.FC<CalorieWeightTrajectoryCardPr
             {isDetailsOpen ? t('Collapse') : t('Touch for Details')}
           </span>
         </div>
+      </div>
+
+      {/* ================= CHARTS, PROJECTED GOAL DATE & INTERACTIVE BMI GAUGE ================= */}
+      <div className="rounded-2xl p-3 sm:p-3.5 bg-slate-50/80 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800 space-y-2.5 min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px]">
+            {(
+              [
+                { id: 'calories', label: isMl ? 'കലോറി ചാർട്ട്' : '7d Calories', icon: BarChart3 },
+                { id: 'weight', label: isMl ? 'ഭാര പ്രവചനം' : 'Weight Curve', icon: Activity },
+                { id: 'bmi', label: isMl ? 'BMI ഗേജ്' : 'BMI Calculator', icon: Scale },
+              ] as const
+            ).map((tab) => {
+              const IconComp = tab.icon;
+              const active = analyticsTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setAnalyticsTab(tab.id)}
+                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                    active
+                      ? 'bg-emerald-700 text-white'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <IconComp className="w-3 h-3" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold tabular-nums flex items-center gap-2">
+            <span>
+              BMI <b className="text-slate-900 dark:text-white">{bmiInfo.bmi}</b> · {bmiInfo.shortLabel}
+            </span>
+            {goalProjection.projectedDateStr && (
+              <span className="hidden sm:inline text-emerald-700 dark:text-emerald-400">
+                · Goal est: <b>{goalProjection.projectedDateStr}</b>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {analyticsTab === 'calories' && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+              <span>Daily Net Calories vs Target ({neededCalories} kcal)</span>
+              <span>{goalProjection.projectedDateStr ? `Est. Goal: ${goalProjection.projectedDateStr}` : goalProjection.trendLabel}</span>
+            </div>
+            <div className="h-36 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={last7CaloriesSeries} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.25} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      color: '#f8fafc',
+                      borderRadius: '10px',
+                      border: '1px solid #334155',
+                      fontSize: '11px',
+                    }}
+                    formatter={(v: any) => [`${v} kcal`, 'Net Intake']}
+                  />
+                  <ReferenceLine y={neededCalories} stroke="#E06D53" strokeDasharray="4 4" />
+                  <Bar dataKey="net" fill="#059669" radius={[5, 5, 0, 0]} maxBarSize={26} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {analyticsTab === 'weight' && (
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+              <span>Weight Trend &amp; Projected Curve ({client.currentWeightKg} → {client.targetWeightKg} kg)</span>
+              <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                {goalProjection.projectedDateStr
+                  ? `Goal Date: ${goalProjection.projectedDateStr} (~${goalProjection.projectedWeeklyKg} kg/wk)`
+                  : goalProjection.trendLabel}
+              </span>
+            </div>
+            <div className="h-36 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weightCurveSeries} margin={{ top: 6, right: 10, left: -18, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.25} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                  <YAxis domain={['dataMin - 1', 'dataMax + 1']} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      color: '#f8fafc',
+                      borderRadius: '10px',
+                      border: '1px solid #334155',
+                      fontSize: '11px',
+                    }}
+                    formatter={(v: any, name: any) => [
+                      `${v} kg`,
+                      name === 'actualKg' ? 'Recorded' : 'Projected',
+                    ]}
+                  />
+                  <ReferenceLine y={client.targetWeightKg} stroke="#10b981" strokeDasharray="4 4" />
+                  <Line type="monotone" dataKey="projectedKg" stroke="#E06D53" strokeDasharray="5 4" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="actualKg" stroke="#059669" strokeWidth={2.5} connectNulls dot={{ r: 4, fill: '#059669' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {analyticsTab === 'bmi' && (
+          <div className="space-y-2.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1 p-0.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setBmiUnit('metric')}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold cursor-pointer ${
+                    bmiUnit === 'metric' ? 'bg-slate-900 dark:bg-emerald-700 text-white' : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  kg / cm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const fi = cmToFtIn(calcHeightCm);
+                    setCalcFeet(fi.feet);
+                    setCalcInches(fi.inches);
+                    setBmiUnit('imperial');
+                  }}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold cursor-pointer ${
+                    bmiUnit === 'imperial' ? 'bg-slate-900 dark:bg-emerald-700 text-white' : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  lbs / ft·in
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCalcWeightKg(client.currentWeightKg || 65);
+                  const hCm = client.heightCm || 168;
+                  setCalcHeightCm(hCm);
+                  const fi = cmToFtIn(hCm);
+                  setCalcFeet(fi.feet);
+                  setCalcInches(fi.inches);
+                }}
+                className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Sync Profile</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px] tabular-nums">
+              {bmiUnit === 'metric' ? (
+                <div>
+                  <label className="font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">Height (cm)</label>
+                  <input
+                    type="number"
+                    min={100}
+                    max={235}
+                    value={calcHeightCm}
+                    onChange={(e) => setCalcHeightCm(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <label className="font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">Ft</label>
+                    <input
+                      type="number"
+                      min={3}
+                      max={7}
+                      value={calcFeet}
+                      onChange={(e) => setCalcFeet(Number(e.target.value))}
+                      className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">In</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={11}
+                      value={calcInches}
+                      onChange={(e) => setCalcInches(Number(e.target.value))}
+                      className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">
+                  Weight ({bmiUnit === 'imperial' ? 'lbs' : 'kg'})
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={bmiUnit === 'imperial' ? kgToLbs(calcWeightKg) : calcWeightKg}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setCalcWeightKg(bmiUnit === 'imperial' ? lbsToKg(v) : v);
+                  }}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                />
+              </div>
+            </div>
+
+            {/* WHO Clinical Spectrum Gauge Bar */}
+            <div className="space-y-1.5 pt-0.5">
+              <div className="flex items-center justify-between text-[11px] tabular-nums">
+                <span className="font-extrabold text-slate-900 dark:text-white">
+                  BMI {bmiInfo.bmi} · {bmiInfo.label}
+                </span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  Healthy:{' '}
+                  {bmiUnit === 'imperial'
+                    ? `${bmiInfo.healthyRangeLbs.min}–${bmiInfo.healthyRangeLbs.max} lbs`
+                    : `${bmiInfo.healthyRangeKg.min}–${bmiInfo.healthyRangeKg.max} kg`}
+                </span>
+              </div>
+              <div className="relative h-2.5 w-full rounded-full overflow-hidden flex">
+                <div className="w-[17%] bg-sky-400" title="Underweight <18.5" />
+                <div className="w-[25%] bg-emerald-500" title="Healthy 18.5–24.9" />
+                <div className="w-[19%] bg-amber-400" title="Overweight 25–29.9" />
+                <div className="w-[39%] bg-rose-500" title="Obese ≥30" />
+                <div
+                  className="absolute top-0 bottom-0 w-1.5 bg-slate-950 dark:bg-white ring-2 ring-white dark:ring-slate-950 rounded-full transition-all duration-300"
+                  style={{ left: `calc(${bmiInfo.gaugePercent}% - 3px)` }}
+                />
+              </div>
+              <div className="flex justify-between text-[9px] text-slate-400 tabular-nums">
+                <span>14</span>
+                <span>18.5</span>
+                <span>25</span>
+                <span>30</span>
+                <span>40</span>
+              </div>
+            </div>
+
+            {bmiInfo.bannerMessage && (
+              <p className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-2 leading-snug">
+                {bmiInfo.bannerMessage}
+              </p>
+            )}
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+              {CLINICAL_DISCLAIMER}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ================= MIDDLE SECTION: WORKOUTS & WALKING STEPS LIVE PANEL ================= */}

@@ -424,6 +424,13 @@ const EN_TO_ML: Record<string, string> = {
   'Live Body & Nutrient Avatar': 'ശരീര പോഷക ചിത്രം',
   'Open Full Body': 'പൂർണ്ണ രൂപം കാണുക',
   'Re-analyze Photo': 'ഫോട്ടോ വീണ്ടും സ്കാൻ ചെയ്യുക',
+  'Sugar': 'പഞ്ചസാര (Sugar)',
+  'Water': 'വെള്ളം (Water)',
+  'Cheat meal available this month': 'ഈ മാസം 1 ട്രീറ്റ് ബാക്കിയുണ്ട്',
+  'Weekly 7-Day Digest': '7-ദിവസത്തെ പ്രതിവാര അവലോകനം',
+  'Profile & Picture Studio': 'പ്രൊഫൈലും ഫോട്ടോ സ്റ്റുഡിയോയും',
+  'Calorie Trajectory': 'കലോറി യാത്ര',
+  'Experience Level': 'പരിശീലന നിലവാരം',
 };
 
 const FOOD_KEYWORD_ML: Array<[RegExp, string]> = [

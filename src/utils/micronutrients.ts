@@ -13,6 +13,7 @@ export interface DailyNutrientTargets {
   carbs: number;     // g
   fat: number;       // g
   fiber: number;     // g (RDA strictly capped)
+  sugar: number;     // g (WHO <10% kcal guideline, optimal <=25-45g)
   iron: number;      // mg (RDA strictly capped)
   vitaminD: number;  // IU (RDA strictly capped)
   magnesium: number; // mg (RDA strictly capped)
@@ -26,6 +27,7 @@ export interface ConsumedNutrientTotals {
   carbs: number;
   fat: number;
   fiber: number;
+  sugar: number;
   iron: number;
   vitaminD: number;
   magnesium: number;
@@ -179,12 +181,16 @@ export function calculateDailyNutrientTargets(client: ClientProfile): DailyNutri
     calcium = 1300;
   }
 
+  // Sugar daily ceiling (WHO < 10% total calories from free/added sugars; 25-45g max)
+  const sugar = Math.max(22, Math.min(48, Math.round((neededCalories * 0.08) / 4)));
+
   return {
     calories: neededCalories,
     protein,
     carbs,
     fat,
     fiber,
+    sugar,
     iron,
     vitaminD,
     magnesium,
@@ -448,17 +454,205 @@ export function estimateFoodFiber(input: {
 }
 
 /**
- * Ensures any FoodItem carries complete calcium, magnesium, vitaminD, and iron fields.
+ * Estimates sugar (g) per serving when explicit sugar is not stored on the food record.
+ */
+export function estimateFoodSugar(input: {
+  name: string;
+  category?: FoodCategory | string;
+  calories?: number;
+  carbs?: number;
+  sugar?: number;
+  description?: string;
+}): number {
+  if (input.sugar !== undefined && input.sugar !== null && !Number.isNaN(Number(input.sugar))) {
+    return r1(Math.max(0, Number(input.sugar)));
+  }
+
+  const name = (input.name || '').toLowerCase();
+  const desc = (input.description || '').toLowerCase();
+  const combined = `${name} ${desc}`;
+  const cat = input.category || 'Beverages & Snacks';
+  const cal = Math.max(0, Number(input.calories) || 0);
+  const carbs = Math.max(0, Number(input.carbs) || 0);
+
+  if (cal <= 5 || /no sugar|unsweetened|black tea|black coffee|sulaimani|jeeraka|pathimugam|water|sambharam/i.test(combined)) {
+    return /sulaimani/i.test(combined) ? 2.5 : 0;
+  }
+
+  if (carbs <= 1.5) return 0;
+
+  if (/halwa|payasam|cake|ice cream|shake|sharjah|sarbath|jaggery|sharkara|unniyappam|neyyappam|jam|soda|cola|sweet|chocolate|laddu|gulab|barfi|donut|pastry|juice/i.test(combined)) {
+    return r1(Math.min(carbs, Math.max(5, carbs * 0.62)));
+  }
+
+  if (/milk|curd|yogurt|lassi|chaya|tea|coffee/i.test(combined)) {
+    return /chaya|tea|coffee/i.test(combined) ? r1(Math.min(carbs, 7.5)) : r1(Math.min(carbs, carbs * 0.72));
+  }
+
+  if (cat === 'Fruits' || /banana|pazham|mango|apple|orange|papaya|grapes|dates|fig|berry/i.test(combined)) {
+    return r1(Math.min(carbs, Math.max(2, carbs * 0.56)));
+  }
+
+  if (/bread|bun|cake|biscuit|pazham pori|ethakka|sukhiyan/i.test(combined)) {
+    return r1(Math.min(carbs, Math.max(2, carbs * 0.28)));
+  }
+
+  if (cat === 'Vegetables') return r1(Math.min(carbs, carbs * 0.25));
+  if (cat === 'Grains & Breads') return r1(Math.min(4, carbs * 0.04));
+
+  return r1(Math.min(carbs * 0.12, 8));
+}
+
+/**
+ * Ensures any FoodItem carries complete fiber, sugar, calcium, magnesium, vitaminD, and iron fields.
  */
 export function enrichFoodWithMicronutrients(food: FoodItem): FoodItem {
   const est = estimateFoodMicronutrients(food);
   return {
     ...food,
     fiber: food.fiber !== undefined ? food.fiber : estimateFoodFiber(food),
+    sugar: food.sugar !== undefined ? food.sugar : estimateFoodSugar(food),
     calcium: food.calcium !== undefined ? food.calcium : est.calcium,
     iron: food.iron !== undefined ? food.iron : est.iron,
     magnesium: food.magnesium !== undefined ? food.magnesium : est.magnesium,
     vitaminD: food.vitaminD !== undefined ? food.vitaminD : est.vitaminD,
+  };
+}
+
+export type NutrientKey =
+  | 'protein'
+  | 'carbs'
+  | 'fat'
+  | 'fiber'
+  | 'sugar'
+  | 'iron'
+  | 'vitaminD'
+  | 'magnesium'
+  | 'calcium';
+
+export interface ResolvedLogNutrients extends ConsumedNutrientTotals {}
+
+export interface FoodNutrientSourceItem {
+  logId: string;
+  foodId: string;
+  foodName: string;
+  mealType: MealLogItem['mealType'];
+  quantity: number;
+  servingUnit: string;
+  calories: number;
+  amount: number;
+  sharePct: number;
+}
+
+/**
+ * Resolves exact macro + micro nutrient totals for a single MealLogItem,
+ * matching aggregateConsumedNutrients 1:1.
+ */
+export function resolveMealLogNutrients(
+  log: MealLogItem,
+  foodsLibrary: FoodItem[]
+): ResolvedLogNutrients {
+  const byId = new Map<string, FoodItem>();
+  const byName = new Map<string, FoodItem>();
+  for (const f of foodsLibrary) {
+    if (f.id) byId.set(f.id, f);
+    if (f.name) byName.set(f.name.toLowerCase().trim(), f);
+  }
+
+  return resolveLogWithMaps(log, byId, byName);
+}
+
+function resolveLogWithMaps(
+  log: MealLogItem,
+  byId: Map<string, FoodItem>,
+  byName: Map<string, FoodItem>
+): ResolvedLogNutrients {
+  const matchedFood =
+    byId.get(log.foodId) || byName.get((log.foodName || '').toLowerCase().trim());
+  const qty = Math.max(0.1, Number(log.quantity) || 1);
+
+  let fiber = 0;
+  if (log.fiber !== undefined) {
+    fiber = Number(log.fiber) || 0;
+  } else if (matchedFood) {
+    fiber = estimateFoodFiber(matchedFood) * qty;
+  } else {
+    fiber = estimateFoodFiber({
+      name: log.foodName,
+      calories: log.calories,
+      protein: log.protein,
+      carbs: log.carbs,
+    });
+  }
+
+  let sugar = 0;
+  if (log.sugar !== undefined) {
+    sugar = Number(log.sugar) || 0;
+  } else if (matchedFood) {
+    sugar = estimateFoodSugar(matchedFood) * qty;
+  } else {
+    sugar = estimateFoodSugar({
+      name: log.foodName,
+      calories: log.calories,
+      carbs: log.carbs,
+    });
+  }
+
+  let iron = 0;
+  let vitaminD = 0;
+  let magnesium = 0;
+  let calcium = 0;
+
+  if (
+    log.iron !== undefined ||
+    log.vitaminD !== undefined ||
+    log.magnesium !== undefined ||
+    log.calcium !== undefined
+  ) {
+    const est = matchedFood
+      ? estimateFoodMicronutrients(matchedFood)
+      : estimateFoodMicronutrients({
+          name: log.foodName,
+          calories: log.calories / qty,
+          protein: log.protein / qty,
+          carbs: log.carbs / qty,
+          fat: log.fat / qty,
+        });
+    iron = log.iron !== undefined ? Number(log.iron) || 0 : est.iron * qty;
+    vitaminD = log.vitaminD !== undefined ? Number(log.vitaminD) || 0 : est.vitaminD * qty;
+    magnesium = log.magnesium !== undefined ? Number(log.magnesium) || 0 : est.magnesium * qty;
+    calcium = log.calcium !== undefined ? Number(log.calcium) || 0 : est.calcium * qty;
+  } else if (matchedFood) {
+    const enriched = enrichFoodWithMicronutrients(matchedFood);
+    iron = (enriched.iron || 0) * qty;
+    vitaminD = (enriched.vitaminD || 0) * qty;
+    magnesium = (enriched.magnesium || 0) * qty;
+    calcium = (enriched.calcium || 0) * qty;
+  } else {
+    const est = estimateFoodMicronutrients({
+      name: log.foodName,
+      calories: log.calories,
+      protein: log.protein,
+      carbs: log.carbs,
+      fat: log.fat,
+    });
+    iron = est.iron;
+    vitaminD = est.vitaminD;
+    magnesium = est.magnesium;
+    calcium = est.calcium;
+  }
+
+  return {
+    calories: Number(log.calories) || 0,
+    protein: Number(log.protein) || 0,
+    carbs: Number(log.carbs) || 0,
+    fat: Number(log.fat) || 0,
+    fiber,
+    sugar,
+    iron,
+    vitaminD,
+    magnesium,
+    calcium,
   };
 }
 
@@ -484,6 +678,7 @@ export function aggregateConsumedNutrients(
     carbs: 0,
     fat: 0,
     fiber: 0,
+    sugar: 0,
     iron: 0,
     vitaminD: 0,
     magnesium: 0,
@@ -491,66 +686,17 @@ export function aggregateConsumedNutrients(
   };
 
   for (const log of logs) {
-    totals.calories += Number(log.calories) || 0;
-    totals.protein += Number(log.protein) || 0;
-    totals.carbs += Number(log.carbs) || 0;
-    totals.fat += Number(log.fat) || 0;
-
-    const matchedFood =
-      byId.get(log.foodId) || byName.get((log.foodName || '').toLowerCase().trim());
-    const qty = Math.max(0.1, Number(log.quantity) || 1);
-
-    if (log.fiber !== undefined) {
-      totals.fiber += Number(log.fiber) || 0;
-    } else if (matchedFood) {
-      totals.fiber += estimateFoodFiber(matchedFood) * qty;
-    } else {
-      totals.fiber += estimateFoodFiber({
-        name: log.foodName,
-        calories: log.calories,
-        protein: log.protein,
-        carbs: log.carbs,
-      });
-    }
-
-    if (
-      log.iron !== undefined ||
-      log.vitaminD !== undefined ||
-      log.magnesium !== undefined ||
-      log.calcium !== undefined
-    ) {
-      const est = matchedFood
-        ? estimateFoodMicronutrients(matchedFood)
-        : estimateFoodMicronutrients({
-            name: log.foodName,
-            calories: log.calories / qty,
-            protein: log.protein / qty,
-            carbs: log.carbs / qty,
-            fat: log.fat / qty,
-          });
-      totals.iron += log.iron !== undefined ? Number(log.iron) || 0 : est.iron * qty;
-      totals.vitaminD += log.vitaminD !== undefined ? Number(log.vitaminD) || 0 : est.vitaminD * qty;
-      totals.magnesium += log.magnesium !== undefined ? Number(log.magnesium) || 0 : est.magnesium * qty;
-      totals.calcium += log.calcium !== undefined ? Number(log.calcium) || 0 : est.calcium * qty;
-    } else if (matchedFood) {
-      const enriched = enrichFoodWithMicronutrients(matchedFood);
-      totals.iron += (enriched.iron || 0) * qty;
-      totals.vitaminD += (enriched.vitaminD || 0) * qty;
-      totals.magnesium += (enriched.magnesium || 0) * qty;
-      totals.calcium += (enriched.calcium || 0) * qty;
-    } else {
-      const est = estimateFoodMicronutrients({
-        name: log.foodName,
-        calories: log.calories,
-        protein: log.protein,
-        carbs: log.carbs,
-        fat: log.fat,
-      });
-      totals.iron += est.iron;
-      totals.vitaminD += est.vitaminD;
-      totals.magnesium += est.magnesium;
-      totals.calcium += est.calcium;
-    }
+    const res = resolveLogWithMaps(log, byId, byName);
+    totals.calories += res.calories;
+    totals.protein += res.protein;
+    totals.carbs += res.carbs;
+    totals.fat += res.fat;
+    totals.fiber += res.fiber;
+    totals.sugar += res.sugar;
+    totals.iron += res.iron;
+    totals.vitaminD += res.vitaminD;
+    totals.magnesium += res.magnesium;
+    totals.calcium += res.calcium;
   }
 
   return {
@@ -559,9 +705,72 @@ export function aggregateConsumedNutrients(
     carbs: r1(totals.carbs),
     fat: r1(totals.fat),
     fiber: r1(totals.fiber),
+    sugar: r1(totals.sugar),
     iron: r1(totals.iron),
     vitaminD: Math.round(totals.vitaminD),
     magnesium: Math.round(totals.magnesium),
     calcium: Math.round(totals.calcium),
+  };
+}
+
+/**
+ * Returns every logged food item on that day that contributed a positive amount of the
+ * requested nutrient, sorted from highest contributor to lowest with exact % shares.
+ */
+export function getFoodNutrientBreakdownForDay(
+  logs: MealLogItem[],
+  foodsLibrary: FoodItem[],
+  nutrientKey: NutrientKey
+): {
+  sources: FoodNutrientSourceItem[];
+  totalFromFoods: number;
+  zeroCount: number;
+} {
+  const byId = new Map<string, FoodItem>();
+  const byName = new Map<string, FoodItem>();
+  for (const f of foodsLibrary) {
+    if (f.id) byId.set(f.id, f);
+    if (f.name) byName.set(f.name.toLowerCase().trim(), f);
+  }
+
+  const isInt = nutrientKey === 'vitaminD' || nutrientKey === 'magnesium' || nutrientKey === 'calcium';
+  const roundVal = (v: number) => (isInt ? Math.round(v) : r1(v));
+
+  let rawTotal = 0;
+  let zeroCount = 0;
+  const rawSources: Omit<FoodNutrientSourceItem, 'sharePct'>[] = [];
+
+  for (const log of logs) {
+    const res = resolveLogWithMaps(log, byId, byName);
+    const rawAmt = Number(res[nutrientKey]) || 0;
+    const displayAmt = roundVal(rawAmt);
+    if (displayAmt <= 0) {
+      zeroCount += 1;
+      continue;
+    }
+    rawTotal += rawAmt;
+    rawSources.push({
+      logId: log.id,
+      foodId: log.foodId,
+      foodName: log.foodName,
+      mealType: log.mealType,
+      quantity: log.quantity,
+      servingUnit: log.servingUnit,
+      calories: Math.round(Number(log.calories) || 0),
+      amount: displayAmt,
+    });
+  }
+
+  rawSources.sort((a, b) => b.amount - a.amount);
+
+  const sources: FoodNutrientSourceItem[] = rawSources.map((s) => ({
+    ...s,
+    sharePct: rawTotal > 0 ? Math.max(1, Math.round((s.amount / rawTotal) * 100)) : 0,
+  }));
+
+  return {
+    sources,
+    totalFromFoods: roundVal(rawTotal),
+    zeroCount,
   };
 }

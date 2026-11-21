@@ -1,56 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="100%" height="100%">
   <defs>
-    <!-- Fresh Lime Green Gradient -->
-    <linearGradient id="white-lime-grad" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#34d399" />
-      <stop offset="50%" stop-color="#4ade80" />
-      <stop offset="100%" stop-color="#a3e635" />
+    <linearGradient id="dbg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#09442A" />
+      <stop offset="100%" stop-color="#156A43" />
+    </linearGradient>
+    <linearGradient id="dring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6EE7B7" />
+      <stop offset="60%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#E06D53" />
+    </linearGradient>
+    <linearGradient id="dleaf" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#A7F3D0" />
     </linearGradient>
   </defs>
-
-  <!-- Left Icon Emblem (on dark background, with a clean translucent white/emerald border) -->
-  <g transform="translate(16, 16) scale(0.328)">
-    <rect x="16" y="16" width="480" height="480" rx="120" fill="rgba(255, 255, 255, 0.12)" stroke="rgba(255, 255, 255, 0.25)" stroke-width="8" />
-    <!-- Left Upright Stem of N -->
-    <rect x="140" y="112" width="68" height="288" rx="34" fill="#ffffff" />
-    <!-- Right Upright Stem of N -->
-    <rect x="304" y="112" width="68" height="288" rx="34" fill="#ffffff" />
-    <!-- Diagonal Spanning Leaf of N -->
-    <path 
-      d="M 174 346 
-         C 174 346, 240 250, 320 176 
-         C 356 142, 392 116, 412 84 
-         C 416 78, 418 86, 404 126 
-         C 386 168, 344 216, 290 274 
-         C 246 322, 206 374, 184 388 
-         C 174 394, 168 384, 168 370 
-         Z" 
-      fill="url(#white-lime-grad)" 
-    />
-    <!-- Leaf Vein Accent -->
-    <path 
-      d="M 204 316 
-         C 252 254, 318 182, 404 88" 
-      fill="none" 
-      stroke="#ffffff" 
-      stroke-width="12" 
-      stroke-linecap="round" 
-      stroke-opacity="0.95" 
-    />
-    <circle cx="366" cy="118" r="18" fill="#a3e635" />
+  <g transform="translate(24, 24)">
+    <rect x="0" y="0" width="272" height="272" rx="70" fill="url(#dbg)" />
+    <circle cx="136" cy="136" r="92" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="14" />
+    <circle cx="136" cy="136" r="92" fill="none" stroke="url(#dring)" stroke-width="14" stroke-linecap="round" stroke-dasharray="455 580" transform="rotate(-118 136 136)" />
+    <path d="M92 172 C90 124, 118 84, 178 72 C182 120, 152 168, 92 172 Z" fill="url(#dleaf)" fill-opacity="0.92" />
+    <path d="M74 140 L108 140 L122 114 L136 162 L152 128 L164 140 L198 140" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="178" cy="72" r="9" fill="#E06D53" stroke="#FFFFFF" stroke-width="3" />
   </g>
-
-  <!-- Typography: NutriTrack for Dark Backgrounds -->
-  <g transform="translate(210, 116)">
-    <text font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="82" font-weight="900" letter-spacing="-1.5">
-      <tspan fill="#ffffff">Nutri</tspan><tspan fill="url(#white-lime-grad)">Track</tspan>
-    </text>
-  </g>
-
-  <!-- Tagline / Subtitle: Clinic & Client Nutrition -->
-  <g transform="translate(214, 154)">
-    <text font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="700" letter-spacing="3" fill="#6ee7b7" text-transform="uppercase">
-      CLINIC &amp; DIET MANAGEMENT
-    </text>
-  </g>
+  <text x="336" y="168" font-family="Georgia, serif" font-weight="700" font-size="112" fill="#F2F7F3">
+    Nutri<tspan fill="#34D399">Track</tspan>
+  </text>
+  <text x="340" y="226" font-family="sans-serif" font-weight="600" font-size="34" fill="#A1B5A9" letter-spacing="1.5">
+    Eat smart. Live strong.
+  </text>
 </svg>

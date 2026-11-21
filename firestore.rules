@@ -95,6 +95,13 @@ service cloud.firestore {
       allow create, update, delete: if isValidId(reminderId);
     }
 
+    // Monthly Cheat Meal Accountability Challenges
+    match /challenges/{challengeId} {
+      allow get: if isValidId(challengeId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(challengeId);
+    }
+
     // Fallback deny
     match /{document=**} {
       allow read, write: if false;

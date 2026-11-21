@@ -16,6 +16,12 @@ import {
   isIOSDevice,
 } from '../../utils/notifications';
 import {
+  getCalendarMonthCheatSummary,
+  getWeeklyCheatAndCalorieDigest,
+} from '../../utils/cheatAndAdaptiveEngine';
+import { assessBMI } from '../../utils/clinicalSafety';
+import { formatDateDisplay } from '../../utils/dateUtils';
+import {
   Bell,
   BellRing,
   X,
@@ -31,6 +37,8 @@ import {
   ShieldCheck,
   CalendarDays,
   Sparkles,
+  Dumbbell,
+  HeartPulse,
   Send,
   Check,
   CheckCheck
@@ -45,7 +53,7 @@ interface NotificationsModalProps {
   tips: DietitianTip[];
   logsForDay: MealLogItem[];
   selectedDate: string;
-  onQuickAction: (action: 'log-meal' | 'hydration' | 'weight' | 'plan' | 'clinical-rules', slot?: MealType) => void;
+  onQuickAction: (action: 'log-meal' | 'hydration' | 'weight' | 'plan' | 'clinical-rules' | 'workout', slot?: MealType) => void;
 }
 
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({
@@ -59,7 +67,16 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   selectedDate,
   onQuickAction,
 }) => {
-  const { t, language, markTipAsRead, markAllTipsAsRead, isTipRead } = useApp();
+  const {
+    t,
+    language,
+    markTipAsRead,
+    markAllTipsAsRead,
+    isTipRead,
+    mealLogs,
+    challenges,
+    toggleChallengeComplete,
+  } = useApp();
   const isMl = language === 'ml';
   const [notifPermission, setNotifPermission] = useState<'default' | 'granted' | 'denied' | 'unsupported'>(() => getNotificationStatus());
   const [pushSubscribed, setPushSubscribed] = useState(false);
@@ -157,6 +174,29 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   }, [tips, isTipRead]);
 
   const unreadCount = unreadTipIds.length;
+
+  const monthlyCheat = useMemo(
+    () => getCalendarMonthCheatSummary(mealLogs, client.id, selectedDate),
+    [mealLogs, client.id, selectedDate]
+  );
+
+  const weeklyDigest = useMemo(
+    () => getWeeklyCheatAndCalorieDigest(mealLogs, client, selectedDate),
+    [mealLogs, client, selectedDate]
+  );
+
+  const pendingChallenges = useMemo(
+    () =>
+      challenges
+        .filter((c) => c.clientId === client.id && !c.completed)
+        .sort((a, b) => a.targetDate.localeCompare(b.targetDate)),
+    [challenges, client.id]
+  );
+
+  const bmiCheck = useMemo(
+    () => assessBMI(client.currentWeightKg, client.heightCm),
+    [client.currentWeightKg, client.heightCm]
+  );
 
   if (!isOpen) return null;
 
@@ -357,6 +397,81 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{t('Food Rules')}</span>
               </button>
             </div>
+          </div>
+
+          {/* 2.5 Unified Cheat Quota, Accountability Challenges, Weekly Digest & BMI Check-In */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#E06D53]" />
+                <span>Wellness Digest &amp; Accountability Alerts</span>
+              </h3>
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border ${
+                  monthlyCheat.isAvailable
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                    : 'bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800'
+                }`}
+              >
+                {monthlyCheat.isAvailable
+                  ? '1 Monthly Cheat Meal Available'
+                  : `Monthly Treat Used (${formatDateDisplay(monthlyCheat.firstUsedDate || selectedDate)})`}
+              </span>
+            </div>
+
+            {pendingChallenges.map((ch) => (
+              <div
+                key={ch.id}
+                className="rounded-xl p-3 bg-[#FFF7F4] dark:bg-slate-800/80 border border-[#F2C3B5] dark:border-slate-700 flex flex-wrap items-center justify-between gap-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Dumbbell className="w-3.5 h-3.5 text-[#E06D53] shrink-0" />
+                    <span>{ch.title}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                    Scheduled for {formatDateDisplay(ch.targetDate)} · Split into 5×10 sets or injury-safe swap.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => toggleChallengeComplete(ch.id, true)}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold cursor-pointer"
+                  >
+                    Complete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onQuickAction('workout');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-[11px] font-bold cursor-pointer"
+                  >
+                    Log
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="rounded-xl p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2 tabular-nums">
+              <div>
+                <span className="font-bold text-slate-800 dark:text-slate-100 block">
+                  7-Day Summary ({formatDateDisplay(weeklyDigest.startDate)} – {formatDateDisplay(weeklyDigest.endDate)})
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Avg {weeklyDigest.avgDailyCalories || '—'} kcal/day · {weeklyDigest.daysExceededTarget}/7 days over target · {weeklyDigest.totalCheatCalories} cheat kcal
+                </span>
+              </div>
+            </div>
+
+            {bmiCheck.bannerMessage && (
+              <div className="rounded-xl p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-2 text-amber-950 dark:text-amber-200">
+                <HeartPulse className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] leading-snug">{bmiCheck.bannerMessage}</p>
+              </div>
+            )}
           </div>
 
           {/* 3. Coach Reminders & Clinical Meal Alerts */}

@@ -211,15 +211,32 @@
         "time": { "type": "string", "maxLength": 20 },
         "text": { "type": "string", "maxLength": 200 },
         "enabled": { "type": "boolean" },
-        "type": { "type": "string", "enum": ["meal", "water", "weigh_in", "steps", "supplement"] }
+        "type": { "type": "string", "enum": ["meal", "water", "weigh_in", "steps", "supplement", "workout", "challenge", "digest"] }
       },
-      "required": ["id", "time", "text", "enabled", "type"]
+      "required": ["id", "time", "enabled", "type"]
+    },
+    "AccountabilityChallenge": {
+      "title": "AccountabilityChallenge",
+      "description": "Next-day bodyweight challenge created when an extra cheat meal is logged in a calendar month",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "triggerDate": { "type": "string", "maxLength": 20 },
+        "targetDate": { "type": "string", "maxLength": 20 },
+        "title": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 400 },
+        "mode": { "type": "string", "enum": ["standard", "split_sets", "joint_friendly"] },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["id", "clientId", "targetDate", "title", "completed"]
     }
   },
   "firestore": {
     "/clients/{clientId}": {
       "schema": "ClientProfile",
-      "description": "Stores client health profiles and goals"
+      "description": "Stores client health profiles, goals, onboarding prefs, and avatar traits"
     },
     "/dietitians/{dietitianId}": {
       "schema": "DietitianProfile",
@@ -264,6 +281,10 @@
     "/reminders/{reminderId}": {
       "schema": "ClientReminder",
       "description": "Scheduled reminder alarms"
+    },
+    "/challenges/{challengeId}": {
+      "schema": "AccountabilityChallenge",
+      "description": "Accountability challenges unlocked after extra monthly cheat meals"
     }
   }
 }

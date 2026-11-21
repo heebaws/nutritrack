@@ -34,6 +34,17 @@ export const getDayBeforeDateString = (dateStr: string): string => {
   }
 };
 
+export const addDaysToDateString = (dateStr: string, deltaDays: number): string => {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    dateObj.setDate(dateObj.getDate() + deltaDays);
+    return formatToLocalIsoDate(dateObj);
+  } catch {
+    return getTodayString();
+  }
+};
+
 export const isFutureDate = (dateStr: string): boolean => {
   return dateStr > getTodayString();
 };

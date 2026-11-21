@@ -19,14 +19,22 @@ import { NotificationsModal } from './NotificationsModal';
 import {
   FirstScreenBodyAvatarCard,
   BodyAvatarModal,
+  NutrientSourceBreakdownModal,
   computeBodyAvatarMetrics,
   useAnalyzedFaceTraits,
 } from './BodyNutritionAvatar';
+import { DailyNutrientsCard } from './DailyNutrientsCard';
+import { CheatAccountabilityCard } from './CheatAccountabilityCard';
+import { TodayPlanCard } from './TodayPlanCard';
+import { DietPlanPanel } from './DietPlanPanel';
+import { OnboardingModal } from './OnboardingModal';
+import { ProfileEditorModal } from './ProfileEditorModal';
 import { ThemeCustomizerModal } from '../common/ThemeCustomizerModal';
 import { MealType } from '../../types';
 import { calculateCalorieBreakdown, calculateStepCalories, determineCalorieQuality } from '../../utils/calorieQuality';
 import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
-import { estimateFoodMicronutrients } from '../../utils/micronutrients';
+import { estimateFoodMicronutrients, NutrientKey } from '../../utils/micronutrients';
+import { CLINICAL_DISCLAIMER } from '../../utils/clinicalSafety';
 import { NutriTrackLogo } from '../common/NutriTrackLogo';
 import {
   getNotificationStatus,
@@ -133,6 +141,8 @@ export const ClientApp: React.FC = () => {
     dismissSuggestedMeal,
     activities,
     habits,
+    waterLogs,
+    addWaterLog,
     appointments,
     resetClientDayMealsToDayBefore,
     foods,
@@ -188,6 +198,9 @@ export const ClientApp: React.FC = () => {
   const [isClinicalGuideOpen, setIsClinicalGuideOpen] = useState(false);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isBodyAvatarOpen, setIsBodyAvatarOpen] = useState(false);
+  const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [inspectedNutrientKey, setInspectedNutrientKey] = useState<NutrientKey | null>(null);
   const [pushPermState, setPushPermState] = useState(() => getNotificationStatus());
   const [pushBannerDismissed, setPushBannerDismissed] = useState(false);
   const [planLoggedNotice, setPlanLoggedNotice] = useState<string | null>(null);
@@ -195,11 +208,14 @@ export const ClientApp: React.FC = () => {
   const [confirmResetMeals, setConfirmResetMeals] = useState(false);
   const [resetFeedbackNotice, setResetFeedbackNotice] = useState<string | null>(null);
 
-  // Listen to open-calorie-guide, open-app-tour, open-notifications, and Escape to close open overlay
+  // Listen to open-calorie-guide, open-app-tour, open-notifications, open-log-meal, open-workout, open-profile-editor, and Escape to close open overlay
   useEffect(() => {
     const handleOpenCalorieGuide = () => setIsCalorieGuideOpen(true);
     const handleOpenTour = () => setIsTourModalOpen(true);
     const handleOpenNotifications = () => setIsNotificationsOpen(true);
+    const handleOpenLogMeal = () => openLogForSlot('Breakfast');
+    const handleOpenWorkout = () => setIsActivityModalOpen(true);
+    const handleOpenProfileEditor = () => setIsProfileEditorOpen(true);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setActiveViewPanel(null);
@@ -209,11 +225,17 @@ export const ClientApp: React.FC = () => {
     window.addEventListener('open-calorie-guide', handleOpenCalorieGuide);
     window.addEventListener('open-app-tour', handleOpenTour);
     window.addEventListener('open-notifications', handleOpenNotifications);
+    window.addEventListener('open-log-meal', handleOpenLogMeal);
+    window.addEventListener('open-workout', handleOpenWorkout);
+    window.addEventListener('open-profile-editor', handleOpenProfileEditor);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('open-calorie-guide', handleOpenCalorieGuide);
       window.removeEventListener('open-app-tour', handleOpenTour);
       window.removeEventListener('open-notifications', handleOpenNotifications);
+      window.removeEventListener('open-log-meal', handleOpenLogMeal);
+      window.removeEventListener('open-workout', handleOpenWorkout);
+      window.removeEventListener('open-profile-editor', handleOpenProfileEditor);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
@@ -329,10 +351,25 @@ export const ClientApp: React.FC = () => {
 
   const caloriesBurnedToday = workoutBurnToday + stepCaloriesToday;
 
-  // Dynamic morphing full-body avatar metrics (body size + color-coded nutrient levels)
+  // Dynamic rolling 7-day average delta & morphing full-body avatar metrics
+  const weeklyAvgDeltaKcal = useMemo(() => {
+    const needed = Math.max(1000, activeClient.neededCalories || activeClient.targetBmr || 1600);
+    let totalDiff = 0;
+    let loggedDays = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = getDaysAgoString(i);
+      const dayLogs = mealLogs.filter(m => m.clientId === activeClient.id && m.date === d);
+      if (dayLogs.length === 0) continue;
+      loggedDays += 1;
+      const dayCal = dayLogs.reduce((s, m) => s + (Number(m.calories) || 0), 0);
+      totalDiff += dayCal - needed;
+    }
+    return loggedDays > 0 ? Math.round(totalDiff / loggedDays) : 0;
+  }, [activeClient, mealLogs]);
+
   const heroBodyMetrics = useMemo(() => {
-    return computeBodyAvatarMetrics(activeClient, clientLogsForDay, foods, caloriesBurnedToday);
-  }, [activeClient, clientLogsForDay, foods, caloriesBurnedToday]);
+    return computeBodyAvatarMetrics(activeClient, clientLogsForDay, foods, caloriesBurnedToday, 0, weeklyAvgDeltaKcal);
+  }, [activeClient, clientLogsForDay, foods, caloriesBurnedToday, weeklyAvgDeltaKcal]);
 
   // Comprehensive Good Calories vs Bad Calories and Net Burned breakdown
   const calorieBreakdown = useMemo(() => {
@@ -647,9 +684,6 @@ export const ClientApp: React.FC = () => {
 
   const handleLauncherAction = (key: string) => {
     switch (key) {
-      case 'log-meal':
-        openLogForSlot(currentCircadianMeal.slot || 'Breakfast');
-        break;
       case 'morning-weight':
         setIsQuickWeightModalOpen(true);
         break;
@@ -661,9 +695,6 @@ export const ClientApp: React.FC = () => {
         break;
       case 'sleep':
         setIsSleepModalOpen(true);
-        break;
-      case 'workout':
-        setIsActivityModalOpen(true);
         break;
       case 'appointments':
         setIsAppointmentsModalOpen(true);
@@ -702,29 +733,46 @@ export const ClientApp: React.FC = () => {
       <div className="bg-emerald-950 text-white rounded-3xl p-4 sm:p-6 shadow-sm border border-emerald-900 min-w-0">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
 
-          {/* Left: Client Profile Photo (as before) + Clean Unboxed Metadata */}
+          {/* Left: Clickable Client Profile Photo + Clean Unboxed Metadata */}
           <div className="flex items-center gap-4 min-w-0">
-            {activeClient.avatarUrl && !heroImgFailed ? (
-              <img
-                src={activeClient.avatarUrl}
-                alt={activeClient.name}
-                onError={() => setHeroImgFailed(true)}
-                className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400/50 shrink-0"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-2xl bg-emerald-800 border-2 border-emerald-400/50 flex items-center justify-center font-extrabold text-xl text-emerald-100 shrink-0">
-                {(activeClient.name || 'U')
-                  .split(' ')
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .map((n) => n[0]?.toUpperCase())
-                  .join('')}
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsProfileEditorOpen(true)}
+              className="group relative shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-2xl"
+              title="Edit Profile & Upload Photo"
+              aria-label="Edit Profile & Upload Photo"
+            >
+              {activeClient.avatarUrl && !heroImgFailed ? (
+                <img
+                  src={activeClient.avatarUrl}
+                  alt={activeClient.name}
+                  onError={() => setHeroImgFailed(true)}
+                  className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400/50 group-hover:border-white transition-colors"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-emerald-800 border-2 border-emerald-400/50 group-hover:border-white flex items-center justify-center font-extrabold text-xl text-emerald-100 transition-colors">
+                  {(activeClient.name || 'U')
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((n) => n[0]?.toUpperCase())
+                    .join('')}
+                </div>
+              )}
+            </button>
             <div className="min-w-0">
-              <h1 className="font-bold text-white text-lg sm:text-2xl tracking-tight truncate">
-                {t(`Welcome, ${activeClient.name}`)}
-              </h1>
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="font-bold text-white text-lg sm:text-2xl tracking-tight truncate">
+                  {t(`Welcome, ${activeClient.name}`)}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileEditorOpen(true)}
+                  className="text-[11px] font-semibold text-emerald-300 hover:text-white underline shrink-0 cursor-pointer"
+                >
+                  {language === 'ml' ? 'പ്രൊഫൈൽ' : 'Edit Profile'}
+                </button>
+              </div>
               <div className="text-xs sm:text-sm text-emerald-200 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums">
                 <span className="text-emerald-300 font-semibold">
                   {t(activeClient.status === 'active' ? 'Active' : 'Inactive')}
@@ -742,7 +790,7 @@ export const ClientApp: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: Live Calorie Balance + Quick Log Meal Button */}
+          {/* Right: Live Calorie Balance */}
           <div className="flex items-center justify-between md:justify-end gap-3.5 sm:gap-4 shrink-0 border-t md:border-t-0 pt-4 md:pt-0 border-emerald-800/70">
             <div className="text-left md:text-right tabular-nums">
               <span className="text-[11px] font-semibold text-emerald-300 block">
@@ -763,17 +811,6 @@ export const ClientApp: React.FC = () => {
                 />
               </div>
             </div>
-
-            {/* Direct Log Meal Button in Hero Card */}
-            <button
-              type="button"
-              onClick={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
-              className="min-h-[48px] px-3.5 sm:px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 shadow-sm whitespace-nowrap"
-              title={t('Log Meal')}
-            >
-              <Utensils className="w-4 h-4 shrink-0" />
-              <span>{t('Log Meal')}</span>
-            </button>
           </div>
         </div>
 
@@ -838,6 +875,48 @@ export const ClientApp: React.FC = () => {
         </div>
       </div>
 
+      {/* ================= 1.3 CENTERED PRIMARY ACTION BAR (APPLIES TO SELECTED DATE) ================= */}
+      <nav
+        aria-label={`Primary actions for ${formatDateDisplay(selectedDate)}`}
+        className="w-full max-w-2xl mx-auto"
+      >
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 bg-white/95 dark:bg-slate-900/95 p-1.5 sm:p-2 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs">
+          {/* 1. Log Meal — Strong Primary CTA */}
+          <button
+            type="button"
+            onClick={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
+            aria-label={`Log Meal for ${formatDateDisplay(selectedDate)}`}
+            className="min-h-[44px] sm:min-h-[48px] px-2 sm:px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.97] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          >
+            <Utensils className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('Log Meal')}</span>
+          </button>
+
+          {/* 2. Log Workout — Secondary Button */}
+          <button
+            type="button"
+            onClick={() => setIsActivityModalOpen(true)}
+            aria-label={`Log Workout for ${formatDateDisplay(selectedDate)}`}
+            className="min-h-[44px] sm:min-h-[48px] px-2 sm:px-4 py-2 rounded-xl bg-emerald-50/90 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-slate-700 active:scale-[0.97] text-emerald-950 dark:text-slate-100 border border-emerald-200 dark:border-slate-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          >
+            <Dumbbell className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+            <span className="sm:hidden truncate">{t('Workouts')}</span>
+            <span className="hidden sm:inline truncate">{t('Log Workout')}</span>
+          </button>
+
+          {/* 3. Diet Plan — Distinct Terracotta Coral Accent Button */}
+          <button
+            type="button"
+            onClick={() => setActiveViewPanel('plan')}
+            aria-label={`Open Diet Plan for ${formatDateDisplay(selectedDate)}`}
+            className="min-h-[44px] sm:min-h-[48px] px-2 sm:px-4 py-2 rounded-xl bg-[#E06D53] hover:bg-[#cc5a41] active:scale-[0.97] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E06D53]"
+          >
+            <CalendarDays className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('Diet Plan')}</span>
+          </button>
+        </div>
+      </nav>
+
       {/* 1-Tap Phone Notification Activation Strip (shown until allowed on this device) */}
       {pushPermState === 'default' && !pushBannerDismissed && (
         <div className="bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -883,9 +962,11 @@ export const ClientApp: React.FC = () => {
         <FirstScreenBodyAvatarCard
           client={activeClient}
           metrics={heroBodyMetrics}
+          logsForDay={clientLogsForDay}
           traits={faceTraits}
           isAnalyzing={isAnalyzingFace}
           onClick={() => setIsBodyAvatarOpen(true)}
+          onOpenLogMeal={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
         />
 
         {/* Right 50%: Always-Projected 8,000 kcal Weight Trajectory */}
@@ -928,19 +1009,37 @@ export const ClientApp: React.FC = () => {
         )}
       </div>
 
+      {/* ================= 1.7 NUTRIENT RINGS, SUGAR/WATER & CHEAT ACCOUNTABILITY ROW ================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-stretch min-w-0">
+        <DailyNutrientsCard
+          client={activeClient}
+          logs={clientLogsForDay}
+          waterLogs={waterLogs}
+          selectedDate={selectedDate}
+          onAddWaterGlass={() => addWaterLog(250, selectedDate)}
+          onOpenHydrationModal={() => setIsHydrationModalOpen(true)}
+          onInspectNutrient={(key) => setInspectedNutrientKey(key)}
+        />
+
+        <CheatAccountabilityCard
+          onLogCheatOrMeal={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
+          onLogWorkout={() => setIsActivityModalOpen(true)}
+        />
+      </div>
+
+      {/* ================= 1.8 TODAY'S ADAPTIVE WORKOUT & EXPERIENCE LEVEL CARD ================= */}
+      <TodayPlanCard
+        onOpenDietPlan={() => setActiveViewPanel('plan')}
+        onOpenWorkoutModal={() => setIsActivityModalOpen(true)}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
+      />
+
       {/* ================= 2. CLEAN SQUARE ICON APP LAUNCHER GRID ================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-5">
 
-        {/* 15 Crisp Square Icon Tiles with Calorie Detect, Steps & Sleep in Upper Launcher */}
+        {/* Tools Launcher Grid (Log Meal & Log Workout moved to Primary Action Bar) */}
         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-5 gap-3.5 sm:gap-4 pt-1">
           {[
-            {
-              key: 'log-meal',
-              label: t('Log Meal'),
-              icon: Utensils,
-              bg: 'bg-emerald-600 text-white hover:bg-emerald-700',
-              active: false,
-            },
             {
               key: 'morning-weight',
               label: t('Morning Weight'),
@@ -968,13 +1067,6 @@ export const ClientApp: React.FC = () => {
               icon: Moon,
               bg: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white',
               active: isSleepModalOpen,
-            },
-            {
-              key: 'workout',
-              label: t('Log Workout'),
-              icon: Dumbbell,
-              bg: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 hover:bg-rose-600 hover:text-white',
-              active: false,
             },
             {
               key: 'appointments',
@@ -1205,7 +1297,19 @@ export const ClientApp: React.FC = () => {
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{t('Your Profile')}</h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{t('Your Profile')}</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveViewPanel(null);
+                    setIsProfileEditorOpen(true);
+                  }}
+                  className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                >
+                  Edit Photo & Preferences →
+                </button>
+              </div>
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl">
                   <span className="text-slate-400 block text-xs">{t('Height')}</span>
@@ -2060,126 +2164,21 @@ export const ClientApp: React.FC = () => {
         </div>
       )}
 
-      {/* ================= D) PERSONALIZED DIET PLAN PANEL ================= */}
+      {/* ================= D) ADAPTIVE PERSONALIZED DIET PLAN PANEL ================= */}
       {activeViewPanel === 'plan' && (
-        <div className="space-y-5 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span>{t('Diet Plan')}</span>
-            </h2>
-            <button
-              type="button"
-              onClick={() => setActiveViewPanel(null)}
-              className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>{t('Back')}</span>
-            </button>
-          </div>
-
-          {/* Plan Header Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xs border border-slate-200 dark:border-slate-800">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                  {language === 'ml' ? 'നിർദ്ദേശിച്ച ക്ലിനിക്കൽ ഡയറ്റ് പ്ലാൻ' : 'Prescribed Clinical Plan'}
-                </span>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{assignedPlan.title}</h2>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">{assignedPlan.description}</p>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>{language === 'ml' ? `തയ്യാറാക്കിയത്: ${assignedDietitian.name}` : `Reviewed by ${assignedDietitian.name}`}</span>
-              </div>
-            </div>
-
-            {/* Daily Nutrition Targets Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 text-center tabular-nums">
-              <div className="bg-amber-50/70 dark:bg-amber-950/50 p-4 rounded-2xl border border-amber-200/60 dark:border-amber-800">
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">{language === 'ml' ? 'കലോറി ലക്ഷ്യം' : 'Calories Target'}</span>
-                <span className="text-xl font-black text-amber-800 dark:text-amber-300">{assignedPlan.targetCalories} kcal</span>
-              </div>
-              <div className="bg-emerald-50/70 dark:bg-emerald-950/50 p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-800">
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">{language === 'ml' ? 'പ്രോട്ടീൻ ലക്ഷ്യം' : 'Protein Goal'}</span>
-                <span className="text-xl font-black text-emerald-800 dark:text-emerald-300">{assignedPlan.targetProtein}g</span>
-              </div>
-              <div className="bg-blue-50/70 dark:bg-blue-950/50 p-4 rounded-2xl border border-blue-200/60 dark:border-blue-800">
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">{t('Carbohydrates')}</span>
-                <span className="text-xl font-black text-blue-800 dark:text-blue-300">{assignedPlan.targetCarbs}g</span>
-              </div>
-              <div className="bg-purple-50/70 dark:bg-purple-950/50 p-4 rounded-2xl border border-purple-200/60 dark:border-purple-800">
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">{t('Daily Hydration')}</span>
-                <span className="text-xl font-black text-purple-800 dark:text-purple-300">{assignedPlan.waterTargetLitres} {language === 'ml' ? 'ലിറ്റർ' : 'Litres'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Meal Schedule Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {assignedPlan.meals.map((m) => (
-              <div key={m.mealType} className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-2xs border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">{t(m.mealType)}</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">({m.timeGuideline})</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleLogPlannedMeal(m.mealType)}
-                      className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 px-3 py-1 rounded-xl transition-colors cursor-pointer"
-                    >
-                      {language === 'ml' ? '+ പ്ലാനിൽ നിന്ന് ചേർക്കുക' : '+ Quick Log from Plan'}
-                    </button>
-                  </div>
-
-                  {m.instructions && (
-                    <p className="text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/40 px-3 py-2 rounded-xl mb-3 font-medium">
-                      💡 {m.instructions}
-                    </p>
-                  )}
-
-                  <div className="space-y-2">
-                    {m.recommendedFoods.map((rf, idx) => (
-                      <div key={idx} className="flex items-start justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-300 py-1">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 mt-1"></span>
-                          <div>
-                            <span className="font-bold text-slate-900 dark:text-slate-100">{tf(rf.foodName)}</span>
-                            {rf.notes && <span className="text-xs text-slate-400 block italic">{rf.notes}</span>}
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                          {rf.portion}x {rf.unit}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Dietitian Clinical Guidelines Card */}
-          {assignedPlan.generalGuidelines && (
-            <div className="bg-emerald-50 dark:bg-emerald-950/50 rounded-3xl p-6 border border-emerald-200 dark:border-emerald-800">
-              <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                {language === 'ml' ? 'കോച്ചിന്റെ പ്രത്യേക നിർദ്ദേശങ്ങൾ' : 'Coach Guidelines for You'}
-              </h3>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs sm:text-sm text-emerald-950 dark:text-emerald-100">
-                {assignedPlan.generalGuidelines.map((g, i) => (
-                  <li key={i} className="flex items-start gap-2 bg-white/70 dark:bg-slate-900/70 p-3 rounded-xl border border-emerald-200/50 dark:border-emerald-800">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">•</span>
-                    <span>{g}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+        <DietPlanPanel
+          assignedPlan={assignedPlan}
+          assignedDietitian={assignedDietitian}
+          onBack={() => setActiveViewPanel(null)}
+          onOpenOnboarding={() => {
+            setActiveViewPanel(null);
+            setIsOnboardingOpen(true);
+          }}
+          onOpenWorkoutModal={() => {
+            setActiveViewPanel(null);
+            setIsActivityModalOpen(true);
+          }}
+        />
       )}
 
       {/* ================= E) PROGRESS & MEASUREMENTS PANEL ================= */}
@@ -2381,6 +2380,8 @@ export const ClientApp: React.FC = () => {
             setActiveViewPanel('plan');
           } else if (action === 'clinical-rules') {
             setIsClinicalGuideOpen(true);
+          } else if (action === 'workout') {
+            setIsActivityModalOpen(true);
           }
         }}
       />
@@ -2475,6 +2476,39 @@ export const ClientApp: React.FC = () => {
         onOpenLogMeal={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
         onOpenWorkout={() => setIsActivityModalOpen(true)}
       />
+
+      <ProfileEditorModal
+        isOpen={isProfileEditorOpen}
+        onClose={() => setIsProfileEditorOpen(false)}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
+      />
+
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+      />
+
+      <NutrientSourceBreakdownModal
+        selectedKey={inspectedNutrientKey}
+        onSelectKey={setInspectedNutrientKey}
+        onClose={() => setInspectedNutrientKey(null)}
+        metrics={heroBodyMetrics}
+        logsForDay={clientLogsForDay}
+        onOpenLogMeal={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
+      />
+
+      {/* Clean Wellness Footer */}
+      <footer className="pt-6 pb-4 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-2.5">
+          <NutriTrackLogo size="sm" subtitle="" />
+          <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+            Eat smart. Live strong.
+          </span>
+        </div>
+        <p className="text-[11px] text-center sm:text-right max-w-xl leading-snug">
+          {CLINICAL_DISCLAIMER}
+        </p>
+      </footer>
     </div>
   );
 };
