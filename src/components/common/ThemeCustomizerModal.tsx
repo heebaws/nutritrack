@@ -1,6 +1,6 @@
 import React from 'react';
 import { AccentTheme, useApp } from '../../context/AppContext';
-import { Palette, Sun, Moon, Check, X, Sparkles } from 'lucide-react';
+import { Palette, Sun, Moon, Check, X, Sparkles, Bell } from 'lucide-react';
 
 interface ThemeCustomizerModalProps {
   isOpen: boolean;
@@ -73,8 +73,19 @@ const ACCENT_OPTIONS: Array<{
 ];
 
 export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOpen, onClose }) => {
-  const { theme, setTheme, accentTheme, setAccentTheme, language, t } = useApp();
+  const { theme, setTheme, accentTheme, setAccentTheme, language, t, viewMode, activeClient, tips, isTipRead } = useApp();
   const isMl = language === 'ml';
+
+  const unreadAlertsCount =
+    viewMode === 'client' && activeClient
+      ? tips.filter(
+          (tip) =>
+            (tip.targetAudience === 'all' ||
+              tip.clientId === activeClient.id ||
+              (tip.targetAudience === 'inactive' && activeClient.status === 'inactive')) &&
+            !isTipRead(tip.id)
+        ).length
+      : 0;
 
   if (!isOpen) return null;
 
@@ -200,6 +211,41 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
               })}
             </div>
           </div>
+
+          {viewMode === 'client' && activeClient && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                window.dispatchEvent(new CustomEvent('open-notifications'));
+              }}
+              className="w-full p-3.5 rounded-2xl border border-amber-200 dark:border-amber-800/80 bg-amber-50/70 dark:bg-amber-950/35 hover:bg-amber-100/80 dark:hover:bg-amber-900/45 flex items-center justify-between gap-3 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                  <Bell className="w-4 h-4" />
+                </div>
+                <div className="text-left min-w-0">
+                  <div className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
+                    {t('Notifications & Coach Reminders')}
+                  </div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
+                    {isMl ? 'ഭക്ഷണ സമയങ്ങളും കോച്ച് സന്ദേശങ്ങളും കാണുക' : 'View meal schedule alerts & coach messages'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {unreadAlertsCount > 0 && (
+                  <span className="min-w-[22px] h-5.5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center tabular-nums">
+                    {unreadAlertsCount}
+                  </span>
+                )}
+                <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                  {isMl ? 'തുറക്കുക →' : 'Open →'}
+                </span>
+              </div>
+            </button>
+          )}
 
           <div className="pt-2 flex justify-end">
             <button

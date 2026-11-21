@@ -4,7 +4,6 @@ import { MealLogModal } from './MealLogModal';
 import { MeasurementModal } from './MeasurementModal';
 import { CalorieWeightTrajectoryCard } from './CalorieWeightTrajectoryCard';
 import { HydrationModal } from './HydrationModal';
-import { DailyNutrientsCard } from './DailyNutrientsCard';
 import { StepsModal } from './StepsModal';
 import { SleepModal } from './SleepModal';
 import { DailyHabitsCard } from './DailyHabitsCard';
@@ -17,6 +16,12 @@ import { CalorieKnowledgeModal } from './CalorieKnowledgeModal';
 import { AppTourGuideModal } from './AppTourGuideModal';
 import { ClinicalFoodGuideModal } from './ClinicalFoodGuideModal';
 import { NotificationsModal } from './NotificationsModal';
+import {
+  FirstScreenBodyAvatarCard,
+  BodyAvatarModal,
+  computeBodyAvatarMetrics,
+  useAnalyzedFaceTraits,
+} from './BodyNutritionAvatar';
 import { ThemeCustomizerModal } from '../common/ThemeCustomizerModal';
 import { MealType } from '../../types';
 import { calculateCalorieBreakdown, calculateStepCalories, determineCalorieQuality } from '../../utils/calorieQuality';
@@ -182,6 +187,7 @@ export const ClientApp: React.FC = () => {
   const [isTourModalOpen, setIsTourModalOpen] = useState(false);
   const [isClinicalGuideOpen, setIsClinicalGuideOpen] = useState(false);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [isBodyAvatarOpen, setIsBodyAvatarOpen] = useState(false);
   const [pushPermState, setPushPermState] = useState(() => getNotificationStatus());
   const [pushBannerDismissed, setPushBannerDismissed] = useState(false);
   const [planLoggedNotice, setPlanLoggedNotice] = useState<string | null>(null);
@@ -189,10 +195,11 @@ export const ClientApp: React.FC = () => {
   const [confirmResetMeals, setConfirmResetMeals] = useState(false);
   const [resetFeedbackNotice, setResetFeedbackNotice] = useState<string | null>(null);
 
-  // Listen to open-calorie-guide, open-app-tour, and Escape to close open overlay
+  // Listen to open-calorie-guide, open-app-tour, open-notifications, and Escape to close open overlay
   useEffect(() => {
     const handleOpenCalorieGuide = () => setIsCalorieGuideOpen(true);
     const handleOpenTour = () => setIsTourModalOpen(true);
+    const handleOpenNotifications = () => setIsNotificationsOpen(true);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setActiveViewPanel(null);
@@ -201,10 +208,12 @@ export const ClientApp: React.FC = () => {
     };
     window.addEventListener('open-calorie-guide', handleOpenCalorieGuide);
     window.addEventListener('open-app-tour', handleOpenTour);
+    window.addEventListener('open-notifications', handleOpenNotifications);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('open-calorie-guide', handleOpenCalorieGuide);
       window.removeEventListener('open-app-tour', handleOpenTour);
+      window.removeEventListener('open-notifications', handleOpenNotifications);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
@@ -251,6 +260,19 @@ export const ClientApp: React.FC = () => {
   const toggleMealSlot = (slot: string) => {
     setOpenMealSlots(prev => ({ ...prev, [slot]: !prev[slot] }));
   };
+
+  const [heroImgFailed, setHeroImgFailed] = useState(false);
+
+  const {
+    traits: faceTraits,
+    isAnalyzing: isAnalyzingFace,
+    analysisError: faceAnalysisError,
+    reanalyze: reanalyzeFace,
+  } = useAnalyzedFaceTraits(activeClient);
+
+  useEffect(() => {
+    setHeroImgFailed(false);
+  }, [activeClient?.id, activeClient?.avatarUrl]);
 
   if (!activeClient) {
     return <LoginPortal defaultTab="client" />;
@@ -306,6 +328,11 @@ export const ClientApp: React.FC = () => {
   }, [dayHabit?.steps, activeClient.currentWeightKg]);
 
   const caloriesBurnedToday = workoutBurnToday + stepCaloriesToday;
+
+  // Dynamic morphing full-body avatar metrics (body size + color-coded nutrient levels)
+  const heroBodyMetrics = useMemo(() => {
+    return computeBodyAvatarMetrics(activeClient, clientLogsForDay, foods, caloriesBurnedToday);
+  }, [activeClient, clientLogsForDay, foods, caloriesBurnedToday]);
 
   // Comprehensive Good Calories vs Bad Calories and Net Burned breakdown
   const calorieBreakdown = useMemo(() => {
@@ -675,13 +702,25 @@ export const ClientApp: React.FC = () => {
       <div className="bg-emerald-950 text-white rounded-3xl p-4 sm:p-6 shadow-sm border border-emerald-900 min-w-0">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
 
-          {/* Left: Identity + Clean Unboxed Metadata */}
+          {/* Left: Client Profile Photo (as before) + Clean Unboxed Metadata */}
           <div className="flex items-center gap-4 min-w-0">
-            <img
-              src={activeClient.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150'}
-              alt={activeClient.name}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400/50 shrink-0"
-            />
+            {activeClient.avatarUrl && !heroImgFailed ? (
+              <img
+                src={activeClient.avatarUrl}
+                alt={activeClient.name}
+                onError={() => setHeroImgFailed(true)}
+                className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400/50 shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-emerald-800 border-2 border-emerald-400/50 flex items-center justify-center font-extrabold text-xl text-emerald-100 shrink-0">
+                {(activeClient.name || 'U')
+                  .split(' ')
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((n) => n[0]?.toUpperCase())
+                  .join('')}
+              </div>
+            )}
             <div className="min-w-0">
               <h1 className="font-bold text-white text-lg sm:text-2xl tracking-tight truncate">
                 {t(`Welcome, ${activeClient.name}`)}
@@ -703,8 +742,8 @@ export const ClientApp: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: Live Calorie Balance + Notification Bell Icon */}
-          <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 border-t md:border-t-0 pt-4 md:pt-0 border-emerald-800/70">
+          {/* Right: Live Calorie Balance + Quick Log Meal Button */}
+          <div className="flex items-center justify-between md:justify-end gap-3.5 sm:gap-4 shrink-0 border-t md:border-t-0 pt-4 md:pt-0 border-emerald-800/70">
             <div className="text-left md:text-right tabular-nums">
               <span className="text-[11px] font-semibold text-emerald-300 block">
                 {t('Daily Calorie Budget')} ({formatDateDisplay(selectedDate)})
@@ -725,19 +764,15 @@ export const ClientApp: React.FC = () => {
               </div>
             </div>
 
-            {/* Notification Bell Icon Button (Houses Coach Reminders & Phone Alert Schedule) */}
+            {/* Direct Log Meal Button in Hero Card */}
             <button
               type="button"
-              onClick={() => setIsNotificationsOpen(true)}
-              className="w-13 h-13 aspect-square rounded-2xl bg-emerald-900 hover:bg-emerald-800 border border-emerald-700/80 text-white flex flex-col items-center justify-center relative transition-colors cursor-pointer shrink-0"
-              title={t('Notifications & Coach Reminders')}
+              onClick={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
+              className="min-h-[48px] px-3.5 sm:px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 shadow-sm whitespace-nowrap"
+              title={t('Log Meal')}
             >
-              <Bell className="w-5 h-5 text-amber-300" />
-              {unreadAlertsCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-emerald-950 tabular-nums">
-                  {unreadAlertsCount}
-                </span>
-              )}
+              <Utensils className="w-4 h-4 shrink-0" />
+              <span>{t('Log Meal')}</span>
             </button>
           </div>
         </div>
@@ -842,10 +877,16 @@ export const ClientApp: React.FC = () => {
         </div>
       )}
 
-      {/* ================= 1.5 50/50 SPLIT TOP ANALYTICS: LEFT NUTRIENTS TARGETS + RIGHT 8,000 KCAL TRAJECTORY ================= */}
+      {/* ================= 1.5 50/50 SPLIT TOP ANALYTICS: LEFT AI BODY AVATAR & NUTRIENT TARGETS + RIGHT 8,000 KCAL TRAJECTORY ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-stretch min-w-0">
-        {/* Left 50%: Strictly-Capped Daily Protein, Carbs, Fats, Iron, Vitamin D, Magnesium & Calcium */}
-        <DailyNutrientsCard client={activeClient} logs={clientLogsForDay} />
+        {/* Left 50%: Unified AI Body Avatar + Strictly-Capped Daily Protein, Carbs, Fats, Fiber, Iron, Vitamin D, Magnesium & Calcium */}
+        <FirstScreenBodyAvatarCard
+          client={activeClient}
+          metrics={heroBodyMetrics}
+          traits={faceTraits}
+          isAnalyzing={isAnalyzingFace}
+          onClick={() => setIsBodyAvatarOpen(true)}
+        />
 
         {/* Right 50%: Always-Projected 8,000 kcal Weight Trajectory */}
         {isTrajectoryProjected ? (
@@ -2419,6 +2460,20 @@ export const ClientApp: React.FC = () => {
       <ThemeCustomizerModal
         isOpen={isThemeModalOpen}
         onClose={() => setIsThemeModalOpen(false)}
+      />
+
+      <BodyAvatarModal
+        isOpen={isBodyAvatarOpen}
+        onClose={() => setIsBodyAvatarOpen(false)}
+        client={activeClient}
+        logsForDay={clientLogsForDay}
+        burnedCalories={caloriesBurnedToday}
+        traits={faceTraits}
+        isAnalyzing={isAnalyzingFace}
+        analysisError={faceAnalysisError}
+        onReanalyze={reanalyzeFace}
+        onOpenLogMeal={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
+        onOpenWorkout={() => setIsActivityModalOpen(true)}
       />
     </div>
   );

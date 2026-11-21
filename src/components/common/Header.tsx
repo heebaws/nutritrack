@@ -12,7 +12,8 @@ import {
   Languages,
   Sun,
   Moon,
-  Palette
+  Palette,
+  Bell
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -29,10 +30,23 @@ export const Header: React.FC = () => {
     toggleLanguage,
     theme,
     toggleTheme,
+    tips,
+    isTipRead,
     t,
   } = useApp();
 
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+
+  const unreadAlertsCount =
+    viewMode === 'client' && activeClient
+      ? tips.filter(
+          (tip) =>
+            (tip.targetAudience === 'all' ||
+              tip.clientId === activeClient.id ||
+              (tip.targetAudience === 'inactive' && activeClient.status === 'inactive')) &&
+            !isTipRead(tip.id)
+        ).length
+      : 0;
 
   const handleLogoTap = () => {
     if (viewMode === 'team' && activeTeamUser) {
@@ -68,8 +82,25 @@ export const Header: React.FC = () => {
               <NutriTrackLogo size="md" subtitle={t('Connected Nutrition & Lifestyle Portal')} />
             </button>
 
-            {/* Mobile View: Customize Theme + Dark/Light + Translate + Client Login */}
+            {/* Mobile View: Notifications (beside Themes) + Customize Theme + Dark/Light + Translate + Client Login */}
             <div className="flex md:hidden items-center gap-1 shrink-0">
+              {viewMode === 'client' && activeClient && (
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-notifications'))}
+                  aria-label={t('Notifications & Coach Reminders')}
+                  title={t('Notifications & Coach Reminders')}
+                  className="relative p-1.5 text-xs font-bold rounded-xl border bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors cursor-pointer flex items-center justify-center shrink-0"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  {unreadAlertsCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center border border-white dark:border-slate-900 tabular-nums">
+                      {unreadAlertsCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => setIsThemeModalOpen(true)}
@@ -215,6 +246,24 @@ export const Header: React.FC = () => {
                   <span>{t('Client Login')}</span>
                 </button>
               </div>
+            )}
+
+            {/* Desktop Notification Bell (Beside Themes) */}
+            {viewMode === 'client' && activeClient && (
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-notifications'))}
+                title={t('Notifications & Coach Reminders')}
+                className="relative hidden md:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-xl border bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <Bell className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300" />
+                <span className="hidden xl:inline">{t('Notifications')}</span>
+                {unreadAlertsCount > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center tabular-nums">
+                    {unreadAlertsCount}
+                  </span>
+                )}
+              </button>
             )}
 
             {/* Desktop Customize App Theme Button */}

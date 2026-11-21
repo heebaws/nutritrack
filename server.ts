@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import * as webpush from "web-push";
 import { KERALA_SERVER_LOOKUP } from "./src/data/keralaServerLookup";
 
@@ -2221,6 +2221,129 @@ Return a JSON object with:
     } catch (err: any) {
       console.error("Generate tip error:", err);
       return res.status(500).json({ error: err.message || "Failed to generate tip" });
+    }
+  });
+
+  // AI Face Portrait Analyzer for Human-Like Full Body Avatar (Powered by Gemini 4 Hydrogen)
+  app.post("/api/ai/analyze-face-avatar", async (req, res) => {
+    try {
+      const { imageUrl, clientName, gender } = req.body || {};
+      if (!imageUrl || typeof imageUrl !== "string") {
+        return res.status(400).json({ error: "imageUrl is required to analyze face" });
+      }
+
+      const ai = getAI();
+      if (!ai) {
+        return res.status(503).json({
+          error: "Live Gemini AI is not configured on the server.",
+          code: "AI_NOT_CONFIGURED",
+        });
+      }
+
+      let mimeType = "image/jpeg";
+      let base64Data = "";
+
+      const dataUrlMatch = imageUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+      if (dataUrlMatch) {
+        mimeType = dataUrlMatch[1];
+        base64Data = dataUrlMatch[2];
+      } else if (/^https?:\/\//i.test(imageUrl)) {
+        const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(8000) });
+        if (!imgRes.ok) {
+          return res.status(400).json({ error: `Could not fetch client photo (${imgRes.status})` });
+        }
+        const contentType = imgRes.headers.get("content-type") || "image/jpeg";
+        mimeType = contentType.split(";")[0].trim();
+        const arrayBuf = await imgRes.arrayBuffer();
+        base64Data = Buffer.from(arrayBuf).toString("base64");
+      } else {
+        return res.status(400).json({ error: "Unsupported imageUrl format" });
+      }
+
+      if (!base64Data) {
+        return res.status(400).json({ error: "Empty image payload" });
+      }
+
+      const prompt = `Analyze the person's face and appearance in this portrait photo (${clientName || "client"}, profile gender: ${gender || "unknown"}) so our vector artist can draw a warm, human-like illustrated portrait avatar (NOT pasting the photo).
+Return exact hex colors matched to their real complexion, hair color, eye color, and lip color, plus structured facial characteristics.`;
+
+      const responseSchema = {
+        type: Type.OBJECT,
+        properties: {
+          skinToneHex: { type: Type.STRING, description: "Primary natural skin tone hex color e.g. #c68b59" },
+          skinShadowHex: { type: Type.STRING, description: "Slightly darker warm skin shadow hex color" },
+          skinHighlightHex: { type: Type.STRING, description: "Slightly lighter warm skin highlight hex color" },
+          hairColorHex: { type: Type.STRING, description: "Natural hair color hex e.g. #1f1b18" },
+          hairStyle: {
+            type: Type.STRING,
+            description: "One of: short_curly, short_straight, side_part, spiky, long_wavy, ponytail, bob, headwrap, bald",
+          },
+          faceShape: {
+            type: Type.STRING,
+            description: "One of: oval, round, square, heart",
+          },
+          eyeColorHex: { type: Type.STRING, description: "Iris hex color e.g. #3b271c" },
+          eyebrowThickness: { type: Type.STRING, description: "One of: thin, medium, thick" },
+          eyebrowStyle: { type: Type.STRING, description: "One of: arched, straight" },
+          facialHair: {
+            type: Type.STRING,
+            description: "One of: none, light_stubble, mustache, trimmed_beard, full_beard",
+          },
+          glasses: { type: Type.STRING, description: "One of: none, round, rectangular" },
+          lipToneHex: { type: Type.STRING, description: "Natural lip hex color e.g. #b56560" },
+          expression: { type: Type.STRING, description: "One of: warm_smile, calm, confident" },
+          genderPresentation: { type: Type.STRING, description: "One of: male, female, neutral" },
+          portraitSummary: {
+            type: Type.STRING,
+            description: "Short 8-12 word description of the person's face & hair traits",
+          },
+        },
+        required: [
+          "skinToneHex",
+          "skinShadowHex",
+          "skinHighlightHex",
+          "hairColorHex",
+          "hairStyle",
+          "faceShape",
+          "eyeColorHex",
+          "eyebrowThickness",
+          "eyebrowStyle",
+          "facialHair",
+          "glasses",
+          "lipToneHex",
+          "expression",
+          "genderPresentation",
+          "portraitSummary",
+        ],
+      };
+
+      const result = await ai.models.generateContent({
+        model: "gemini-4-hydrogen",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { mimeType, data: base64Data } },
+              { text: prompt },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema,
+          abortSignal: AbortSignal.timeout(15000),
+        },
+      });
+
+      const cleaned = (result.text || "{}").replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+      const traits = JSON.parse(cleaned);
+      return res.json({ traits, source: "gemini", model: "gemini-4-hydrogen" });
+    } catch (err: any) {
+      console.error("Face avatar analysis error:", err);
+      const status = Number(err?.status || err?.code) || 500;
+      return res.status(status >= 400 && status < 600 ? status : 500).json({
+        error: err?.message || "Failed to analyze client face photo",
+      });
     }
   });
 

@@ -420,6 +420,10 @@ const EN_TO_ML: Record<string, string> = {
   'Was it oily? (3 Cooking Options):': 'എണ്ണ ഉപയോഗിച്ചോ? (3 പാചക രീതികൾ):',
   'Ask anything in English or Malayalam, speak, or snap photo...':
     'മലയാളത്തിലോ ഇംഗ്ലീഷിലോ എന്തും ചോദിക്കുക, സംസാരിക്കുക, അല്ലെങ്കിൽ ഫോട്ടോ എടുക്കുക...',
+  'Tap Body': 'ശരീരം കാണുക',
+  'Live Body & Nutrient Avatar': 'ശരീര പോഷക ചിത്രം',
+  'Open Full Body': 'പൂർണ്ണ രൂപം കാണുക',
+  'Re-analyze Photo': 'ഫോട്ടോ വീണ്ടും സ്കാൻ ചെയ്യുക',
 };
 
 const FOOD_KEYWORD_ML: Array<[RegExp, string]> = [
