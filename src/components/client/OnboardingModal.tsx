@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ActivityLevel, DietPreference, EquipmentAccess, ExperienceLevel } from '../../types';
+import { ActivityLevel, DiabeticStatus, DietPreference, EquipmentAccess, ExperienceLevel } from '../../types';
 import {
   assessBMI,
   cmToFtIn,
@@ -52,6 +52,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
   const [allergies, setAllergies] = useState<string[]>([]);
   const [customAllergy, setCustomAllergy] = useState('');
   const [medicalNotes, setMedicalNotes] = useState('');
+  const [diabeticStatus, setDiabeticStatus] = useState<DiabeticStatus>('none');
+  const [fastingSugarTargetMgDl, setFastingSugarTargetMgDl] = useState(110);
+  const [postMealSugarTargetMgDl, setPostMealSugarTargetMgDl] = useState(155);
+  const [hypertensionOrSaltSensitive, setHypertensionOrSaltSensitive] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !activeClient) return;
@@ -80,6 +84,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
     setEquipment(activeClient.equipment || 'none_home');
     setAllergies(activeClient.allergies || []);
     setMedicalNotes(activeClient.medicalNotes || '');
+    setDiabeticStatus(activeClient.diabeticStatus || 'none');
+    setFastingSugarTargetMgDl(activeClient.fastingSugarTargetMgDl || 110);
+    setPostMealSugarTargetMgDl(activeClient.postMealSugarTargetMgDl || 155);
+    setHypertensionOrSaltSensitive(Boolean(activeClient.hypertensionOrSaltSensitive));
     setCustomAllergy('');
   }, [isOpen, activeClient]);
 
@@ -138,6 +146,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
       equipment,
       allergies,
       medicalNotes: medicalNotes.trim(),
+      diabeticStatus,
+      fastingSugarTargetMgDl: Number(fastingSugarTargetMgDl) || 110,
+      postMealSugarTargetMgDl: Number(postMealSugarTargetMgDl) || 155,
+      hypertensionOrSaltSensitive,
       preferredUnitSystem: unitSystem,
       onboardingCompleted: true,
     });
@@ -535,6 +547,71 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                     Add
                   </button>
                 </div>
+              </div>
+
+              {/* Blood Sugar & Sodium Registration */}
+              <div className="rounded-2xl p-3.5 bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-rose-950 dark:text-rose-200">
+                    Blood Sugar / Diabetes &amp; Sodium Profile
+                  </span>
+                  <span className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold">
+                    Calibrates daily sugar &amp; sodium limits
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                      Glycemic Status
+                    </label>
+                    <select
+                      value={diabeticStatus}
+                      onChange={(e) => setDiabeticStatus(e.target.value as DiabeticStatus)}
+                      className="w-full px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
+                    >
+                      <option value="none">No Diabetes</option>
+                      <option value="prediabetes">Prediabetes</option>
+                      <option value="type2">Type 2 Diabetes</option>
+                      <option value="type1">Type 1 Diabetes</option>
+                      <option value="gestational">Gestational Diabetes</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                      Fasting Target (mg/dL)
+                    </label>
+                    <input
+                      type="number"
+                      min={70}
+                      max={180}
+                      value={fastingSugarTargetMgDl}
+                      onChange={(e) => setFastingSugarTargetMgDl(Number(e.target.value) || 110)}
+                      className="w-full px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold tabular-nums"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                      2h Post-Meal Target
+                    </label>
+                    <input
+                      type="number"
+                      min={90}
+                      max={240}
+                      value={postMealSugarTargetMgDl}
+                      onChange={(e) => setPostMealSugarTargetMgDl(Number(e.target.value) || 155)}
+                      className="w-full px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold tabular-nums"
+                    />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={hypertensionOrSaltSensitive}
+                    onChange={(e) => setHypertensionOrSaltSensitive(e.target.checked)}
+                    className="accent-emerald-700"
+                  />
+                  <span>Hypertension / Salt-Sensitive (cap daily sodium at 1,500 mg)</span>
+                </label>
               </div>
 
               <div>

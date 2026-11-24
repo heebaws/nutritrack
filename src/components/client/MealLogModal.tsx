@@ -2,7 +2,12 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { FoodCategory, FoodItem, MealType } from '../../types';
 import { estimateNutrition } from '../../utils/nutritionEstimator';
-import { estimateFoodMicronutrients, estimateFoodSugar } from '../../utils/micronutrients';
+import {
+  estimateFoodFiber,
+  estimateFoodMicronutrients,
+  estimateFoodSodium,
+  estimateFoodSugar,
+} from '../../utils/micronutrients';
 import { determineCalorieQuality, CalorieQuality } from '../../utils/calorieQuality';
 import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
 import { getFoodImageUrl, FOOD_FALLBACK_SVG } from '../../utils/foodImages';
@@ -91,10 +96,17 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
   const [customProtein, setCustomProtein] = useState('');
   const [customCarbs, setCustomCarbs] = useState('');
   const [customFat, setCustomFat] = useState('');
+  const [customFiber, setCustomFiber] = useState('');
+  const [customSugar, setCustomSugar] = useState('');
+  const [customSodium, setCustomSodium] = useState('');
   const [customCalcium, setCustomCalcium] = useState('');
   const [customIron, setCustomIron] = useState('');
   const [customMagnesium, setCustomMagnesium] = useState('');
   const [customVitaminD, setCustomVitaminD] = useState('');
+  const [showLibLabelOverride, setShowLibLabelOverride] = useState(false);
+  const [libOverrideFiber, setLibOverrideFiber] = useState('');
+  const [libOverrideSugar, setLibOverrideSugar] = useState('');
+  const [libOverrideSodium, setLibOverrideSodium] = useState('');
   const [saveToLibrary, setSaveToLibrary] = useState(true);
   const [isAiEstimating, setIsAiEstimating] = useState(false);
   const [aiEstimateNote, setAiEstimateNote] = useState<string | null>(null);
@@ -154,6 +166,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       setCustomProtein(String(est.protein));
       setCustomCarbs(String(est.carbs));
       setCustomFat(String(est.fat));
+      setCustomFiber(String(est.fiber ?? 0));
+      setCustomSugar(String(est.sugar ?? 0));
+      setCustomSodium(String(est.sodium ?? 0));
       setCustomCalcium(String(est.calcium ?? 0));
       setCustomIron(String(est.iron ?? 0));
       setCustomMagnesium(String(est.magnesium ?? 0));
@@ -199,6 +214,8 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       carbs: searchExtensionFood.carbs,
       fat: searchExtensionFood.fat,
       fiber: searchExtensionFood.fiber,
+      sugar: searchExtensionFood.sugar,
+      sodium: searchExtensionFood.sodium,
       calcium: searchExtensionFood.calcium,
       iron: searchExtensionFood.iron,
       magnesium: searchExtensionFood.magnesium,
@@ -220,7 +237,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       protein: totalProt,
       carbs: totalCarb,
       fat: totalFat,
-      sugar: Math.round(estimateFoodSugar({ name: searchExtensionFood.name, calories: totalCal, carbs: totalCarb }) * 10) / 10,
+      fiber: Math.round((searchExtensionFood.fiber ?? 0) * qty * 10) / 10,
+      sugar: Math.round((searchExtensionFood.sugar ?? estimateFoodSugar({ name: searchExtensionFood.name, calories: searchExtensionFood.calories, carbs: searchExtensionFood.carbs })) * qty * 10) / 10,
+      sodium: Math.round((searchExtensionFood.sodium ?? estimateFoodSodium({ name: searchExtensionFood.name, calories: searchExtensionFood.calories, protein: searchExtensionFood.protein, carbs: searchExtensionFood.carbs })) * qty),
       calcium: Math.round((searchExtensionFood.calcium ?? 0) * qty),
       iron: Math.round((searchExtensionFood.iron ?? 0) * qty * 10) / 10,
       magnesium: Math.round((searchExtensionFood.magnesium ?? 0) * qty),
@@ -252,6 +271,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       setCustomProtein(String(localEst.protein));
       setCustomCarbs(String(localEst.carbs));
       setCustomFat(String(localEst.fat));
+      setCustomFiber(String(localEst.fiber ?? 0));
+      setCustomSugar(String(localEst.sugar ?? 0));
+      setCustomSodium(String(localEst.sodium ?? 0));
       setCustomCalcium(String(localEst.calcium ?? 0));
       setCustomIron(String(localEst.iron ?? 0));
       setCustomMagnesium(String(localEst.magnesium ?? 0));
@@ -273,6 +295,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
           setCustomProtein(String(data.food.protein));
           setCustomCarbs(String(data.food.carbs));
           setCustomFat(String(data.food.fat));
+          if (data.food.fiber !== undefined) setCustomFiber(String(data.food.fiber));
+          if (data.food.sugar !== undefined) setCustomSugar(String(data.food.sugar));
+          if (data.food.sodium !== undefined) setCustomSodium(String(data.food.sodium));
           if (data.food.calcium !== undefined) setCustomCalcium(String(data.food.calcium));
           if (data.food.iron !== undefined) setCustomIron(String(data.food.iron));
           if (data.food.magnesium !== undefined) setCustomMagnesium(String(data.food.magnesium));
@@ -350,10 +375,17 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       setCustomProtein('');
       setCustomCarbs('');
       setCustomFat('');
+      setCustomFiber('');
+      setCustomSugar('');
+      setCustomSodium('');
       setCustomCalcium('');
       setCustomIron('');
       setCustomMagnesium('');
       setCustomVitaminD('');
+      setShowLibLabelOverride(false);
+      setLibOverrideFiber('');
+      setLibOverrideSugar('');
+      setLibOverrideSodium('');
       setCustomServing('1 serving');
       setSaveToLibrary(true);
       setOilOption('steamed');
@@ -456,17 +488,28 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
     if (!selectedFood) return null;
     const qty = Math.max(0.1, Number(quantity) || 1);
     const estMicro = estimateFoodMicronutrients(selectedFood);
+    const unitFiber = estimateFoodFiber(selectedFood);
+    const unitSugar = estimateFoodSugar(selectedFood);
+    const unitSodium = estimateFoodSodium(selectedFood);
+
+    const fiber = libOverrideFiber !== '' ? Number((Math.max(0, parseFloat(libOverrideFiber) || 0) * qty).toFixed(1)) : Number((unitFiber * qty).toFixed(1));
+    const sugar = libOverrideSugar !== '' ? Number((Math.max(0, parseFloat(libOverrideSugar) || 0) * qty).toFixed(1)) : Number((unitSugar * qty).toFixed(1));
+    const sodium = libOverrideSodium !== '' ? Math.round(Math.max(0, parseFloat(libOverrideSodium) || 0) * qty) : Math.round(unitSodium * qty);
+
     return {
       calories: Math.round((selectedFood.calories + oilCal) * qty),
       protein: Number((selectedFood.protein * qty).toFixed(1)),
       carbs: Number((selectedFood.carbs * qty).toFixed(1)),
       fat: Number(((selectedFood.fat + oilFat) * qty).toFixed(1)),
+      fiber,
+      sugar,
+      sodium,
       calcium: Math.round((selectedFood.calcium ?? estMicro.calcium) * qty),
       iron: Number(((selectedFood.iron ?? estMicro.iron) * qty).toFixed(1)),
       magnesium: Math.round((selectedFood.magnesium ?? estMicro.magnesium) * qty),
       vitaminD: Math.round((selectedFood.vitaminD ?? estMicro.vitaminD) * qty),
     };
-  }, [selectedFood, quantity, oilCal, oilFat]);
+  }, [selectedFood, quantity, oilCal, oilFat, libOverrideFiber, libOverrideSugar, libOverrideSodium]);
 
   const customCalculatedNutrition = useMemo(() => {
     const cCal = (parseFloat(customCalories) || 0) + oilCal;
@@ -482,6 +525,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       carbs: cCarb,
       fat: cFat,
     });
+    const baseFiber = customFiber !== '' ? Math.max(0, parseFloat(customFiber) || 0) : estimateFoodFiber({ name: customName, category: customCategory, calories: cCal, protein: cProt, carbs: cCarb });
+    const baseSugar = customSugar !== '' ? Math.max(0, parseFloat(customSugar) || 0) : estimateFoodSugar({ name: customName, category: customCategory, calories: cCal, carbs: cCarb });
+    const baseSodium = customSodium !== '' ? Math.max(0, parseFloat(customSodium) || 0) : estimateFoodSodium({ name: customName, category: customCategory, calories: cCal, protein: cProt, carbs: cCarb });
     const baseCa = customCalcium !== '' ? parseFloat(customCalcium) || 0 : estMicro.calcium;
     const baseFe = customIron !== '' ? parseFloat(customIron) || 0 : estMicro.iron;
     const baseMg = customMagnesium !== '' ? parseFloat(customMagnesium) || 0 : estMicro.magnesium;
@@ -492,18 +538,25 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       protein: Number((cProt * qty).toFixed(1)),
       carbs: Number((cCarb * qty).toFixed(1)),
       fat: Number((cFat * qty).toFixed(1)),
+      fiber: Number((baseFiber * qty).toFixed(1)),
+      sugar: Number((baseSugar * qty).toFixed(1)),
+      sodium: Math.round(baseSodium * qty),
       calcium: Math.round(baseCa * qty),
       iron: Number((baseFe * qty).toFixed(1)),
       magnesium: Math.round(baseMg * qty),
       vitaminD: Math.round(baseVitD * qty),
     };
-  }, [customName, customCategory, customCalories, customProtein, customCarbs, customFat, customCalcium, customIron, customMagnesium, customVitaminD, quantity, oilCal, oilFat]);
+  }, [customName, customCategory, customCalories, customProtein, customCarbs, customFat, customFiber, customSugar, customSodium, customCalcium, customIron, customMagnesium, customVitaminD, quantity, oilCal, oilFat]);
 
   if (!isOpen) return null;
 
   const handleSelectFood = (food: FoodItem) => {
     setSelectedFood(food);
     setOilOption('steamed');
+    setShowLibLabelOverride(false);
+    setLibOverrideFiber(String(estimateFoodFiber(food)));
+    setLibOverrideSugar(String(estimateFoodSugar(food)));
+    setLibOverrideSodium(String(estimateFoodSodium(food)));
     const initialQual = food.calorieQuality || determineCalorieQuality(food.name, food.category, 'steamed');
     setMealCalorieQuality(initialQual);
   };
@@ -529,7 +582,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         protein: calculatedNutrition.protein,
         carbs: calculatedNutrition.carbs,
         fat: calculatedNutrition.fat,
-        sugar: Math.round(estimateFoodSugar({ ...selectedFood, carbs: calculatedNutrition.carbs, calories: calculatedNutrition.calories }) * 10) / 10,
+        fiber: calculatedNutrition.fiber,
+        sugar: calculatedNutrition.sugar,
+        sodium: calculatedNutrition.sodium,
         calcium: calculatedNutrition.calcium,
         iron: calculatedNutrition.iron,
         magnesium: calculatedNutrition.magnesium,
@@ -545,6 +600,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
       const cProt = parseFloat(customProtein) || 0;
       const cCarb = parseFloat(customCarbs) || 0;
       const cFat = parseFloat(customFat) || 0;
+      const cFiber = customFiber !== '' ? Math.max(0, parseFloat(customFiber) || 0) : estimateFoodFiber({ name: customName.trim(), category: customCategory, calories: cCal, protein: cProt, carbs: cCarb });
+      const cSugar = customSugar !== '' ? Math.max(0, parseFloat(customSugar) || 0) : estimateFoodSugar({ name: customName.trim(), category: customCategory, calories: cCal, carbs: cCarb });
+      const cSodium = customSodium !== '' ? Math.round(Math.max(0, parseFloat(customSodium) || 0)) : estimateFoodSodium({ name: customName.trim(), category: customCategory, calories: cCal, protein: cProt, carbs: cCarb });
       const estMicro = estimateFoodMicronutrients({
         name: customName.trim(),
         category: customCategory,
@@ -569,7 +627,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
           protein: cProt,
           carbs: cCarb,
           fat: cFat,
-          fiber: 0,
+          fiber: cFiber,
+          sugar: cSugar,
+          sodium: cSodium,
           calcium: cCalcium,
           iron: cIron,
           magnesium: cMg,
@@ -595,7 +655,9 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
         protein: customCalculatedNutrition.protein,
         carbs: customCalculatedNutrition.carbs,
         fat: customCalculatedNutrition.fat,
-        sugar: Math.round(estimateFoodSugar({ name: customName.trim(), calories: customCalculatedNutrition.calories, carbs: customCalculatedNutrition.carbs }) * 10) / 10,
+        fiber: customCalculatedNutrition.fiber,
+        sugar: customCalculatedNutrition.sugar,
+        sodium: customCalculatedNutrition.sodium,
         calcium: customCalculatedNutrition.calcium,
         iron: customCalculatedNutrition.iron,
         magnesium: customCalculatedNutrition.magnesium,
@@ -1041,7 +1103,22 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                           <span className="font-bold text-rose-700 dark:text-rose-400">{calculatedNutrition.fat}g</span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700 text-center text-[10px] tabular-nums">
+                      <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700 text-center text-[10px] tabular-nums">
+                        <div className="bg-lime-50/70 dark:bg-lime-950/30 rounded-lg py-1">
+                          <span className="text-slate-500 block">{t('Fiber')}</span>
+                          <span className="font-bold text-lime-700 dark:text-lime-400">{calculatedNutrition.fiber} g</span>
+                        </div>
+                        <div className="bg-pink-50/70 dark:bg-pink-950/30 rounded-lg py-1">
+                          <span className="text-slate-500 block">{t('Sugar')}</span>
+                          <span className="font-bold text-pink-700 dark:text-pink-400">{calculatedNutrition.sugar} g</span>
+                        </div>
+                        <div className="bg-orange-50/70 dark:bg-orange-950/30 rounded-lg py-1">
+                          <span className="text-slate-500 block">{t('Sodium')}</span>
+                          <span className="font-bold text-orange-700 dark:text-orange-400">{calculatedNutrition.sodium} mg</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-1.5 pt-1 text-center text-[10px] tabular-nums">
                         <div className="bg-slate-50 dark:bg-slate-900 rounded-lg py-1">
                           <span className="text-slate-400 block">{t('Calcium')}</span>
                           <span className="font-bold text-slate-800 dark:text-slate-200">{calculatedNutrition.calcium} mg</span>
@@ -1058,6 +1135,54 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                           <span className="text-slate-400 block">{t('Vitamin D')}</span>
                           <span className="font-bold text-slate-800 dark:text-slate-200">{calculatedNutrition.vitaminD} IU</span>
                         </div>
+                      </div>
+
+                      {/* Exact Package Label Sugar / Fiber / Sodium Override */}
+                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => setShowLibLabelOverride(v => !v)}
+                          className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                        >
+                          {showLibLabelOverride ? '▾ Hide Label Check (Sugar / Sodium / Fiber)' : '▸ Adjust Exact Label Values (Sugar g / Sodium mg / Fiber g)'}
+                        </button>
+                        {showLibLabelOverride && (
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-pink-700 dark:text-pink-300 block mb-0.5">Sugar (g/srv)</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                value={libOverrideSugar}
+                                onChange={(e) => setLibOverrideSugar(e.target.value)}
+                                className="w-full px-2 py-1 rounded-lg border border-pink-200 dark:border-pink-800 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-orange-700 dark:text-orange-300 block mb-0.5">Sodium (mg/srv)</label>
+                              <input
+                                type="number"
+                                step="1"
+                                min="0"
+                                value={libOverrideSodium}
+                                onChange={(e) => setLibOverrideSodium(e.target.value)}
+                                className="w-full px-2 py-1 rounded-lg border border-orange-200 dark:border-orange-800 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-lime-700 dark:text-lime-300 block mb-0.5">Fiber (g/srv)</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                value={libOverrideFiber}
+                                onChange={(e) => setLibOverrideFiber(e.target.value)}
+                                className="w-full px-2 py-1 rounded-lg border border-lime-200 dark:border-lime-800 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1479,6 +1604,52 @@ export const MealLogModal: React.FC<MealLogModalProps> = ({
                     placeholder="e.g. 8"
                     value={customFat}
                     onChange={(e) => setCustomFat(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Glycemic & Salt Label Precision: Fiber, Sugar, Sodium */}
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <div>
+                  <label className="block text-[10px] font-bold text-lime-700 dark:text-lime-400 mb-1">
+                    {t('Fiber')} (g)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g. 3"
+                    value={customFiber}
+                    onChange={(e) => setCustomFiber(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-pink-700 dark:text-pink-400 mb-1">
+                    {t('Sugar')} (g)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g. 5"
+                    value={customSugar}
+                    onChange={(e) => setCustomSugar(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-orange-700 dark:text-orange-400 mb-1">
+                    {t('Sodium')} (mg)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="e.g. 220"
+                    value={customSodium}
+                    onChange={(e) => setCustomSodium(e.target.value)}
                     className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>

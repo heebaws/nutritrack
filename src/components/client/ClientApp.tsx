@@ -30,10 +30,12 @@ import { DietPlanPanel } from './DietPlanPanel';
 import { OnboardingModal } from './OnboardingModal';
 import { ProfileEditorModal } from './ProfileEditorModal';
 import { ThemeCustomizerModal } from '../common/ThemeCustomizerModal';
+import { BloodSugarTrackerModal } from './BloodSugarTrackerModal';
+import { SugarSodiumQuickModal } from './SugarSodiumQuickModal';
 import { MealType } from '../../types';
 import { calculateCalorieBreakdown, calculateStepCalories, determineCalorieQuality } from '../../utils/calorieQuality';
 import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
-import { estimateFoodMicronutrients, NutrientKey } from '../../utils/micronutrients';
+import { aggregateConsumedNutrients, estimateFoodMicronutrients, NutrientKey } from '../../utils/micronutrients';
 import { CLINICAL_DISCLAIMER } from '../../utils/clinicalSafety';
 import { NutriTrackLogo } from '../common/NutriTrackLogo';
 import {
@@ -108,7 +110,10 @@ import {
   BellRing,
   Languages,
   Palette,
-  ScanSearch
+  ScanSearch,
+  Search,
+  Home,
+  Candy
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -154,7 +159,8 @@ export const ClientApp: React.FC = () => {
     osHealthInfo,
     isPedometerLive,
     pedometerPermissionState,
-    enableMobilePedometer
+    enableMobilePedometer,
+    bloodSugarLogs
   } = useApp();
 
   // Active front-page icon launcher panel (null = serene clean front page with square icons only)
@@ -200,6 +206,11 @@ export const ClientApp: React.FC = () => {
   const [isBodyAvatarOpen, setIsBodyAvatarOpen] = useState(false);
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isToolsDrawerOpen, setIsToolsDrawerOpen] = useState(false);
+  const [drawerSearch, setDrawerSearch] = useState('');
+  const [isBloodSugarModalOpen, setIsBloodSugarModalOpen] = useState(false);
+  const [bloodSugarInitialTab, setBloodSugarInitialTab] = useState<'check' | 'audit' | 'study'>('check');
+  const [sugarSodiumModalMode, setSugarSodiumModalMode] = useState<null | 'sugar' | 'sodium'>(null);
   const [inspectedNutrientKey, setInspectedNutrientKey] = useState<NutrientKey | null>(null);
   const [pushPermState, setPushPermState] = useState(() => getNotificationStatus());
   const [pushBannerDismissed, setPushBannerDismissed] = useState(false);
@@ -208,7 +219,7 @@ export const ClientApp: React.FC = () => {
   const [confirmResetMeals, setConfirmResetMeals] = useState(false);
   const [resetFeedbackNotice, setResetFeedbackNotice] = useState<string | null>(null);
 
-  // Listen to open-calorie-guide, open-app-tour, open-notifications, open-log-meal, open-workout, open-profile-editor, and Escape to close open overlay
+  // Listen to open-calorie-guide, open-app-tour, open-notifications, open-log-meal, open-workout, open-profile-editor, open-blood-sugar-study, toggle-client-tools-drawer, and Escape to close open overlay
   useEffect(() => {
     const handleOpenCalorieGuide = () => setIsCalorieGuideOpen(true);
     const handleOpenTour = () => setIsTourModalOpen(true);
@@ -216,10 +227,18 @@ export const ClientApp: React.FC = () => {
     const handleOpenLogMeal = () => openLogForSlot('Breakfast');
     const handleOpenWorkout = () => setIsActivityModalOpen(true);
     const handleOpenProfileEditor = () => setIsProfileEditorOpen(true);
+    const handleOpenBloodSugarStudy = (e: Event) => {
+      const detail = (e as CustomEvent<{ tab?: 'check' | 'audit' | 'study' }>).detail;
+      setBloodSugarInitialTab(detail?.tab || 'study');
+      setIsBloodSugarModalOpen(true);
+    };
+    const handleToggleToolsDrawer = () => setIsToolsDrawerOpen((prev) => !prev);
+    const handleOpenToolsDrawer = () => setIsToolsDrawerOpen(true);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setActiveViewPanel(null);
         setActiveMoreSubPanel(null);
+        setIsToolsDrawerOpen(false);
       }
     };
     window.addEventListener('open-calorie-guide', handleOpenCalorieGuide);
@@ -228,6 +247,9 @@ export const ClientApp: React.FC = () => {
     window.addEventListener('open-log-meal', handleOpenLogMeal);
     window.addEventListener('open-workout', handleOpenWorkout);
     window.addEventListener('open-profile-editor', handleOpenProfileEditor);
+    window.addEventListener('open-blood-sugar-study', handleOpenBloodSugarStudy);
+    window.addEventListener('toggle-client-tools-drawer', handleToggleToolsDrawer);
+    window.addEventListener('open-client-tools-drawer', handleOpenToolsDrawer);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('open-calorie-guide', handleOpenCalorieGuide);
@@ -236,6 +258,9 @@ export const ClientApp: React.FC = () => {
       window.removeEventListener('open-log-meal', handleOpenLogMeal);
       window.removeEventListener('open-workout', handleOpenWorkout);
       window.removeEventListener('open-profile-editor', handleOpenProfileEditor);
+      window.removeEventListener('open-blood-sugar-study', handleOpenBloodSugarStudy);
+      window.removeEventListener('toggle-client-tools-drawer', handleToggleToolsDrawer);
+      window.removeEventListener('open-client-tools-drawer', handleOpenToolsDrawer);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
@@ -682,6 +707,15 @@ export const ClientApp: React.FC = () => {
     };
   }, [activeClient, mealLogs, activities, habits]);
 
+  const bloodSugarLogsForDayCount = useMemo(() => {
+    return bloodSugarLogs.filter((b) => b.clientId === activeClient.id && b.date === selectedDate).length;
+  }, [bloodSugarLogs, activeClient.id, selectedDate]);
+
+  const daySugarSodiumTotals = useMemo(
+    () => aggregateConsumedNutrients(clientLogsForDay, foods),
+    [clientLogsForDay, foods]
+  );
+
   const handleLauncherAction = (key: string) => {
     switch (key) {
       case 'morning-weight':
@@ -698,6 +732,16 @@ export const ClientApp: React.FC = () => {
         break;
       case 'appointments':
         setIsAppointmentsModalOpen(true);
+        break;
+      case 'blood-sugar':
+        setBloodSugarInitialTab('check');
+        setIsBloodSugarModalOpen(true);
+        break;
+      case 'sugar-tracker':
+        setSugarSodiumModalMode('sugar');
+        break;
+      case 'sodium-tracker':
+        setSugarSodiumModalMode('sodium');
         break;
       case 'meal-diary':
         setActiveViewPanel(prev => prev === 'meals' ? null : 'meals');
@@ -726,8 +770,631 @@ export const ClientApp: React.FC = () => {
     }
   };
 
+  const launcherToolItems = [
+    {
+      key: 'morning-weight',
+      label: t('Morning Weight'),
+      icon: Scale,
+      bg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white',
+      active: isQuickWeightModalOpen,
+    },
+    {
+      key: 'hydration',
+      label: t('Daily Hydration'),
+      icon: Droplets,
+      bg: 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 hover:bg-cyan-600 hover:text-white',
+      active: isHydrationModalOpen,
+    },
+    {
+      key: 'steps',
+      label: t('Daily Steps'),
+      icon: Footprints,
+      bg: 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 hover:bg-orange-600 hover:text-white',
+      active: isStepsModalOpen,
+    },
+    {
+      key: 'sleep',
+      label: t('Sleep Tracker'),
+      icon: Moon,
+      bg: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white',
+      active: isSleepModalOpen,
+    },
+    {
+      key: 'appointments',
+      label: t('Appointments'),
+      icon: CalendarCheck,
+      bg: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-600 hover:text-white',
+      active: isAppointmentsModalOpen,
+    },
+    {
+      key: 'blood-sugar',
+      label: t('Blood Sugar'),
+      icon: HeartPulse,
+      bg: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 hover:bg-rose-600 hover:text-white',
+      active: isBloodSugarModalOpen,
+      badge: bloodSugarLogsForDayCount > 0 ? bloodSugarLogsForDayCount : undefined,
+    },
+    {
+      key: 'sugar-tracker',
+      label: t('Sugar Intake'),
+      icon: Candy,
+      bg: 'bg-pink-50 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800 hover:bg-pink-600 hover:text-white',
+      active: sugarSodiumModalMode === 'sugar',
+      badge: daySugarSodiumTotals.sugar > 0 ? `${daySugarSodiumTotals.sugar}g` : undefined,
+    },
+    {
+      key: 'sodium-tracker',
+      label: t('Sodium Intake'),
+      icon: Flame,
+      bg: 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 hover:bg-orange-600 hover:text-white',
+      active: sugarSodiumModalMode === 'sodium',
+      badge: daySugarSodiumTotals.sodium > 0 ? `${daySugarSodiumTotals.sodium}mg` : undefined,
+    },
+    {
+      key: 'meal-diary',
+      label: t('Meal Diary'),
+      icon: ClipboardList,
+      bg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-700 hover:text-white',
+      active: activeViewPanel === 'meals',
+      badge: clientLogsForDay.length > 0 ? clientLogsForDay.length : undefined,
+    },
+    {
+      key: 'trajectory',
+      label: t('8,000 kcal'),
+      icon: Flame,
+      bg: 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-500 hover:text-white',
+      active: isTrajectoryProjected,
+    },
+    {
+      key: 'profile',
+      label: t('Coach & Profile'),
+      icon: User,
+      bg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white',
+      active: activeViewPanel === 'profile',
+    },
+    {
+      key: 'diet-plan',
+      label: t('Diet Plan'),
+      icon: CalendarDays,
+      bg: 'bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 hover:bg-amber-600 hover:text-white',
+      active: activeViewPanel === 'plan',
+    },
+    {
+      key: 'progress',
+      label: t('Progress'),
+      icon: ChartIcon,
+      bg: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-600 hover:text-white',
+      active: activeViewPanel === 'progress',
+    },
+    {
+      key: 'calorie-detect',
+      label: t('Calorie Detect'),
+      icon: ScanSearch,
+      bg: 'bg-lime-50 dark:bg-lime-950/60 text-lime-800 dark:text-lime-300 border border-lime-300 dark:border-lime-800 hover:bg-lime-600 hover:text-white',
+      active: isCalorieGuideOpen,
+    },
+    {
+      key: 'app-tour',
+      label: t('App Tour'),
+      icon: Compass,
+      bg: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-800 hover:text-white',
+      active: isTourModalOpen,
+    },
+    {
+      key: 'more',
+      label: t('More Tools'),
+      icon: LayoutGrid,
+      bg: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-800 hover:text-white',
+      active: activeViewPanel === 'more',
+      badge: unreadAlertsCount > 0 ? unreadAlertsCount : undefined,
+    },
+  ];
+
+  const diabeticStatusBadgeLabel =
+    activeClient.diabeticStatus === 'type1'
+      ? t('Type 1 Diabetes')
+      : activeClient.diabeticStatus === 'type2'
+      ? t('Type 2 Diabetes')
+      : activeClient.diabeticStatus === 'prediabetes'
+      ? t('Prediabetes')
+      : activeClient.diabeticStatus === 'gestational'
+      ? t('Gestational')
+      : null;
+
+  const sidebarSections: Array<{
+    title: string;
+    items: Array<{
+      id: string;
+      label: string;
+      icon: React.ComponentType<{ className?: string }>;
+      iconBoxClass: string;
+      active: boolean;
+      badge?: string;
+      onSelect: () => void;
+    }>;
+  }> = [
+    {
+      title: t('OVERVIEW'),
+      items: [
+        {
+          id: 'overview-home',
+          label: language === 'ml' ? 'ഡാഷ്ബോർഡ് / ഹോം' : 'Dashboard / Home',
+          icon: Home,
+          iconBoxClass: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300',
+          active: activeViewPanel === null && !isBloodSugarModalOpen && !isBodyAvatarOpen && !sugarSodiumModalMode,
+          onSelect: () => {
+            setActiveViewPanel(null);
+            setIsToolsDrawerOpen(false);
+          },
+        },
+        {
+          id: 'overview-trajectory',
+          label: t('8,000 kcal Projection'),
+          icon: Flame,
+          iconBoxClass: 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300',
+          active: isTrajectoryProjected && activeViewPanel === null,
+          badge: trajectoryMiniSummary.kgText,
+          onSelect: () => {
+            setIsTrajectoryProjected(true);
+            setActiveViewPanel(null);
+            setIsToolsDrawerOpen(false);
+          },
+        },
+        {
+          id: 'overview-avatar',
+          label: t('Body Avatar Twin'),
+          icon: User,
+          iconBoxClass: 'bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300',
+          active: isBodyAvatarOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsBodyAvatarOpen(true);
+          },
+        },
+        {
+          id: 'overview-blood-sugar',
+          label: t('Blood Sugar'),
+          icon: HeartPulse,
+          iconBoxClass: 'bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-300',
+          active: isBloodSugarModalOpen,
+          badge:
+            bloodSugarLogsForDayCount > 0
+              ? String(bloodSugarLogsForDayCount)
+              : diabeticStatusBadgeLabel
+              ? t('Check')
+              : undefined,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setBloodSugarInitialTab('check');
+            setIsBloodSugarModalOpen(true);
+          },
+        },
+        {
+          id: 'overview-sugar',
+          label: t('Sugar Intake'),
+          icon: Candy,
+          iconBoxClass: 'bg-pink-100 dark:bg-pink-950/80 text-pink-600 dark:text-pink-300',
+          active: sugarSodiumModalMode === 'sugar',
+          badge: daySugarSodiumTotals.sugar > 0 ? `${daySugarSodiumTotals.sugar}g` : '+ Add',
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setSugarSodiumModalMode('sugar');
+          },
+        },
+        {
+          id: 'overview-sodium',
+          label: t('Sodium Intake'),
+          icon: Flame,
+          iconBoxClass: 'bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-300',
+          active: sugarSodiumModalMode === 'sodium',
+          badge: daySugarSodiumTotals.sodium > 0 ? `${daySugarSodiumTotals.sodium}mg` : '+ Add',
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setSugarSodiumModalMode('sodium');
+          },
+        },
+        {
+          id: 'overview-progress',
+          label: t('Progress'),
+          icon: ChartIcon,
+          iconBoxClass: 'bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-300',
+          active: activeViewPanel === 'progress',
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setActiveViewPanel('progress');
+          },
+        },
+      ],
+    },
+    {
+      title: t('DAILY TRACKERS & TOOLS'),
+      items: [
+        {
+          id: 'tool-log-meal',
+          label: t('Log Meal'),
+          icon: Utensils,
+          iconBoxClass: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300',
+          active: isMealModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            openLogForSlot(currentCircadianMeal.slot || 'Breakfast');
+          },
+        },
+        {
+          id: 'tool-log-workout',
+          label: t('Log Workout'),
+          icon: Dumbbell,
+          iconBoxClass: 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-300',
+          active: isActivityModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsActivityModalOpen(true);
+          },
+        },
+        {
+          id: 'tool-diet-plan',
+          label: t('Diet Plan'),
+          icon: CalendarDays,
+          iconBoxClass: 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300',
+          active: activeViewPanel === 'plan',
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setActiveViewPanel('plan');
+          },
+        },
+        {
+          id: 'tool-meal-diary',
+          label: t('Meal Diary'),
+          icon: ClipboardList,
+          iconBoxClass: 'bg-teal-100 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300',
+          active: activeViewPanel === 'meals',
+          badge: clientLogsForDay.length > 0 ? String(clientLogsForDay.length) : undefined,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setActiveViewPanel('meals');
+          },
+        },
+        {
+          id: 'tool-weight',
+          label: t('Morning Weight'),
+          icon: Scale,
+          iconBoxClass: 'bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-300',
+          active: isQuickWeightModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsQuickWeightModalOpen(true);
+          },
+        },
+        {
+          id: 'tool-hydration',
+          label: t('Daily Hydration'),
+          icon: Droplets,
+          iconBoxClass: 'bg-cyan-100 dark:bg-cyan-950/80 text-cyan-600 dark:text-cyan-300',
+          active: isHydrationModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsHydrationModalOpen(true);
+          },
+        },
+        {
+          id: 'tool-steps',
+          label: t('Daily Steps'),
+          icon: Footprints,
+          iconBoxClass: 'bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-300',
+          active: isStepsModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsStepsModalOpen(true);
+          },
+        },
+        {
+          id: 'tool-sleep',
+          label: t('Sleep Tracker'),
+          icon: Moon,
+          iconBoxClass: 'bg-violet-100 dark:bg-violet-950/80 text-violet-600 dark:text-violet-300',
+          active: isSleepModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsSleepModalOpen(true);
+          },
+        },
+        {
+          id: 'tool-appointments',
+          label: t('Appointments'),
+          icon: CalendarCheck,
+          iconBoxClass: 'bg-teal-100 dark:bg-teal-950/80 text-teal-600 dark:text-teal-300',
+          active: isAppointmentsModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsAppointmentsModalOpen(true);
+          },
+        },
+        {
+          id: 'tool-calorie-detect',
+          label: t('Calorie Detect'),
+          icon: ScanSearch,
+          iconBoxClass: 'bg-lime-100 dark:bg-lime-950/80 text-lime-700 dark:text-lime-300',
+          active: isCalorieGuideOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            openCalorieGuide('how-it-detects');
+          },
+        },
+        {
+          id: 'tool-notifications',
+          label: t('Notifications'),
+          icon: BellRing,
+          iconBoxClass: 'bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-300',
+          active: isNotificationsOpen,
+          badge: unreadAlertsCount > 0 ? String(unreadAlertsCount) : undefined,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsNotificationsOpen(true);
+          },
+        },
+        {
+          id: 'tool-habits',
+          label: t('Daily Habits'),
+          icon: Activity,
+          iconBoxClass: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-300',
+          active: activeViewPanel === 'more' && activeMoreSubPanel === 'habits',
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setActiveViewPanel('more');
+            setActiveMoreSubPanel('habits');
+          },
+        },
+      ],
+    },
+    {
+      title: t('SETTINGS'),
+      items: [
+        {
+          id: 'settings-profile',
+          label: t('Profile & Picture Studio'),
+          icon: User,
+          iconBoxClass: 'bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-300',
+          active: isProfileEditorOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsProfileEditorOpen(true);
+          },
+        },
+        {
+          id: 'settings-food-rules',
+          label: t('Food Rules'),
+          icon: ShieldCheck,
+          iconBoxClass: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300',
+          active: isClinicalGuideOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsClinicalGuideOpen(true);
+          },
+        },
+        {
+          id: 'settings-print',
+          label: t('Print Report'),
+          icon: Printer,
+          iconBoxClass: 'bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300',
+          active: isPrintModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsPrintModalOpen(true);
+          },
+        },
+        {
+          id: 'settings-theme',
+          label: t('Theme Customizer'),
+          icon: Palette,
+          iconBoxClass: 'bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-300',
+          active: isThemeModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsThemeModalOpen(true);
+          },
+        },
+        {
+          id: 'settings-language',
+          label: language === 'ml' ? 'Language · English' : 'Language · മലയാളം',
+          icon: Languages,
+          iconBoxClass: 'bg-cyan-100 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-300',
+          active: false,
+          badge: language === 'ml' ? 'ML' : 'EN',
+          onSelect: () => {
+            toggleLanguage();
+          },
+        },
+        {
+          id: 'settings-tour',
+          label: t('App Tour'),
+          icon: Compass,
+          iconBoxClass: 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-300',
+          active: isTourModalOpen,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            setIsTourModalOpen(true);
+          },
+        },
+        {
+          id: 'settings-signout',
+          label: language === 'ml' ? 'സൈൻ ഔട്ട്' : 'Sign Out',
+          icon: LogOut,
+          iconBoxClass: 'bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400',
+          active: false,
+          onSelect: () => {
+            setIsToolsDrawerOpen(false);
+            clientSignOut();
+          },
+        },
+      ],
+    },
+  ];
+
+  const normalizedDrawerQuery = drawerSearch.trim().toLowerCase();
+  const filteredSidebarSections = sidebarSections
+    .map((sec) => ({
+      ...sec,
+      items: normalizedDrawerQuery
+        ? sec.items.filter((item) => item.label.toLowerCase().includes(normalizedDrawerQuery))
+        : sec.items,
+    }))
+    .filter((sec) => sec.items.length > 0);
+
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5 min-w-0 overflow-x-clip">
+
+      {/* ================= 0. THREE-BAR VERTICAL SINGLE-COLUMN SEARCHABLE SIDEBAR ================= */}
+      {isToolsDrawerOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="NutriTrack Sidebar Menu"
+          className="fixed inset-0 z-[55] bg-slate-900/50 dark:bg-black/75 backdrop-blur-xs flex animate-in fade-in duration-150"
+          onClick={() => setIsToolsDrawerOpen(false)}
+        >
+          <aside
+            className="w-[244px] sm:w-[258px] max-w-[74vw] h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Sidebar Header: NutriTrack Brand + Wellness Portal + Close */}
+            <div className="px-3 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
+              <NutriTrackLogo size="sm" subtitle={t('Wellness Portal')} />
+              <button
+                type="button"
+                onClick={() => setIsToolsDrawerOpen(false)}
+                aria-label={t('Close')}
+                className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer transition-colors shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Live Menu Search Input */}
+            <div className="px-2.5 py-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="search"
+                  value={drawerSearch}
+                  onChange={(e) => setDrawerSearch(e.target.value)}
+                  placeholder={t('Search menu...')}
+                  aria-label={t('Search menu...')}
+                  className="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:bg-white dark:focus:bg-slate-800 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Scrollable Vertical Single-Column Grouped Navigation */}
+            <nav aria-label="Client navigation menu" className="flex-1 overflow-y-auto px-2 py-2 space-y-2.5">
+              {filteredSidebarSections.length > 0 ? (
+                filteredSidebarSections.map((section, idx) => (
+                  <div
+                    key={section.title}
+                    className={idx > 0 ? 'pt-2 border-t border-slate-100 dark:border-slate-800/80' : ''}
+                  >
+                    <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      {section.title}
+                    </div>
+                    <div className="space-y-0.5">
+                      {section.items.map((item) => {
+                        const IconComponent = item.icon;
+                        const isSignOut = item.id === 'settings-signout';
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={item.onSelect}
+                            className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-xl text-[12.5px] transition-colors cursor-pointer text-left ${
+                              item.active
+                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold'
+                                : isSignOut
+                                ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold'
+                                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70 hover:text-slate-950 dark:hover:text-white font-medium'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                                  item.active
+                                    ? 'bg-emerald-600 text-white shadow-2xs'
+                                    : item.iconBoxClass
+                                }`}
+                              >
+                                <IconComponent className="w-3.5 h-3.5" />
+                              </span>
+                              <span className="truncate">{item.label}</span>
+                            </span>
+                            {item.badge !== undefined && (
+                              <span
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 tabular-nums ${
+                                  item.active
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="px-3 py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                  No menu items match &ldquo;{drawerSearch}&rdquo;.
+                </div>
+              )}
+            </nav>
+
+            {/* Pinned Bottom Profile Card */}
+            <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsToolsDrawerOpen(false);
+                  setIsProfileEditorOpen(true);
+                }}
+                className="w-full flex items-center gap-3 p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors cursor-pointer text-left"
+              >
+                {activeClient.avatarUrl && !heroImgFailed ? (
+                  <img
+                    src={activeClient.avatarUrl}
+                    alt={activeClient.name}
+                    className="w-10 h-10 rounded-full object-cover border border-emerald-400/60 shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-emerald-700 text-white flex items-center justify-center font-extrabold text-sm shrink-0">
+                    {(activeClient.name || 'U')
+                      .split(' ')
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((n) => n[0]?.toUpperCase())
+                      .join('')}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                    {activeClient.name}
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1.5">
+                    <span>{t('Client · Wellness Member')}</span>
+                    {diabeticStatusBadgeLabel && (
+                      <span className="px-1.5 py-0.2 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-[9px] font-bold">
+                        {diabeticStatusBadgeLabel}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate tabular-nums mt-0.5">
+                    {(dayHabit?.steps || 0).toLocaleString()} {t('steps')} · {dayHabit?.sleepHours ?? 7}h sleep · {formatDateDisplay(selectedDate)}
+                  </div>
+                </div>
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* ================= 1. CLEAN COMPACT CLIENT HERO & LIVE CALORIE SNAPSHOT ================= */}
       <div className="bg-emerald-950 text-white rounded-3xl p-4 sm:p-6 shadow-sm border border-emerald-900 min-w-0">
@@ -1018,6 +1685,10 @@ export const ClientApp: React.FC = () => {
           selectedDate={selectedDate}
           onAddWaterGlass={() => addWaterLog(250, selectedDate)}
           onOpenHydrationModal={() => setIsHydrationModalOpen(true)}
+          onOpenBloodSugarModal={() => {
+            setBloodSugarInitialTab('check');
+            setIsBloodSugarModalOpen(true);
+          }}
           onInspectNutrient={(key) => setInspectedNutrientKey(key)}
         />
 
@@ -1037,103 +1708,9 @@ export const ClientApp: React.FC = () => {
       {/* ================= 2. CLEAN SQUARE ICON APP LAUNCHER GRID ================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-5">
 
-        {/* Tools Launcher Grid (Log Meal & Log Workout moved to Primary Action Bar) */}
+        {/* Tools Launcher Grid (Bottom quick icons kept alongside the side three-bar drawer) */}
         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-5 gap-3.5 sm:gap-4 pt-1">
-          {[
-            {
-              key: 'morning-weight',
-              label: t('Morning Weight'),
-              icon: Scale,
-              bg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white',
-              active: false,
-            },
-            {
-              key: 'hydration',
-              label: t('Daily Hydration'),
-              icon: Droplets,
-              bg: 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 hover:bg-cyan-600 hover:text-white',
-              active: isHydrationModalOpen,
-            },
-            {
-              key: 'steps',
-              label: t('Daily Steps'),
-              icon: Footprints,
-              bg: 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 hover:bg-orange-600 hover:text-white',
-              active: isStepsModalOpen,
-            },
-            {
-              key: 'sleep',
-              label: t('Sleep Tracker'),
-              icon: Moon,
-              bg: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white',
-              active: isSleepModalOpen,
-            },
-            {
-              key: 'appointments',
-              label: t('Appointments'),
-              icon: CalendarCheck,
-              bg: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-600 hover:text-white',
-              active: false,
-            },
-            {
-              key: 'meal-diary',
-              label: t('Meal Diary'),
-              icon: ClipboardList,
-              bg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-700 hover:text-white',
-              active: activeViewPanel === 'meals',
-              badge: clientLogsForDay.length > 0 ? clientLogsForDay.length : undefined,
-            },
-            {
-              key: 'trajectory',
-              label: t('8,000 kcal'),
-              icon: Flame,
-              bg: 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-500 hover:text-white',
-              active: isTrajectoryProjected,
-            },
-            {
-              key: 'profile',
-              label: t('Coach & Profile'),
-              icon: User,
-              bg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white',
-              active: activeViewPanel === 'profile',
-            },
-            {
-              key: 'diet-plan',
-              label: t('Diet Plan'),
-              icon: CalendarDays,
-              bg: 'bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 hover:bg-amber-600 hover:text-white',
-              active: activeViewPanel === 'plan',
-            },
-            {
-              key: 'progress',
-              label: t('Progress'),
-              icon: ChartIcon,
-              bg: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-600 hover:text-white',
-              active: activeViewPanel === 'progress',
-            },
-            {
-              key: 'calorie-detect',
-              label: t('Calorie Detect'),
-              icon: ScanSearch,
-              bg: 'bg-lime-50 dark:bg-lime-950/60 text-lime-800 dark:text-lime-300 border border-lime-300 dark:border-lime-800 hover:bg-lime-600 hover:text-white',
-              active: isCalorieGuideOpen,
-            },
-            {
-              key: 'app-tour',
-              label: t('App Tour'),
-              icon: Compass,
-              bg: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-800 hover:text-white',
-              active: false,
-            },
-            {
-              key: 'more',
-              label: t('More Tools'),
-              icon: LayoutGrid,
-              bg: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-800 hover:text-white',
-              active: activeViewPanel === 'more',
-              badge: unreadAlertsCount > 0 ? unreadAlertsCount : undefined,
-            },
-          ].map((item) => {
+          {launcherToolItems.map((item) => {
             const IconComponent = item.icon;
             return (
               <button
@@ -2495,6 +3072,27 @@ export const ClientApp: React.FC = () => {
         metrics={heroBodyMetrics}
         logsForDay={clientLogsForDay}
         onOpenLogMeal={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
+      />
+
+      <BloodSugarTrackerModal
+        isOpen={isBloodSugarModalOpen}
+        onClose={() => setIsBloodSugarModalOpen(false)}
+        client={activeClient}
+        initialTab={bloodSugarInitialTab}
+        onOpenLogMeal={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
+      />
+
+      <SugarSodiumQuickModal
+        isOpen={sugarSodiumModalMode !== null}
+        mode={sugarSodiumModalMode || 'sugar'}
+        client={activeClient}
+        defaultMealType={currentCircadianMeal.slot || 'Evening Snack'}
+        onClose={() => setSugarSodiumModalMode(null)}
+        onOpenLogMeal={() => openLogForSlot(currentCircadianMeal.slot || 'Breakfast')}
+        onOpenBloodSugar={() => {
+          setBloodSugarInitialTab('check');
+          setIsBloodSugarModalOpen(true);
+        }}
       />
 
       {/* Clean Wellness Footer */}

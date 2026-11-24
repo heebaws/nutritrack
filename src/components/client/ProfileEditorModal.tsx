@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ActivityLevel, DietPreference } from '../../types';
+import { ActivityLevel, DiabeticStatus, DietPreference } from '../../types';
 import {
   assessBMI,
   cmToFtIn,
@@ -56,6 +56,10 @@ export const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({
   const [allergies, setAllergies] = useState<string[]>([]);
   const [customAllergy, setCustomAllergy] = useState('');
   const [medicalNotes, setMedicalNotes] = useState('');
+  const [diabeticStatus, setDiabeticStatus] = useState<DiabeticStatus>('none');
+  const [fastingSugarTargetMgDl, setFastingSugarTargetMgDl] = useState(110);
+  const [postMealSugarTargetMgDl, setPostMealSugarTargetMgDl] = useState(155);
+  const [hypertensionOrSaltSensitive, setHypertensionOrSaltSensitive] = useState(false);
 
   // Photo Crop / Zoom / Rotate Studio State
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
@@ -68,9 +72,17 @@ export const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({
 
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const initializedForOpenRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !activeClient) return;
+    if (!isOpen || !activeClient) {
+      initializedForOpenRef.current = null;
+      return;
+    }
+    if (initializedForOpenRef.current === activeClient.id) return;
+    initializedForOpenRef.current = activeClient.id;
+
     setName(activeClient.name || '');
     setAge(activeClient.age || 30);
     setGender(activeClient.gender || 'Male');
@@ -96,6 +108,10 @@ export const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({
     setDietPreference(activeClient.dietPreference || 'balanced');
     setAllergies(activeClient.allergies || []);
     setMedicalNotes(activeClient.medicalNotes || '');
+    setDiabeticStatus(activeClient.diabeticStatus || 'none');
+    setFastingSugarTargetMgDl(activeClient.fastingSugarTargetMgDl || 110);
+    setPostMealSugarTargetMgDl(activeClient.postMealSugarTargetMgDl || 155);
+    setHypertensionOrSaltSensitive(Boolean(activeClient.hypertensionOrSaltSensitive));
     setRawImageSrc(null);
     setCropZoom(1.1);
     setCropRotation(0);
@@ -247,6 +263,10 @@ export const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({
       dietPreference,
       allergies,
       medicalNotes: medicalNotes.trim(),
+      diabeticStatus,
+      fastingSugarTargetMgDl: Number(fastingSugarTargetMgDl) || 110,
+      postMealSugarTargetMgDl: Number(postMealSugarTargetMgDl) || 155,
+      hypertensionOrSaltSensitive,
       preferredUnitSystem: unitSystem,
     });
 
@@ -257,6 +277,7 @@ export const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({
         ? 'പ്രൊഫൈൽ വിവരങ്ങൾ തൽക്ഷണം സേവ് ചെയ്തു!'
         : 'Profile details saved and applied across NutriTrack!'
     );
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => setSavedNotice(null), 4000);
   };
 
@@ -292,7 +313,7 @@ export const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-6">
+        <div ref={scrollContainerRef} className="p-4 sm:p-6 overflow-y-auto space-y-6">
           {savedNotice && (
             <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -715,6 +736,77 @@ export const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({
                   Add
                 </button>
               </div>
+            </div>
+
+            {/* Blood Sugar / Diabetes & Blood Pressure Registration */}
+            <div className="rounded-2xl p-3.5 bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900 space-y-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-bold text-rose-950 dark:text-rose-200">
+                  {isMl ? 'ബ്ലഡ് ഷുഗർ & സോഡിയം പ്രൊഫൈൽ' : 'Blood Sugar & Sodium Registration (Sugar Care)'}
+                </span>
+                <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300">
+                  Auto-calibrates daily sugar (≤25g) &amp; sodium (≤1,500mg) limits
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                    {isMl ? 'പ്രമേഹ നില' : 'Diabetes / Glycemic Status'}
+                  </label>
+                  <select
+                    value={diabeticStatus}
+                    onChange={(e) => setDiabeticStatus(e.target.value as DiabeticStatus)}
+                    className="w-full px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
+                  >
+                    <option value="none">No Diabetes (Standard Limits)</option>
+                    <option value="prediabetes">Prediabetes</option>
+                    <option value="type2">Type 2 Diabetes</option>
+                    <option value="type1">Type 1 Diabetes</option>
+                    <option value="gestational">Gestational Diabetes</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                    Fasting Sugar Target (mg/dL)
+                  </label>
+                  <input
+                    type="number"
+                    min={70}
+                    max={180}
+                    value={fastingSugarTargetMgDl}
+                    onChange={(e) => setFastingSugarTargetMgDl(Number(e.target.value) || 110)}
+                    className="w-full px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold tabular-nums"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                    2h Post-Meal Target (mg/dL)
+                  </label>
+                  <input
+                    type="number"
+                    min={90}
+                    max={240}
+                    value={postMealSugarTargetMgDl}
+                    onChange={(e) => setPostMealSugarTargetMgDl(Number(e.target.value) || 155)}
+                    className="w-full px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold tabular-nums"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={hypertensionOrSaltSensitive}
+                  onChange={(e) => setHypertensionOrSaltSensitive(e.target.checked)}
+                  className="accent-emerald-700 rounded"
+                />
+                <span>
+                  High Blood Pressure / Salt-Sensitive (Tighten daily sodium cap to 1,500 mg/day)
+                </span>
+              </label>
             </div>
 
             {/* Medical / Injury Notes */}

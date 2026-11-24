@@ -1,4 +1,4 @@
-import { ClientProfile, FoodCategory, FoodItem, MealLogItem } from '../types';
+import { BloodSugarContext, BloodSugarLog, ClientProfile, DiabeticStatus, FoodCategory, FoodItem, MealLogItem } from '../types';
 
 export interface MicronutrientValues {
   calcium: number;   // mg
@@ -13,7 +13,8 @@ export interface DailyNutrientTargets {
   carbs: number;     // g
   fat: number;       // g
   fiber: number;     // g (RDA strictly capped)
-  sugar: number;     // g (WHO <10% kcal guideline, optimal <=25-45g)
+  sugar: number;     // g (AHA/WHO guideline; 25g ceiling for diabetes/prediabetes)
+  sodium: number;    // mg (AHA/WHO 2000mg standard; 1500mg for diabetes/salt-sensitive)
   iron: number;      // mg (RDA strictly capped)
   vitaminD: number;  // IU (RDA strictly capped)
   magnesium: number; // mg (RDA strictly capped)
@@ -28,6 +29,7 @@ export interface ConsumedNutrientTotals {
   fat: number;
   fiber: number;
   sugar: number;
+  sodium: number;
   iron: number;
   vitaminD: number;
   magnesium: number;
@@ -181,8 +183,16 @@ export function calculateDailyNutrientTargets(client: ClientProfile): DailyNutri
     calcium = 1300;
   }
 
-  // Sugar daily ceiling (WHO < 10% total calories from free/added sugars; 25-45g max)
-  const sugar = Math.max(22, Math.min(48, Math.round((neededCalories * 0.08) / 4)));
+  // Sugar daily ceiling (AHA/WHO: <=25g for diabetic/prediabetic profiles; <8% kcal / 22-45g otherwise)
+  const diabeticStatus = client.diabeticStatus || 'none';
+  const hasGlycemicCondition = diabeticStatus !== 'none';
+  const sugar = hasGlycemicCondition
+    ? 25
+    : Math.max(22, Math.min(45, Math.round((neededCalories * 0.08) / 4)));
+
+  // Sodium daily ceiling (WHO 2000mg standard; AHA 1500mg ideal for diabetes or salt-sensitivity/hypertension)
+  const isSaltSensitive = Boolean(client.hypertensionOrSaltSensitive) || hasGlycemicCondition;
+  const sodium = isSaltSensitive ? 1500 : 2000;
 
   return {
     calories: neededCalories,
@@ -191,6 +201,7 @@ export function calculateDailyNutrientTargets(client: ClientProfile): DailyNutri
     fat,
     fiber,
     sugar,
+    sodium,
     iron,
     vitaminD,
     magnesium,
@@ -475,36 +486,139 @@ export function estimateFoodSugar(input: {
   const cal = Math.max(0, Number(input.calories) || 0);
   const carbs = Math.max(0, Number(input.carbs) || 0);
 
-  if (cal <= 5 || /no sugar|unsweetened|black tea|black coffee|sulaimani|jeeraka|pathimugam|water|sambharam/i.test(combined)) {
+  // Explicit label in description e.g. "Sugar: 12g"
+  const explicitMatch = desc.match(/sugar:\s*(\d+(?:\.\d+)?)\s*g/i);
+  if (explicitMatch) {
+    return r1(Math.max(0, Number(explicitMatch[1])));
+  }
+
+  if (cal <= 5 || /no sugar|unsweetened|sugar[- ]?free|black tea|black coffee|kattan|jeeraka|pathimugam|water|sambharam/i.test(combined)) {
     return /sulaimani/i.test(combined) ? 2.5 : 0;
   }
 
+  if (/sulaimani/i.test(combined)) return 2.5;
   if (carbs <= 1.5) return 0;
 
-  if (/halwa|payasam|cake|ice cream|shake|sharjah|sarbath|jaggery|sharkara|unniyappam|neyyappam|jam|soda|cola|sweet|chocolate|laddu|gulab|barfi|donut|pastry|juice/i.test(combined)) {
-    return r1(Math.min(carbs, Math.max(5, carbs * 0.62)));
+  // Sweets, desserts, jaggery, sugary beverages
+  if (/halwa|payasam|pradhaman|cake|ice cream|shake|sharjah|sarbath|jaggery|sharkara|unniyappam|neyyappam|ada|jam|soda|cola|sweet|chocolate|laddu|gulab|barfi|donut|pastry|juice|falooda|honey|syrup/i.test(combined)) {
+    return r1(Math.min(carbs, Math.max(6, carbs * 0.64)));
   }
 
-  if (/milk|curd|yogurt|lassi|chaya|tea|coffee/i.test(combined)) {
-    return /chaya|tea|coffee/i.test(combined) ? r1(Math.min(carbs, 7.5)) : r1(Math.min(carbs, carbs * 0.72));
+  // Sweetened tea/coffee & dairy
+  if (/boost|horlicks|bournvita|milk tea|masala chai|chaya|milk coffee|cappuccino|latte/i.test(combined)) {
+    return r1(Math.min(carbs, Math.max(4, carbs * 0.65)));
+  }
+  if (/milk|curd|yogurt|lassi|tea|coffee/i.test(combined)) {
+    return /tea|coffee/i.test(combined) ? r1(Math.min(carbs, 7.5)) : r1(Math.min(carbs, carbs * 0.72));
   }
 
-  if (cat === 'Fruits' || /banana|pazham|mango|apple|orange|papaya|grapes|dates|fig|berry/i.test(combined)) {
+  // Whole fruits (natural fructose + glucose)
+  if (cat === 'Fruits' || /banana|pazham|nendran|mango|apple|orange|papaya|grapes|dates|fig|berry|watermelon|pineapple|jackfruit|chakka|sapota|chikoo/i.test(combined)) {
     return r1(Math.min(carbs, Math.max(2, carbs * 0.56)));
   }
 
-  if (/bread|bun|cake|biscuit|pazham pori|ethakka|sukhiyan/i.test(combined)) {
+  // Biscuits, bakery, banana fritters
+  if (/bread|bun|biscuit|pazham pori|ethakka|sukhiyan|modak|avalose/i.test(combined)) {
     return r1(Math.min(carbs, Math.max(2, carbs * 0.28)));
   }
 
-  if (cat === 'Vegetables') return r1(Math.min(carbs, carbs * 0.25));
-  if (cat === 'Grains & Breads') return r1(Math.min(4, carbs * 0.04));
+  // Savories & vegetables
+  if (/sambar|avial|koottu|thoran|carrot|beetroot|onion|tomato/i.test(combined) || cat === 'Vegetables') {
+    return r1(Math.min(carbs, carbs * 0.25));
+  }
+  if (/puttu|idiyappam|appam|dosa|idli|chapati|roti|parotta|rice|biryani|kappa|kanji/i.test(combined) || cat === 'Grains & Breads') {
+    return r1(Math.min(3.5, carbs * 0.035));
+  }
 
   return r1(Math.min(carbs * 0.12, 8));
 }
 
 /**
- * Ensures any FoodItem carries complete fiber, sugar, calcium, magnesium, vitaminD, and iron fields.
+ * Estimates sodium (mg) per serving when explicit sodium is not stored on the food record.
+ * Calibrated for Kerala, Indian & everyday clinic meals (curries, snacks, pickles, fast food vs whole foods).
+ */
+export function estimateFoodSodium(input: {
+  name: string;
+  category?: FoodCategory | string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  sodium?: number;
+  description?: string;
+}): number {
+  if (input.sodium !== undefined && input.sodium !== null && !Number.isNaN(Number(input.sodium))) {
+    return Math.round(Math.max(0, Number(input.sodium)));
+  }
+
+  const name = (input.name || '').toLowerCase();
+  const desc = (input.description || '').toLowerCase();
+  const combined = `${name} ${desc}`;
+  const cat = input.category || 'Beverages & Snacks';
+  const cal = Math.max(0, Number(input.calories) || 0);
+
+  // Explicit label in description e.g. "Sodium: 340mg"
+  const explicitMatch = desc.match(/sodium:\s*(\d+(?:\.\d+)?)\s*mg/i);
+  if (explicitMatch) {
+    return Math.round(Math.max(0, Number(explicitMatch[1])));
+  }
+
+  if (cal <= 10 && /water|vellam|black tea|black coffee|kattan|sulaimani|jeeraka|pathimugam|green tea/i.test(combined)) {
+    return 5;
+  }
+  if (/salt[- ]?free|unsalted|no salt/i.test(combined)) {
+    return Math.round(Math.max(5, cal * 0.15));
+  }
+
+  // Very high sodium items: pickles, papadam, salted nuts, dried/salted fish, instant noodles, chips, fast food
+  if (/pickle|achar|pappadam|papad|instant noodle|maggi|ramen|soy sauce|dried fish|unakka meen|chips|upperi|mixture|murukku|pakoda|samosa|pizza|burger|shawarma|biryani|mandi|kfc|broast/i.test(combined)) {
+    if (/pickle|achar/i.test(combined)) return 520;
+    if (/pappadam|papad/i.test(combined)) return 260;
+    if (/noodle|maggi|ramen/i.test(combined)) return 820;
+    if (/biryani|mandi|shawarma|pizza|burger|broast|kfc/i.test(combined)) return Math.round(Math.max(420, cal * 1.45));
+    return Math.round(Math.max(220, cal * 1.3));
+  }
+
+  // Salted buttermilk / sambharam
+  if (/sambharam|buttermilk|salted lassi/i.test(combined)) return 190;
+
+  // Curries, roasts, gravies, sambar, kadala, thoran
+  if (/curry|roast|masala|stew|sambar|kadala|avial|moru|pulissery|thoran|rasam|omelet|omelette|scramble|fried/i.test(combined)) {
+    return Math.round(Math.max(180, Math.min(680, cal * 1.4)));
+  }
+
+  // Bread, puttu, appam, idli, dosa, parotta, chapati (prepared with batter/dough salt)
+  if (/parotta|porotta|naan|kulcha/i.test(combined)) return 310;
+  if (/bread|bun|sandwich|dosa|idli|puttu|appam|idiyappam|upma/i.test(combined)) {
+    return Math.round(Math.max(110, Math.min(340, cal * 0.9)));
+  }
+  if (/chapati|roti|phulka|rice|kanji|oats|oatmeal/i.test(combined)) {
+    return /kanji/i.test(combined) ? 140 : 35; // Plain cooked rice/roti has minimal intrinsic sodium
+  }
+
+  // Snacks like vada, bonda, bajji
+  if (/vada|bonda|bajji|cutlet|rolls|puffs/i.test(combined)) return 240;
+
+  // Whole protein foods
+  if (cat === 'Proteins') {
+    if (/\begg\b|mutta/i.test(combined)) return 70;
+    if (/grilled|boiled|steamed|poached/i.test(combined)) return 140;
+    return Math.round(Math.max(90, Math.min(480, cal * 1.1)));
+  }
+
+  if (cat === 'Dairy & Alternatives') {
+    if (/cheese|butter/i.test(combined)) return 180;
+    if (/milk|curd|yogurt|paneer/i.test(combined)) return 85;
+  }
+
+  if (cat === 'Fruits') return 4;
+  if (cat === 'Vegetables') return /salad|raw|cucumber|tomato/i.test(combined) ? 25 : 140;
+  if (cat === 'Nuts & Healthy Fats') return /salted|roasted salt/i.test(combined) ? 160 : 8;
+
+  return Math.round(Math.max(15, Math.min(420, cal * 0.85)));
+}
+
+/**
+ * Ensures any FoodItem carries complete fiber, sugar, sodium, calcium, magnesium, vitaminD, and iron fields.
  */
 export function enrichFoodWithMicronutrients(food: FoodItem): FoodItem {
   const est = estimateFoodMicronutrients(food);
@@ -512,6 +626,7 @@ export function enrichFoodWithMicronutrients(food: FoodItem): FoodItem {
     ...food,
     fiber: food.fiber !== undefined ? food.fiber : estimateFoodFiber(food),
     sugar: food.sugar !== undefined ? food.sugar : estimateFoodSugar(food),
+    sodium: food.sodium !== undefined ? food.sodium : estimateFoodSodium(food),
     calcium: food.calcium !== undefined ? food.calcium : est.calcium,
     iron: food.iron !== undefined ? food.iron : est.iron,
     magnesium: food.magnesium !== undefined ? food.magnesium : est.magnesium,
@@ -525,6 +640,7 @@ export type NutrientKey =
   | 'fat'
   | 'fiber'
   | 'sugar'
+  | 'sodium'
   | 'iron'
   | 'vitaminD'
   | 'magnesium'
@@ -598,6 +714,20 @@ function resolveLogWithMaps(
     });
   }
 
+  let sodium = 0;
+  if (log.sodium !== undefined) {
+    sodium = Number(log.sodium) || 0;
+  } else if (matchedFood) {
+    sodium = estimateFoodSodium(matchedFood) * qty;
+  } else {
+    sodium = estimateFoodSodium({
+      name: log.foodName,
+      calories: log.calories,
+      protein: log.protein,
+      carbs: log.carbs,
+    });
+  }
+
   let iron = 0;
   let vitaminD = 0;
   let magnesium = 0;
@@ -649,6 +779,7 @@ function resolveLogWithMaps(
     fat: Number(log.fat) || 0,
     fiber,
     sugar,
+    sodium,
     iron,
     vitaminD,
     magnesium,
@@ -679,6 +810,7 @@ export function aggregateConsumedNutrients(
     fat: 0,
     fiber: 0,
     sugar: 0,
+    sodium: 0,
     iron: 0,
     vitaminD: 0,
     magnesium: 0,
@@ -693,6 +825,7 @@ export function aggregateConsumedNutrients(
     totals.fat += res.fat;
     totals.fiber += res.fiber;
     totals.sugar += res.sugar;
+    totals.sodium += res.sodium;
     totals.iron += res.iron;
     totals.vitaminD += res.vitaminD;
     totals.magnesium += res.magnesium;
@@ -706,6 +839,7 @@ export function aggregateConsumedNutrients(
     fat: r1(totals.fat),
     fiber: r1(totals.fiber),
     sugar: r1(totals.sugar),
+    sodium: Math.round(totals.sodium),
     iron: r1(totals.iron),
     vitaminD: Math.round(totals.vitaminD),
     magnesium: Math.round(totals.magnesium),
@@ -733,7 +867,11 @@ export function getFoodNutrientBreakdownForDay(
     if (f.name) byName.set(f.name.toLowerCase().trim(), f);
   }
 
-  const isInt = nutrientKey === 'vitaminD' || nutrientKey === 'magnesium' || nutrientKey === 'calcium';
+  const isInt =
+    nutrientKey === 'sodium' ||
+    nutrientKey === 'vitaminD' ||
+    nutrientKey === 'magnesium' ||
+    nutrientKey === 'calcium';
   const roundVal = (v: number) => (isInt ? Math.round(v) : r1(v));
 
   let rawTotal = 0;
@@ -772,5 +910,161 @@ export function getFoodNutrientBreakdownForDay(
     sources,
     totalFromFoods: roundVal(rawTotal),
     zeroCount,
+  };
+}
+
+export interface BloodSugarClassification {
+  band: 'low' | 'optimal' | 'borderline' | 'elevated';
+  label: string;
+  guidance: string;
+  badgeClass: string;
+}
+
+/**
+ * Classifies a daily blood glucose reading against ADA educational reference bands.
+ */
+export function classifyBloodSugarReading(
+  valueMgDl: number,
+  context: BloodSugarContext,
+  diabeticStatus: DiabeticStatus = 'none'
+): BloodSugarClassification {
+  const val = Number(valueMgDl) || 0;
+  if (val < 70) {
+    return {
+      band: 'low',
+      label: 'Low (<70 mg/dL)',
+      guidance:
+        'Below typical 70 mg/dL threshold. If symptomatic or on glucose-lowering therapy, discuss acute low-glucose steps with your clinician.',
+      badgeClass: 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-800',
+    };
+  }
+
+  const isPostMeal = context === 'post_meal_2h' || context === 'random';
+  const hasDiabetes = diabeticStatus === 'type1' || diabeticStatus === 'type2' || diabeticStatus === 'gestational';
+
+  if (isPostMeal) {
+    const optimalCeiling = hasDiabetes ? 180 : 140;
+    const borderlineCeiling = hasDiabetes ? 210 : 199;
+    if (val <= optimalCeiling) {
+      return {
+        band: 'optimal',
+        label: `In Target (≤${optimalCeiling})`,
+        guidance: 'Post-meal glucose stayed inside the healthy post-prandial target range.',
+        badgeClass: 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
+      };
+    }
+    if (val <= borderlineCeiling) {
+      return {
+        band: 'borderline',
+        label: 'Mildly Raised',
+        guidance: 'Slightly above ideal post-meal zone. Pair high-carb items with fiber + protein or add a 10–15 min gentle walk after meals.',
+        badgeClass: 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800',
+      };
+    }
+    return {
+      band: 'elevated',
+      label: 'Elevated',
+      guidance: 'Above post-meal target ceiling. Review dietary sugar/refined carb load below and share trends with your care team.',
+      badgeClass: 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-800',
+    };
+  }
+
+  // Fasting / Pre-meal / Bedtime
+  const optimalMax = hasDiabetes ? 130 : 99;
+  const borderlineMax = hasDiabetes ? 150 : 125;
+  if (val <= optimalMax) {
+    return {
+      band: 'optimal',
+      label: `Optimal (${val} mg/dL)`,
+      guidance: 'Fasting / pre-meal reading is inside reference target.',
+      badgeClass: 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
+    };
+  }
+  if (val <= borderlineMax) {
+    return {
+      band: 'borderline',
+      label: diabeticStatus === 'none' ? 'Impaired Fasting Range' : 'Slightly Above Target',
+      guidance: 'Watch evening refined carbs, meal timing, and sleep quality; discuss consistently raised fasting checks with your doctor.',
+      badgeClass: 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800',
+    };
+  }
+  return {
+    band: 'elevated',
+    label: 'Elevated Fasting',
+    guidance: 'Markedly above target range. Verify glucometer calibration & log evening meals for clinician review.',
+    badgeClass: 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-800',
+  };
+}
+
+export interface DailyGlycemicSodiumAudit {
+  targets: DailyNutrientTargets;
+  consumed: ConsumedNutrientTotals;
+  netCarbsGrams: number;
+  estimatedGlycemicLoad: number;
+  glycemicLoadBand: 'Low' | 'Moderate' | 'High';
+  sugarRemainingGrams: number;
+  sodiumRemainingMg: number;
+  fiberBufferRatioPct: number;
+  topSugarFoods: FoodNutrientSourceItem[];
+  topSodiumFoods: FoodNutrientSourceItem[];
+  latestReading: BloodSugarLog | null;
+}
+
+/**
+ * Computes comprehensive Sugar + Sodium Needed vs Consumed from Foods and Estimated Daily Glycemic Load (GL).
+ */
+export function analyzeDailySugarSodiumAndGlycemicLoad(
+  client: ClientProfile,
+  dayLogs: MealLogItem[],
+  foodsLibrary: FoodItem[],
+  dayBloodSugarLogs: BloodSugarLog[] = []
+): DailyGlycemicSodiumAudit {
+  const targets = calculateDailyNutrientTargets(client);
+  const consumed = aggregateConsumedNutrients(dayLogs, foodsLibrary);
+  const netCarbsGrams = Math.max(0, r1(consumed.carbs - consumed.fiber));
+
+  const byId = new Map<string, FoodItem>();
+  const byName = new Map<string, FoodItem>();
+  for (const f of foodsLibrary) {
+    if (f.id) byId.set(f.id, f);
+    if (f.name) byName.set(f.name.toLowerCase().trim(), f);
+  }
+
+  let estimatedGlycemicLoad = 0;
+  for (const log of dayLogs) {
+    const matched = byId.get(log.foodId) || byName.get((log.foodName || '').toLowerCase().trim());
+    const res = resolveLogWithMaps(log, byId, byName);
+    const itemNetCarbs = Math.max(0, res.carbs - res.fiber);
+    let approxGi = 55;
+    const giStr = `${matched?.glycemicIndex || ''} ${log.foodName}`.toLowerCase();
+    if (/zero|\(0\)|egg|chicken|fish|beef|paneer|almonds/.test(giStr) && itemNetCarbs < 3) approxGi = 10;
+    else if (/low/.test(giStr)) approxGi = 38;
+    else if (/high|white rice|parotta|porotta|payasam|sugar|soda|juice|bread/.test(giStr)) approxGi = 72;
+    else if (/medium/.test(giStr)) approxGi = 55;
+    estimatedGlycemicLoad += (approxGi * itemNetCarbs) / 100;
+  }
+
+  estimatedGlycemicLoad = Math.round(estimatedGlycemicLoad);
+  const glycemicLoadBand: 'Low' | 'Moderate' | 'High' =
+    estimatedGlycemicLoad <= 80 ? 'Low' : estimatedGlycemicLoad <= 120 ? 'Moderate' : 'High';
+
+  const topSugarFoods = getFoodNutrientBreakdownForDay(dayLogs, foodsLibrary, 'sugar').sources;
+  const topSodiumFoods = getFoodNutrientBreakdownForDay(dayLogs, foodsLibrary, 'sodium').sources;
+  const latestReading = dayBloodSugarLogs.length > 0 ? dayBloodSugarLogs[0] : null;
+  const fiberBufferRatioPct =
+    targets.fiber > 0 ? Math.min(150, Math.round((consumed.fiber / targets.fiber) * 100)) : 0;
+
+  return {
+    targets,
+    consumed,
+    netCarbsGrams,
+    estimatedGlycemicLoad,
+    glycemicLoadBand,
+    sugarRemainingGrams: Math.max(0, r1(targets.sugar - consumed.sugar)),
+    sodiumRemainingMg: Math.max(0, Math.round(targets.sodium - consumed.sodium)),
+    fiberBufferRatioPct,
+    topSugarFoods,
+    topSodiumFoods,
+    latestReading,
   };
 }

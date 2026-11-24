@@ -14,6 +14,7 @@ import {
   DailyHabits,
   ClinicAppointment,
   AccountabilityChallenge,
+  BloodSugarLog,
   ViewMode
 } from '../types';
 import {
@@ -44,6 +45,7 @@ import {
   enrichFoodWithMicronutrients,
   estimateFoodFiber,
   estimateFoodMicronutrients,
+  estimateFoodSodium,
   estimateFoodSugar,
 } from '../utils/micronutrients';
 import {
@@ -130,10 +132,15 @@ interface AppContextType {
   habits: DailyHabits[];
   appointments: ClinicAppointment[];
   challenges: AccountabilityChallenge[];
+  bloodSugarLogs: BloodSugarLog[];
 
   // Client Operations
   addMealLog: (meal: Omit<MealLogItem, 'id' | 'timeLogged'>) => { triggeredChallenge?: AccountabilityChallenge };
+  updateMealLog: (id: string, partial: Partial<MealLogItem>) => void;
   deleteMealLog: (id: string) => void;
+  addBloodSugarLog: (log: Omit<BloodSugarLog, 'id' | 'createdAt'>) => BloodSugarLog;
+  updateBloodSugarLog: (id: string, partial: Partial<BloodSugarLog>) => void;
+  deleteBloodSugarLog: (id: string) => void;
   resetClientDayMealsToDayBefore: (clientId: string, targetDate: string) => Promise<{ count: number; dayBefore: string }>;
   addSuggestedMeal: (suggestion: Omit<AISuggestedMeal, 'id' | 'createdAt' | 'status'>) => void;
   acceptSuggestedMeal: (suggestionId: string) => void;
@@ -414,6 +421,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [habits, setHabits] = useState<DailyHabits[]>(() => loadStored('habits', INITIAL_HABITS));
   const [appointments, setAppointments] = useState<ClinicAppointment[]>(() => loadStored('appointments', INITIAL_APPOINTMENTS));
   const [challenges, setChallenges] = useState<AccountabilityChallenge[]>(() => loadStored('challenges', []));
+  const [bloodSugarLogs, setBloodSugarLogs] = useState<BloodSugarLog[]>(() => loadStored('bloodSugarLogs', []));
 
   // Current client ID (null if not logged in with username and password)
   const [activeClientId, setActiveClientId] = useState<string | null>(() => {
@@ -675,6 +683,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         });
 
+        const unsubBloodSugar = subscribeToCollection<BloodSugarLog>('bloodSugarLogs', (items) => {
+          if (items && items.length > 0) {
+            setBloodSugarLogs(prev => {
+              const map = new Map<string, BloodSugarLog>();
+              prev.forEach(bs => { if (bs?.id) map.set(bs.id, bs); });
+              items.forEach(bs => { if (bs?.id) map.set(bs.id, { ...map.get(bs.id), ...bs }); });
+              return Array.from(map.values()).sort((a, b) =>
+                `${b.date} ${b.createdAt || b.timeLogged}`.localeCompare(`${a.date} ${a.createdAt || a.timeLogged}`)
+              );
+            });
+          }
+        });
+
         unsubs = [
           unsubClients,
           unsubDietitians,
@@ -689,6 +710,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           unsubTips,
           unsubReminders,
           unsubChallenges,
+          unsubBloodSugar,
         ];
 
         setCloudSyncStatus('connected');
@@ -736,6 +758,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(STORAGE_KEY_PREFIX + 'habits', JSON.stringify(habits));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'appointments', JSON.stringify(appointments));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'challenges', JSON.stringify(challenges));
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'bloodSugarLogs', JSON.stringify(bloodSugarLogs));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'activeClientId', JSON.stringify(activeClientId));
       localStorage.setItem(STORAGE_KEY_PREFIX + 'activeTeamUserId', JSON.stringify(activeTeamUserId));
     } catch {
@@ -763,13 +786,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             activities,
             habits,
             appointments,
-            challenges
+            challenges,
+            bloodSugarLogs
           },
           timestamp: Date.now()
         })
       }).catch(() => {});
     }, 1000);
-  }, [clients, dietitians, foods, dietPlans, mealLogs, suggestedMeals, measurements, tips, reminders, waterLogs, activities, habits, appointments, challenges, activeClientId, activeTeamUserId]);
+  }, [clients, dietitians, foods, dietPlans, mealLogs, suggestedMeals, measurements, tips, reminders, waterLogs, activities, habits, appointments, challenges, bloodSugarLogs, activeClientId, activeTeamUserId]);
 
   // Derived current client (ONLY returns client if authenticated with username and password)
   const activeClient = (clients && activeClientId) 
@@ -1026,10 +1050,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           carbs: meal.carbs,
         });
 
+    const estSodium = matchedCatalog
+      ? estimateFoodSodium(matchedCatalog) * qty
+      : estimateFoodSodium({
+          name: meal.foodName,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbs: meal.carbs,
+        });
+
     const newLog: MealLogItem = {
       ...meal,
       fiber: meal.fiber !== undefined ? meal.fiber : Math.round(estFiber * 10) / 10,
       sugar: meal.sugar !== undefined ? meal.sugar : Math.round(estSugar * 10) / 10,
+      sodium: meal.sodium !== undefined ? meal.sodium : Math.round(estSodium),
       calcium: meal.calcium !== undefined ? meal.calcium : Math.round(estMicro.calcium),
       iron: meal.iron !== undefined ? meal.iron : Math.round(estMicro.iron * 10) / 10,
       magnesium: meal.magnesium !== undefined ? meal.magnesium : Math.round(estMicro.magnesium),
@@ -1118,9 +1152,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { triggeredChallenge };
   };
 
+  const updateMealLog = (id: string, partial: Partial<MealLogItem>) => {
+    setMealLogs(prev =>
+      prev.map(m => {
+        if (m.id !== id) return m;
+        const updated = { ...m, ...partial };
+        saveDocumentToFirestore('mealLogs', id, updated).catch(() => {});
+        return updated;
+      })
+    );
+  };
+
   const deleteMealLog = (id: string) => {
     setMealLogs(prev => prev.filter(m => m.id !== id));
     deleteDocumentFromFirestore('mealLogs', id).catch(() => {});
+  };
+
+  // Blood Sugar Daily Checks CRUD (real-time synced to Firestore)
+  const addBloodSugarLog = (log: Omit<BloodSugarLog, 'id' | 'createdAt'>): BloodSugarLog => {
+    const entry: BloodSugarLog = {
+      ...log,
+      id: `bs-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+    };
+    setBloodSugarLogs(prev => [entry, ...prev]);
+    saveDocumentToFirestore('bloodSugarLogs', entry.id, entry).catch(() => {});
+    return entry;
+  };
+
+  const updateBloodSugarLog = (id: string, partial: Partial<BloodSugarLog>) => {
+    setBloodSugarLogs(prev =>
+      prev.map(bs => {
+        if (bs.id !== id) return bs;
+        const updated = { ...bs, ...partial };
+        saveDocumentToFirestore('bloodSugarLogs', id, updated).catch(() => {});
+        return updated;
+      })
+    );
+  };
+
+  const deleteBloodSugarLog = (id: string) => {
+    setBloodSugarLogs(prev => prev.filter(bs => bs.id !== id));
+    deleteDocumentFromFirestore('bloodSugarLogs', id).catch(() => {});
   };
 
   // USER MANDATE: Resetting for a client ONLY resets their food logs to what they typed the day before!
@@ -1202,6 +1275,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 qty *
                 10
             ) / 10;
+      const estSugar =
+        f.sugar !== undefined
+          ? f.sugar
+          : Math.round(
+              estimateFoodSugar({
+                name: f.name,
+                category: f.category,
+                calories: f.calories / qty,
+                carbs: f.carbs / qty,
+              }) *
+                qty *
+                10
+            ) / 10;
+      const estSodium =
+        f.sodium !== undefined
+          ? f.sodium
+          : Math.round(
+              estimateFoodSodium({
+                name: f.name,
+                category: f.category,
+                calories: f.calories / qty,
+                protein: f.protein / qty,
+                carbs: f.carbs / qty,
+              }) * qty
+            );
       const newLog: MealLogItem = {
         id: `ml-sugg-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 5)}`,
         clientId: suggestion.clientId,
@@ -1216,6 +1314,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         carbs: f.carbs,
         fat: f.fat,
         fiber: estFiber,
+        sugar: estSugar,
+        sodium: estSodium,
         calcium: f.calcium !== undefined ? f.calcium : Math.round(estMicro.calcium * qty),
         iron: f.iron !== undefined ? f.iron : Math.round(estMicro.iron * qty * 10) / 10,
         magnesium: f.magnesium !== undefined ? f.magnesium : Math.round(estMicro.magnesium * qty),
@@ -1933,6 +2033,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActivities(INITIAL_ACTIVITIES);
       setHabits(INITIAL_HABITS);
       setAppointments(INITIAL_APPOINTMENTS);
+      setBloodSugarLogs([]);
       setActiveClientId('cl-1');
       setActiveTeamUserId('admin-1');
 
@@ -2010,8 +2111,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         habits,
         appointments,
         challenges,
+        bloodSugarLogs,
         addMealLog,
+        updateMealLog,
         deleteMealLog,
+        addBloodSugarLog,
+        updateBloodSugarLog,
+        deleteBloodSugarLog,
         resetClientDayMealsToDayBefore,
         addSuggestedMeal,
         acceptSuggestedMeal,

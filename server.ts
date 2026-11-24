@@ -1640,8 +1640,8 @@ Distinguish accurately between:
 (A) **Food / Meal / Photo / Recipe / Eaten-Food Report**:
    - Trigger ONLY when the user asks about a specific food's calories/nutrition, uploads a meal photo, lists recipe ingredients, or reports eating/drinking a meal (e.g. "I ate 2 eggs at 8:30 am", "രാവിലെ 2 പുട്ടും കടലയും കഴിച്ചു").
    - Set "isFoodInquiry": true (and set "isMealLogReport": true when reporting an eaten meal or multi-item recipe/photo).
-   - Populate "food" (for single item inquiries) and/or "mealLogData" / "foodsList" (for eaten meals, recipes, or multi-item photos) with accurate numbers: calories, protein (g), carbs (g), fat (g), fiber (g), calcium (mg), iron (mg), magnesium (mg), vitaminD (IU).
-   - In "answer", state the food's **Calories FIRST** in bold ("🔥 **Calories:** **X kcal**..." or Malayalam equivalent), summarize macros/micronutrients, and mention the 3 cooking oil options (+0 steamed, +45 medium sauté, +120 deep fried) when relevant.
+   - Populate "food" (for single item inquiries) and/or "mealLogData" / "foodsList" (for eaten meals, recipes, or multi-item photos) with accurate numbers: calories, protein (g), carbs (g), fat (g), fiber (g), sugar (g), sodium (mg), calcium (mg), iron (mg), magnesium (mg), vitaminD (IU).
+    - In "answer", state the food's **Calories FIRST** in bold ("🔥 **Calories:** **X kcal**..." or Malayalam equivalent), summarize macros/sugar/sodium/micronutrients, and mention the 3 cooking oil options (+0 steamed, +45 medium sauté, +120 deep fried) when relevant.
 (B) **General Question (Nutrition advice, personal progress check, general knowledge, science, math, coding, translation, coaching, chat)**:
    - Set "isFoodInquiry": false, "isMealLogReport": false, "food": null, "foodsList": null, "mealLogData": null.
    - Give a complete, clear, genuinely helpful answer to whatever they asked in "answer", personalized using Active Client Profile if the question relates to their health/diet/steps/sleep/nutrients.
@@ -1666,6 +1666,8 @@ Return a valid JSON object matching this exact schema:
         "carbs": number,
         "fat": number,
         "fiber": number,
+        "sugar": number,
+        "sodium": number,
         "calcium": number,
         "iron": number,
         "magnesium": number,
@@ -1687,6 +1689,8 @@ Return a valid JSON object matching this exact schema:
     "carbs": number,
     "fat": number,
     "fiber": number,
+    "sugar": number,
+    "sodium": number,
     "calcium": number,
     "iron": number,
     "magnesium": number,
@@ -1705,6 +1709,8 @@ Return a valid JSON object matching this exact schema:
       "carbs": number,
       "fat": number,
       "fiber": number,
+      "sugar": number,
+      "sodium": number,
       "calcium": number,
       "iron": number,
       "magnesium": number,
@@ -1931,7 +1937,7 @@ Return a valid JSON object matching this exact schema:
               contents: [{
                 role: 'user',
                 parts: [{
-                  text: `Estimate accurate nutrition per standard single serving for food "${foodName}". Return ONLY JSON matching: { "name": string, "category": "Proteins"|"Grains & Breads"|"Vegetables"|"Fruits"|"Dairy & Alternatives"|"Nuts & Healthy Fats"|"Beverages & Snacks", "servingUnit": string, "calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "calcium": number, "iron": number, "magnesium": number, "vitaminD": number, "glycemicIndex": string, "verdict": string, "recommendation": string }`
+                  text: `Estimate accurate nutrition per standard single serving for food "${foodName}". Return ONLY JSON matching: { "name": string, "category": "Proteins"|"Grains & Breads"|"Vegetables"|"Fruits"|"Dairy & Alternatives"|"Nuts & Healthy Fats"|"Beverages & Snacks", "servingUnit": string, "calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number, "calcium": number, "iron": number, "magnesium": number, "vitaminD": number, "glycemicIndex": string, "verdict": string, "recommendation": string }`
                 }]
               }],
               config: {
@@ -2033,7 +2039,7 @@ Return a valid JSON object matching this exact schema:
 
       const prompt = `You are NutriBot, expert clinical dietitian at Saleem Valanchery Wellness Clinic.
 Analyze this meal plate (from photo or description: "${description || 'Food image'}").
-Identify all individual food items present, estimate realistic portions in grams or standard clinic units, calculate accurate macronutrients, micronutrients (calcium mg, iron mg, magnesium mg, vitaminD IU), and calories, and determine if it appears steamed/boiled, lightly sauteed, or deep-fried.
+Identify all individual food items present, estimate realistic portions in grams or standard clinic units, calculate accurate macronutrients, sugar (g), sodium (mg), fiber (g), micronutrients (calcium mg, iron mg, magnesium mg, vitaminD IU), and calories, and determine if it appears steamed/boiled, lightly sauteed, or deep-fried.
 
 Return a JSON object with this exact schema:
 {
@@ -2050,6 +2056,9 @@ Return a JSON object with this exact schema:
       "protein": number,
       "carbs": number,
       "fat": number,
+      "fiber": number,
+      "sugar": number,
+      "sodium": number,
       "calcium": number,
       "iron": number,
       "magnesium": number,

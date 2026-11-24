@@ -431,6 +431,33 @@ const EN_TO_ML: Record<string, string> = {
   'Profile & Picture Studio': 'പ്രൊഫൈലും ഫോട്ടോ സ്റ്റുഡിയോയും',
   'Calorie Trajectory': 'കലോറി യാത്ര',
   'Experience Level': 'പരിശീലന നിലവാരം',
+  'All Tools Menu': 'ടൂൾസ് മെനു',
+  'All Client Tools': 'എല്ലാ ക്ലയന്റ് ടൂളുകളും',
+
+  // Searchable Sidebar, Blood Sugar, Diabetes Registration & Sodium
+  'Search menu...': 'മെനു തിരയുക...',
+  'OVERVIEW': 'അവലോകനം',
+  'DAILY TRACKERS & TOOLS': 'ദൈനംദിന ട്രാക്കറുകൾ & ടൂളുകൾ',
+  'SETTINGS': 'ക്രമീകരണങ്ങൾ',
+  'Wellness Portal': 'വെൽനസ്സ് പോർട്ടൽ',
+  'Dashboard / Home': 'ഡാഷ്ബോർഡ് / ഹോം',
+  'Body Avatar Twin': 'ബോഡി അവതാർ ട്വിൻ',
+  'Blood Sugar': 'ബ്ലഡ് ഷുഗർ',
+  'Sugar Intake': 'ഷുഗർ (പഞ്ചസാര)',
+  'Sodium Intake': 'സോഡിയം (ഉപ്പ്)',
+  'Sugar Intake & Quick Add': 'ഷുഗർ ചേർക്കലും പരിശോധനയും',
+  'Sodium (Salt) & Quick Add': 'സോഡിയം (ഉപ്പ്) ചേർക്കൽ',
+  'Sodium': 'സോഡിയം (Sodium)',
+  'Salt / Sodium': 'ഉപ്പ് / സോഡിയം',
+  'Theme Customizer': 'തീം മാറ്റുക',
+  'Daily Sugar Check & Log': 'ദിവസേനയുള്ള ഷുഗർ പരിശോധന',
+  'Food Sugar & Sodium Audit': 'ഭക്ഷണത്തിലെ ഷുഗറും സോഡിയവും',
+  'Detailed Sugar Study': 'വിശദമായ ഷുഗർ പഠനം',
+  'Type 1 Diabetes': 'ടൈപ്പ് 1 പ്രമേഹം',
+  'Type 2 Diabetes': 'ടൈപ്പ് 2 പ്രമേഹം',
+  'Prediabetes': 'പ്രീ-ഡയബറ്റിസ്',
+  'Gestational Diabetes': 'ഗർഭകാല പ്രമേഹം',
+  'No Diabetes': 'പ്രമേഹമില്ല',
 };
 
 const FOOD_KEYWORD_ML: Array<[RegExp, string]> = [

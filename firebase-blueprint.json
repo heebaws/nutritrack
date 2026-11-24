@@ -231,6 +231,28 @@
         "createdAt": { "type": "string", "maxLength": 40 }
       },
       "required": ["id", "clientId", "targetDate", "title", "completed"]
+    },
+    "BloodSugarLog": {
+      "title": "BloodSugarLog",
+      "description": "Daily client blood sugar check & glycemic log synchronized across devices",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "timeLogged": { "type": "string", "maxLength": 20 },
+        "context": { "type": "string", "enum": ["fasting", "pre_meal", "post_meal_2h", "bedtime", "random"] },
+        "valueMgDl": { "type": "number" },
+        "unitEntered": { "type": "string", "enum": ["mg/dL", "mmol/L"] },
+        "rawEnteredValue": { "type": "number" },
+        "hba1cPercent": { "type": "number" },
+        "foodSugarGramsAtLog": { "type": "number" },
+        "foodCarbsGramsAtLog": { "type": "number" },
+        "foodSodiumMgAtLog": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["id", "clientId", "date", "context", "valueMgDl"]
     }
   },
   "firestore": {
@@ -285,6 +307,10 @@
     "/challenges/{challengeId}": {
       "schema": "AccountabilityChallenge",
       "description": "Accountability challenges unlocked after extra monthly cheat meals"
+    },
+    "/bloodSugarLogs/{bloodSugarLogId}": {
+      "schema": "BloodSugarLog",
+      "description": "Daily glucometer blood sugar readings and dietary sugar/sodium telemetry"
     }
   }
 }

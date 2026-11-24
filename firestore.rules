@@ -102,6 +102,13 @@ service cloud.firestore {
       allow create, update, delete: if isValidId(challengeId);
     }
 
+    // Daily Blood Sugar Checks & Glycemic Telemetry
+    match /bloodSugarLogs/{bloodSugarLogId} {
+      allow get: if isValidId(bloodSugarLogId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(bloodSugarLogId);
+    }
+
     // Fallback deny
     match /{document=**} {
       allow read, write: if false;

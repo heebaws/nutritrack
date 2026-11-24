@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ClientProfile, MealType } from '../../types';
 import { classifyFoodItem } from '../../utils/clinicalFoodAudit';
+import { analyzeDailySugarSodiumAndGlycemicLoad, classifyBloodSugarReading } from '../../utils/micronutrients';
+import { getTodayString } from '../../utils/dateUtils';
 import { 
   X, 
   User, 
@@ -16,7 +18,8 @@ import {
   FileText,
   Utensils,
   Printer,
-  Edit3
+  Edit3,
+  HeartPulse
 } from 'lucide-react';
 import { PrintReportModal } from '../common/PrintReportModal';
 import {
@@ -47,7 +50,7 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
   onOpenSendTip,
   onOpenEditClient,
 }) => {
-  const { dietitians, dietPlans, mealLogs, measurements, assignDietitian, assignDietPlan, theme } = useApp();
+  const { dietitians, dietPlans, mealLogs, measurements, bloodSugarLogs, foods, assignDietitian, assignDietPlan, theme } = useApp();
   const isDark = theme === 'dark';
 
   const [activeTab, setActiveTab] = useState<'overview' | 'meals' | 'measurements' | 'plan'>('overview');
@@ -75,6 +78,20 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
     return mealLogs.filter(m => m.clientId === client.id);
   }, [mealLogs, client]);
 
+  const clientBloodSugarLogs = useMemo(() => {
+    if (!client) return [];
+    return bloodSugarLogs
+      .filter(b => b.clientId === client.id)
+      .sort((a, b) => `${b.date} ${b.timeLogged}`.localeCompare(`${a.date} ${a.timeLogged}`));
+  }, [bloodSugarLogs, client]);
+
+  const todayGlycemicAudit = useMemo(() => {
+    if (!client) return null;
+    const today = getTodayString();
+    const todayLogs = mealLogs.filter(m => m.clientId === client.id && m.date === today);
+    return analyzeDailySugarSodiumAndGlycemicLoad(client, todayLogs, foods);
+  }, [client, mealLogs, foods]);
+
   if (!isOpen || !client) return null;
 
   return (
@@ -90,7 +107,7 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
               className="w-12 h-12 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-xs"
             />
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{client.name}</h2>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
                   client.status === 'active' 
@@ -99,6 +116,16 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
                 }`}>
                   {client.status}
                 </span>
+                {client.diabeticStatus && client.diabeticStatus !== 'none' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
+                    {client.diabeticStatus}
+                  </span>
+                )}
+                {client.hypertensionOrSaltSensitive && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                    Salt-Sensitive
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Phone: <span className="font-mono text-slate-700 dark:text-slate-300">{client.phone}</span> • Joined {client.joinedDate}
@@ -397,6 +424,72 @@ export const ClientDossierModal: React.FC<ClientDossierModalProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Blood Sugar, Food Sugar & Sodium Monitoring Panel */}
+                {todayGlycemicAudit && (
+                  <div className="bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-xl p-3.5 space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-rose-950 dark:text-rose-200 uppercase tracking-tight flex items-center gap-1.5">
+                        <HeartPulse className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                        <span>Blood Sugar, Dietary Sugar &amp; Sodium Telemetry</span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-rose-800 dark:text-rose-300">
+                        {client.diabeticStatus && client.diabeticStatus !== 'none'
+                          ? `Registered: ${client.diabeticStatus.toUpperCase()} · Fasting ≤${client.fastingSugarTargetMgDl || 110} / Post-Meal ≤${client.postMealSugarTargetMgDl || 155} mg/dL`
+                          : 'Standard Glycemic & Sodium Watch'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                      <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Today Food Sugar</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100 tabular-nums">
+                          {todayGlycemicAudit.consumed.sugar} g / {todayGlycemicAudit.targets.sugar} g
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          Net Carbs: {todayGlycemicAudit.netCarbsGrams}g · Est GL {todayGlycemicAudit.estimatedGlycemicLoad}
+                        </span>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Today Sodium</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100 tabular-nums">
+                          {todayGlycemicAudit.consumed.sodium} mg / {todayGlycemicAudit.targets.sodium} mg
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          {client.hypertensionOrSaltSensitive || (client.diabeticStatus && client.diabeticStatus !== 'none')
+                            ? 'Clinical tight cap (1,500 mg)'
+                            : 'Standard cap (2,000 mg)'}
+                        </span>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Latest Checked Glucose</span>
+                        {clientBloodSugarLogs[0] ? (() => {
+                          const latest = clientBloodSugarLogs[0];
+                          const cls = classifyBloodSugarReading(
+                            latest.valueMgDl,
+                            latest.context,
+                            client.diabeticStatus || 'none'
+                          );
+                          return (
+                            <>
+                              <span className="font-bold text-slate-900 dark:text-slate-100 tabular-nums">
+                                {latest.valueMgDl} mg/dL ({cls.label})
+                              </span>
+                              <span className="text-[10px] text-slate-400 block">
+                                {latest.date} {latest.timeLogged} · {latest.context.replace('_', ' ')}
+                              </span>
+                            </>
+                          );
+                        })() : (
+                          <>
+                            <span className="font-bold text-slate-500 dark:text-slate-400">No readings yet</span>
+                            <span className="text-[10px] text-slate-400 block">Logged by client in Blood Sugar tab</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Goal and Clinic Assignments */}

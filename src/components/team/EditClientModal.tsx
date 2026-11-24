@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ClientProfile } from '../../types';
+import { ClientProfile, DiabeticStatus } from '../../types';
 import { X, Check, Camera, Upload, ShieldCheck, User, Sparkles, Scale, HeartPulse, KeyRound } from 'lucide-react';
 
 interface EditClientModalProps {
@@ -51,6 +51,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClos
   const [assignedDietitianId, setAssignedDietitianId] = useState('');
   const [dietPlanId, setDietPlanId] = useState('');
   const [medicalNotes, setMedicalNotes] = useState('');
+  const [diabeticStatus, setDiabeticStatus] = useState<DiabeticStatus>('none');
+  const [fastingSugarTargetMgDl, setFastingSugarTargetMgDl] = useState<number>(110);
+  const [postMealSugarTargetMgDl, setPostMealSugarTargetMgDl] = useState<number>(155);
+  const [hypertensionOrSaltSensitive, setHypertensionOrSaltSensitive] = useState<boolean>(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
   const isSuperAdmin = activeTeamUser?.role === 'super_admin' || activeTeamUser?.isSuperAdmin || activeTeamUser?.username === 'swabeeh';
@@ -87,6 +91,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClos
     setAssignedDietitianId(client.assignedDietitianId || dietitians[0]?.id || '');
     setDietPlanId(client.dietPlanId || dietPlans[0]?.id || '');
     setMedicalNotes(client.medicalNotes || '');
+    setDiabeticStatus(client.diabeticStatus || 'none');
+    setFastingSugarTargetMgDl(client.fastingSugarTargetMgDl || 110);
+    setPostMealSugarTargetMgDl(client.postMealSugarTargetMgDl || 155);
+    setHypertensionOrSaltSensitive(Boolean(client.hypertensionOrSaltSensitive));
     setImageError(null);
   }, [client, isOpen, dietitians, dietPlans]);
 
@@ -151,6 +159,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClos
       assignedDietitianId: assignedDietitianId || client.assignedDietitianId,
       dietPlanId: dietPlanId || client.dietPlanId,
       medicalNotes: medicalNotes.trim(),
+      diabeticStatus,
+      fastingSugarTargetMgDl: Number(fastingSugarTargetMgDl) || 110,
+      postMealSugarTargetMgDl: Number(postMealSugarTargetMgDl) || 155,
+      hypertensionOrSaltSensitive,
     };
 
     updateClient(updatedProfile);
@@ -594,6 +606,65 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClos
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Diabetes & Salt Sensitivity Calibration */}
+            <div className="bg-rose-50/50 dark:bg-rose-950/30 p-3.5 rounded-xl border border-rose-200 dark:border-rose-900 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-rose-950 dark:text-rose-200 text-xs uppercase tracking-wider">
+                  🩸 Blood Sugar &amp; Sodium Registration
+                </span>
+                <span className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold">
+                  Tightens Sugar (≤25g) &amp; Sodium (≤1,500mg) targets
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Glycemic Status</label>
+                  <select
+                    value={diabeticStatus}
+                    onChange={(e) => setDiabeticStatus(e.target.value as DiabeticStatus)}
+                    className="w-full bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-xl px-3 py-2 font-semibold text-slate-900 dark:text-slate-100"
+                  >
+                    <option value="none">No Diabetes</option>
+                    <option value="prediabetes">Prediabetes</option>
+                    <option value="type2">Type 2 Diabetes</option>
+                    <option value="type1">Type 1 Diabetes</option>
+                    <option value="gestational">Gestational Diabetes</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Fasting Target (mg/dL)</label>
+                  <input
+                    type="number"
+                    min={70}
+                    max={180}
+                    value={fastingSugarTargetMgDl}
+                    onChange={(e) => setFastingSugarTargetMgDl(Number(e.target.value) || 110)}
+                    className="w-full bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-xl px-3 py-2 font-bold text-slate-900 dark:text-slate-100 tabular-nums"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">2h Post-Meal Target (mg/dL)</label>
+                  <input
+                    type="number"
+                    min={90}
+                    max={240}
+                    value={postMealSugarTargetMgDl}
+                    onChange={(e) => setPostMealSugarTargetMgDl(Number(e.target.value) || 155)}
+                    className="w-full bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-xl px-3 py-2 font-bold text-slate-900 dark:text-slate-100 tabular-nums"
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hypertensionOrSaltSensitive}
+                  onChange={(e) => setHypertensionOrSaltSensitive(e.target.checked)}
+                  className="accent-emerald-700"
+                />
+                <span>Hypertension / Salt-Sensitive (Restrict daily sodium to 1,500 mg)</span>
+              </label>
             </div>
 
             <div>

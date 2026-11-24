@@ -1,6 +1,6 @@
 import { FoodCategory, MealType } from '../types';
 import { INITIAL_FOODS } from '../data/mockData';
-import { estimateFoodMicronutrients } from './micronutrients';
+import { estimateFoodMicronutrients, estimateFoodSodium, estimateFoodSugar } from './micronutrients';
 
 export interface EstimatedFood {
   name: string;
@@ -11,6 +11,8 @@ export interface EstimatedFood {
   carbs: number;
   fat: number;
   fiber: number;
+  sugar?: number;
+  sodium?: number;
   calcium?: number;
   iron?: number;
   magnesium?: number;
@@ -1502,8 +1504,27 @@ export function estimateNutrition(rawQuery: string): EstimatedFood {
     fat: base.fat,
     fiber: base.fiber,
   });
+  const sugar =
+    base.sugar ??
+    estimateFoodSugar({
+      name: base.name,
+      category: base.category,
+      calories: base.calories,
+      carbs: base.carbs,
+    });
+  const sodium =
+    base.sodium ??
+    estimateFoodSodium({
+      name: base.name,
+      category: base.category,
+      calories: base.calories,
+      protein: base.protein,
+      carbs: base.carbs,
+    });
   return {
     ...base,
+    sugar,
+    sodium,
     calcium: base.calcium ?? micro.calcium,
     iron: base.iron ?? micro.iron,
     magnesium: base.magnesium ?? micro.magnesium,
@@ -1986,6 +2007,25 @@ export function formatFoodMarkdown(
   const totalCarb = Number((food.carbs * portion).toFixed(1));
   const totalFat = Number(((food.fat + oilFat) * portion).toFixed(1));
   const totalFiber = Number((food.fiber * portion).toFixed(1));
+  const unitSugar =
+    food.sugar ??
+    estimateFoodSugar({
+      name: food.name,
+      category: food.category,
+      calories: food.calories,
+      carbs: food.carbs,
+    });
+  const unitSodium =
+    food.sodium ??
+    estimateFoodSodium({
+      name: food.name,
+      category: food.category,
+      calories: food.calories,
+      protein: food.protein,
+      carbs: food.carbs,
+    });
+  const totalSugar = Number((unitSugar * portion).toFixed(1));
+  const totalSodium = Math.round(unitSodium * portion);
 
   if (forceMalayalam || detectMalayalamOrManglish(food.name)) {
     return `🔥 **കാലറി (Calories):** **${totalCal} kcal** (${portion}x ${food.servingUnit})
@@ -1995,6 +2035,8 @@ export function formatFoodMarkdown(
 - **സാധാരണ അളവ് (Serving Unit):** **${food.servingUnit}**
 - **പ്രോട്ടീൻ (Protein):** **${totalProt} g**
 - **കാർബോഹൈഡ്രേറ്റ് (Carbohydrates):** **${totalCarb} g**
+- **പഞ്ചസാര (Sugar):** **${totalSugar} g**
+- **സോഡിയം / ഉപ്പ് (Sodium):** **${totalSodium} mg**
 - **ഫാറ്റ് (Healthy Fats):** **${totalFat} g**
 - **നാരുകൾ (Dietary Fiber):** **${totalFiber} g**
 - **ഗ്ലൈസെമിക് ഇൻഡക്സ് (Glycemic Index):** **${food.glycemicIndex}**
@@ -2022,6 +2064,8 @@ ${food.verdict}
 - **Standard Serving Unit:** **${food.servingUnit}**
 - **Protein:** **${totalProt} g**
 - **Carbohydrates:** **${totalCarb} g**
+- **Sugar:** **${totalSugar} g**
+- **Sodium:** **${totalSodium} mg**
 - **Healthy Fats:** **${totalFat} g**
 - **Dietary Fiber:** **${totalFiber} g**
 - **Glycemic Index:** **${food.glycemicIndex}**

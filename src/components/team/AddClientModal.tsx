@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { DiabeticStatus } from '../../types';
 import { X, UserPlus, Check, Upload, Camera } from 'lucide-react';
 
 interface AddClientModalProps {
@@ -26,6 +27,10 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
   const [assignedDietitianId, setAssignedDietitianId] = useState<string>(dietitians[0]?.id || 'admin-1');
   const [dietPlanId, setDietPlanId] = useState<string>(dietPlans[0]?.id || 'dp-1');
   const [medicalNotes, setMedicalNotes] = useState('');
+  const [diabeticStatus, setDiabeticStatus] = useState<DiabeticStatus>('none');
+  const [fastingSugarTargetMgDl, setFastingSugarTargetMgDl] = useState<number>(110);
+  const [postMealSugarTargetMgDl, setPostMealSugarTargetMgDl] = useState<number>(155);
+  const [hypertensionOrSaltSensitive, setHypertensionOrSaltSensitive] = useState<boolean>(false);
 
   // Synchronize coach and diet plan defaults when data loads
   React.useEffect(() => {
@@ -189,6 +194,10 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
       assignedDietitianId: finalDietitianId,
       dietPlanId: finalDietPlanId,
       medicalNotes: medicalNotes.trim() || undefined,
+      diabeticStatus,
+      fastingSugarTargetMgDl: Number(fastingSugarTargetMgDl) || 110,
+      postMealSugarTargetMgDl: Number(postMealSugarTargetMgDl) || 155,
+      hypertensionOrSaltSensitive,
       avatarUrl: avatarPreview || `https://images.unsplash.com/photo-${gender === 'Female' ? '1544005313-94ddf0286df2' : '1507003211169-0a1dd7228f2d'}?auto=format&fit=crop&q=80&w=150`,
     });
 
@@ -933,6 +942,71 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose 
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Blood Sugar / Diabetes & Sodium Calibration */}
+          <div className="bg-rose-50/50 dark:bg-rose-950/30 p-3.5 rounded-xl border border-rose-200 dark:border-rose-900 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-rose-950 dark:text-rose-200 text-xs uppercase tracking-wider">
+                🩸 Diabetes / Blood Sugar &amp; Sodium Profile
+              </span>
+              <span className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold">
+                Auto-sets daily sugar &amp; sodium limits
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                  Glycemic Status
+                </label>
+                <select
+                  value={diabeticStatus}
+                  onChange={(e) => setDiabeticStatus(e.target.value as DiabeticStatus)}
+                  className="w-full bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg px-2.5 py-1.5 font-semibold text-slate-900 dark:text-slate-100"
+                >
+                  <option value="none">No Diabetes</option>
+                  <option value="prediabetes">Prediabetes</option>
+                  <option value="type2">Type 2 Diabetes</option>
+                  <option value="type1">Type 1 Diabetes</option>
+                  <option value="gestational">Gestational Diabetes</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                  Fasting Target (mg/dL)
+                </label>
+                <input
+                  type="number"
+                  min={70}
+                  max={180}
+                  value={fastingSugarTargetMgDl}
+                  onChange={(e) => setFastingSugarTargetMgDl(Number(e.target.value) || 110)}
+                  className="w-full bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 dark:text-slate-100 tabular-nums"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                  2h Post-Meal Target (mg/dL)
+                </label>
+                <input
+                  type="number"
+                  min={90}
+                  max={240}
+                  value={postMealSugarTargetMgDl}
+                  onChange={(e) => setPostMealSugarTargetMgDl(Number(e.target.value) || 155)}
+                  className="w-full bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 dark:text-slate-100 tabular-nums"
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hypertensionOrSaltSensitive}
+                onChange={(e) => setHypertensionOrSaltSensitive(e.target.checked)}
+                className="accent-emerald-700"
+              />
+              <span>Hypertension / Salt-Sensitive (Caps daily sodium at 1,500 mg)</span>
+            </label>
           </div>
 
           <div>

@@ -29,6 +29,7 @@ import {
   Calculator,
   SlidersHorizontal,
   Candy,
+  Flame,
 } from 'lucide-react';
 
 export interface FaceAvatarTraits {
@@ -74,6 +75,7 @@ export interface BodyAvatarMetrics {
   fat: { consumed: number; target: number; pct: number };
   fiber: { consumed: number; target: number; pct: number };
   sugar: { consumed: number; target: number; pct: number };
+  sodium: { consumed: number; target: number; pct: number };
   iron: { consumed: number; target: number; pct: number };
   vitaminD: { consumed: number; target: number; pct: number };
   magnesium: { consumed: number; target: number; pct: number };
@@ -258,6 +260,7 @@ export function computeBodyAvatarMetrics(
   const simFat = Math.max(0, Number((consumed.fat + Math.max(0, extraRatio) * 32).toFixed(1)));
   const simFiber = Math.max(0, Number((consumed.fiber + Math.max(0, extraRatio) * 3).toFixed(1)));
   const simSugar = Math.max(0, Number((consumed.sugar + Math.max(0, extraRatio) * 12).toFixed(1)));
+  const simSodium = Math.max(0, Math.round(consumed.sodium + Math.max(0, extraRatio) * 350));
 
   const heightM = Math.max(1.2, (client.heightCm || 168) / 100);
   const bmi = (client.currentWeightKg || 65) / (heightM * heightM);
@@ -298,6 +301,7 @@ export function computeBodyAvatarMetrics(
     fat: { consumed: simFat, target: targets.fat, pct: pctOf(simFat, targets.fat) },
     fiber: { consumed: simFiber, target: targets.fiber, pct: pctOf(simFiber, targets.fiber) },
     sugar: { consumed: simSugar, target: targets.sugar, pct: pctOf(simSugar, targets.sugar) },
+    sodium: { consumed: simSodium, target: targets.sodium, pct: pctOf(simSodium, targets.sodium) },
     iron: { consumed: consumed.iron, target: targets.iron, pct: pctOf(consumed.iron, targets.iron) },
     vitaminD: { consumed: consumed.vitaminD, target: targets.vitaminD, pct: pctOf(consumed.vitaminD, targets.vitaminD) },
     magnesium: { consumed: consumed.magnesium, target: targets.magnesium, pct: pctOf(consumed.magnesium, targets.magnesium) },
@@ -854,6 +858,19 @@ function getNutrientDisplayItems(
       badgeBg: 'bg-pink-50 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800',
       textAccent: metrics.sugar.consumed > metrics.sugar.target ? 'text-rose-600 dark:text-rose-400' : 'text-pink-700 dark:text-pink-400',
       activeTabClass: 'bg-pink-600 text-white border-pink-600',
+    },
+    {
+      key: 'sodium',
+      label: t('Sodium'),
+      consumed: metrics.sodium.consumed,
+      target: metrics.sodium.target,
+      unit: 'mg',
+      pct: metrics.sodium.pct,
+      icon: Flame,
+      barColor: metrics.sodium.consumed > metrics.sodium.target ? 'bg-rose-500' : 'bg-orange-500',
+      badgeBg: 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800',
+      textAccent: metrics.sodium.consumed > metrics.sodium.target ? 'text-rose-600 dark:text-rose-400' : 'text-orange-700 dark:text-orange-400',
+      activeTabClass: 'bg-orange-600 text-white border-orange-600',
     },
     {
       key: 'iron',

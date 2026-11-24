@@ -102,6 +102,12 @@ export interface ClientProfile {
   lastActiveDate: string;
   medicalNotes?: string;
   readTipIds?: string[];
+
+  // Glycemic / Diabetes & Blood Pressure Registration & Targets
+  diabeticStatus?: DiabeticStatus;
+  fastingSugarTargetMgDl?: number;
+  postMealSugarTargetMgDl?: number;
+  hypertensionOrSaltSensitive?: boolean;
 }
 
 export interface DietitianProfile {
@@ -140,6 +146,7 @@ export interface FoodItem {
   fat: number;      // grams
   fiber?: number;   // grams
   sugar?: number;   // grams
+  sodium?: number;  // mg
   calcium?: number; // mg
   iron?: number;    // mg
   magnesium?: number; // mg
@@ -178,6 +185,7 @@ export interface MealLogItem {
   fat: number;
   fiber?: number;
   sugar?: number;
+  sodium?: number;
   calcium?: number;
   iron?: number;
   magnesium?: number;
@@ -290,6 +298,7 @@ export interface AISuggestedMealFood {
   fat: number;
   fiber?: number;
   sugar?: number;
+  sodium?: number;
   calcium?: number;
   iron?: number;
   magnesium?: number;
@@ -361,4 +370,36 @@ export interface ClinicAppointment {
   status: 'scheduled' | 'completed' | 'cancelled';
   location: string;
   notes?: string;
+}
+
+export type DiabeticStatus =
+  | 'none'
+  | 'prediabetes'
+  | 'type1'
+  | 'type2'
+  | 'gestational';
+
+export type BloodSugarContext =
+  | 'fasting'
+  | 'pre_meal'
+  | 'post_meal_2h'
+  | 'bedtime'
+  | 'random';
+
+export interface BloodSugarLog {
+  id: string;
+  clientId: string;
+  date: string; // YYYY-MM-DD
+  timeLogged: string;
+  context: BloodSugarContext;
+  valueMgDl: number;
+  unitEntered?: 'mg/dL' | 'mmol/L';
+  rawEnteredValue?: number;
+  hba1cPercent?: number;
+  linkedMealType?: MealType;
+  foodSugarGramsAtLog?: number;
+  foodCarbsGramsAtLog?: number;
+  foodSodiumMgAtLog?: number;
+  notes?: string;
+  createdAt?: string;
 }
